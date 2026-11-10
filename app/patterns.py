@@ -54,7 +54,7 @@ def detect_supplier_patterns(
                     try:
                         delivered_at = datetime.fromisoformat(str(latest["created_at"]).replace("Z", "+00:00")).date()
                         due = date.fromisoformat(str(commitment["due_date"])[:10])
-                    except (ValueError, TypeError):
+                    except (ValueError, TypeError, KeyError):
                         continue
                     if delivered_at > due:
                         incidents.append({"commitment_id": cid, "evidence_id": latest["id"], "observed": delivered_at.isoformat(), "expected": due.isoformat()})
