@@ -85,7 +85,8 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
             },
             timeout=30.0,
         )
-        response.raise_for_status()
+        if response.status_code < 200 or response.status_code >= 300:
+            raise AIProviderError(f'NEAR AI Cloud returned HTTP {response.status_code}.')
         body = response.json()
         content = body["choices"][0]["message"]["content"]
         if content.startswith("```"):
