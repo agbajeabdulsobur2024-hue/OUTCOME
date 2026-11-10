@@ -31,11 +31,21 @@ def test_payment_proposal_is_blocked_until_policy_and_evidence_are_valid(tmp_pat
             'require_full_delivery': True, 'require_invoice_match': True,
         })
         assert policy.status_code == 200
-        client.post(f'/api/commitments/{cid}/evidence', json={
+        quantity = client.post(f'/api/commitments/{cid}/evidence', json={
             'kind': 'quantity_received', 'value': 80, 'note': 'Short delivery',
-        })
-        client.post(f'/api/commitments/{cid}/evidence', json={
+        }).json()['evidence'][-1]
+        invoice = client.post(f'/api/commitments/{cid}/evidence', json={
             'kind': 'invoice_amount', 'value': 500, 'note': 'Invoice',
+        }).json()['evidence'][-1]
+        unverified = client.post(f'/api/commitments/{cid}/payment-proposals', json={
+            'amount': 500, 'currency': 'USD', 'destination': 'supplier-wallet-001',
+        })
+        assert 'DELIVERY_NOT_VERIFIED' in {r['code'] for r in unverified.json()['proposal']['reasons']}
+        client.post(f"/api/evidence/{quantity['id']}/reviews", json={
+            'status': 'VERIFIED', 'reviewer': 'Owner', 'note': 'Count checked against signed receiving note',
+        })
+        client.post(f"/api/evidence/{invoice['id']}/reviews", json={
+            'status': 'VERIFIED', 'reviewer': 'Owner', 'note': 'Invoice checked',
         })
         blocked = client.post(f'/api/commitments/{cid}/payment-proposals', json={
             'amount': 500, 'currency': 'USD', 'destination': 'supplier-wallet-001',
@@ -43,8 +53,11 @@ def test_payment_proposal_is_blocked_until_policy_and_evidence_are_valid(tmp_pat
         assert blocked.json()['proposal']['status'] == 'BLOCKED'
         assert 'DELIVERY_SHORTFALL' in {r['code'] for r in blocked.json()['proposal']['reasons']}
 
-        client.post(f'/api/commitments/{cid}/evidence', json={
+        final_quantity = client.post(f'/api/commitments/{cid}/evidence', json={
             'kind': 'quantity_received', 'value': 100, 'note': 'Balance delivered',
+        }).json()['evidence'][-1]
+        client.post(f"/api/evidence/{final_quantity['id']}/reviews", json={
+            'status': 'VERIFIED', 'reviewer': 'Owner', 'note': 'Final delivery confirmed',
         })
         passed = client.post(f'/api/commitments/{cid}/payment-proposals', json={
             'amount': 500, 'currency': 'USD', 'destination': 'supplier-wallet-001',
