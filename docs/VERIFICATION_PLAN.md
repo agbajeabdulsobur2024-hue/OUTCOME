@@ -9,7 +9,7 @@ Verification coverage in the current build:
 - Latest-evidence semantics: a newer unreviewed or rejected record supersedes an older verified record.
 - Payment proposals blocked by missing, unverified, rejected or discrepant evidence.
 - Partial payment proposals blocked unless explicitly enabled by owner policy.
-- Supplier pattern signals require at least two incidents backed by latest verified evidence.
+- Supplier pattern signals require at least two incidents backed by latest verified evidence; recurring-pattern labels additionally require a sample of at least five and an incident rate of at least 30%.
 - Action lifecycle rejects invalid transitions and requires same-commitment verified evidence to verify an outcome.
 - Human approval remains required even when simulation checks pass.
 - No wallet signing, transaction submission or real asset movement.
