@@ -1,0 +1,12 @@
+{
+  "name": "outcome-near-testnet-demo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Testnet deployment and restricted function-call key proof for OUTCOME",
+  "scripts": {
+    "testnet:security-demo": "node scripts/testnet_demo.cjs"
+  },
+  "dependencies": {
+    "near-api-js": "2.1.4"
+  }
+}
