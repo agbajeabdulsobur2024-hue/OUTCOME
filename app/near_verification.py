@@ -1,13 +1,15 @@
 """Fail-closed verification for NEAR AI Cloud signed chat responses.
 
-Implements the protocol used by the official nearai-cloud-verifier chat verifier:
-- hashes the exact request body and raw HTTP response body;
-- verifies the ECDSA signature and recovered signing address;
-- fetches a fresh nonce-bound model attestation;
-- cryptographically verifies the Intel TDX quote and report-data binding.
+Follows the official nearai-cloud-verifier chat flow:
+- hash the exact request body and raw HTTP response body;
+- verify the ECDSA signature and recover its signer;
+- distinguish provider-TEE signatures from gateway signatures;
+- fetch a fresh nonce-bound attestation for that signer;
+- verify the Intel TDX quote and its report-data binding.
 
-GPU NRAS verdict is treated as supplemental provider evidence, not as a locally
-verified JWT signature. No model output is trusted unless the ECDSA + TDX checks pass.
+This does not independently verify NVIDIA's JWT signature, Sigstore provenance,
+or the model/container measurement chain. Those limitations are returned
+explicitly; a successful result is not a claim that model reasoning is correct.
 """
 from __future__ import annotations
 
@@ -16,6 +18,7 @@ import hashlib
 import json
 import secrets
 from typing import Any
+from urllib.parse import quote
 
 import requests
 
@@ -47,8 +50,9 @@ def _verify_signature_payload(
     request_body: str,
     response_text: str,
     payload: dict[str, Any],
-) -> str:
-    """Verify hashes, ECDSA signature and signer address; return signer."""
+    model: str,
+) -> dict[str, str]:
+    """Verify exact hashes and ECDSA signer; return signer and signature kind."""
     try:
         signed_text = payload["text"]
         signature = payload["signature"]
@@ -60,18 +64,26 @@ def _verify_signature_payload(
         raise VerificationError("Signature endpoint returned invalid fields.")
 
     parts = signed_text.split(":")
+    declared_kind = str(payload.get("signature_kind", "")).lower()
     if len(parts) == 3:
-        signed_request_hash, signed_response_hash = parts[1], parts[2]
+        # Provider TEE signs model_id:request_hash:response_hash.
+        signature_kind = "provider_tee"
+        signed_model, signed_request_hash, signed_response_hash = parts
+        if signed_model != model:
+            raise VerificationError("Signed model identifier does not match the requested model.")
     elif len(parts) == 2:
+        # Gateway TEE signs request_hash:response_hash for bytes it rewrites.
+        signature_kind = "gateway"
         signed_request_hash, signed_response_hash = parts
     else:
-        raise VerificationError("Signature payload has an unsupported format.")
+        raise VerificationError("Signature payload has an unsupported signed-text format.")
 
-    actual_request_hash = sha256_hex(request_body)
-    actual_response_hash = sha256_hex(response_text)
-    if not secrets.compare_digest(signed_request_hash.lower(), actual_request_hash):
+    if declared_kind and declared_kind != signature_kind:
+        raise VerificationError("Signature kind does not match the signed-text format.")
+
+    if not secrets.compare_digest(signed_request_hash.lower(), sha256_hex(request_body)):
         raise VerificationError("Signed request hash does not match the request sent.")
-    if not secrets.compare_digest(signed_response_hash.lower(), actual_response_hash):
+    if not secrets.compare_digest(signed_response_hash.lower(), sha256_hex(response_text)):
         raise VerificationError("Signed response hash does not match the raw response received.")
 
     try:
@@ -82,33 +94,35 @@ def _verify_signature_payload(
         raise VerificationError("ECDSA response signature could not be recovered.") from exc
 
     if recovered.lower() != claimed_signer.lower():
-        raise VerificationError("ECDSA signer does not match the attested signing address.")
-    return claimed_signer
+        raise VerificationError("ECDSA signer does not match the claimed signing address.")
+    return {"signing_address": claimed_signer, "signature_kind": signature_kind}
 
 
-def _decode_tdx_report_data(verification_result: Any) -> tuple[str, str]:
+def _extract_report_data(verification_result: Any) -> tuple[bytes, str]:
     try:
         result_json = json.loads(verification_result.to_json())
-        td10 = result_json["report"]["TD10"]
-        report_data = str(td10["report_data"]).removeprefix("0x")
-        mr_config = str(td10.get("mr_config_id", ""))
+        # Current dcap-qvl output shape used by NEAR's official verifier.
+        quote_body = result_json.get("quote", {}).get("body", {})
+        report_data = quote_body.get("reportdata")
+        mr_config = quote_body.get("mrconfig", "")
+        # Compatibility with TD10-shaped output from some dcap-qvl versions.
+        if report_data is None:
+            td10 = result_json["report"]["TD10"]
+            report_data = td10.get("report_data")
+            mr_config = td10.get("mr_config_id", mr_config)
+        raw = bytes.fromhex(str(report_data).removeprefix("0x"))
     except Exception as exc:
-        raise VerificationError("Verified TDX quote did not expose TD10 report data.") from exc
-    try:
-        raw = bytes.fromhex(report_data)
-    except ValueError as exc:
-        raise VerificationError("TDX report data is not valid hexadecimal.") from exc
+        raise VerificationError("Verified TDX quote did not expose report data.") from exc
     if len(raw) != 64:
         raise VerificationError("TDX report data must be exactly 64 bytes.")
-    return report_data.lower(), mr_config
+    return raw, str(mr_config or "")
 
 
 def _verify_tdx_and_binding(attestation: dict[str, Any], nonce: str) -> dict[str, Any]:
     try:
         import asyncio
         import dcap_qvl
-        quote_hex = attestation["intel_quote"]
-        quote = bytes.fromhex(quote_hex)
+        quote = bytes.fromhex(attestation["intel_quote"])
         if not quote:
             raise ValueError("empty quote")
         result = asyncio.run(dcap_qvl.get_collateral_and_verify(quote))
@@ -120,29 +134,28 @@ def _verify_tdx_and_binding(attestation: dict[str, Any], nonce: str) -> dict[str
     if status not in {"UpToDate", "OutOfDate"}:
         raise VerificationError(f"Intel TDX quote was not accepted (status: {status or 'unknown'}).")
 
-    report_data_hex, mr_config = _decode_tdx_report_data(result)
-    report_data = bytes.fromhex(report_data_hex)
+    report_data, mr_config = _extract_report_data(result)
     signer = str(attestation.get("signing_address", ""))
     if not signer:
         raise VerificationError("Attestation omitted its signing address.")
     try:
         signer_bytes = bytes.fromhex(signer.removeprefix("0x"))
+        nonce_bytes = bytes.fromhex(nonce)
     except ValueError as exc:
-        raise VerificationError("Attestation signing address is malformed.") from exc
-    if len(signer_bytes) > 32:
-        raise VerificationError("Attestation signing address exceeds 32 bytes.")
-    expected_signer = signer_bytes.ljust(32, b"\x00")
-    expected_nonce = bytes.fromhex(nonce)
-    if len(expected_nonce) != 32:
-        raise VerificationError("Internal nonce must be 32 bytes.")
+        raise VerificationError("Signer or nonce is malformed hexadecimal.") from exc
+    if len(signer_bytes) > 32 or len(nonce_bytes) != 32:
+        raise VerificationError("Signer or nonce has an invalid length.")
+
+    expected_signer = signer_bytes.ljust(32, b"\\x00")
     if not secrets.compare_digest(report_data[:32], expected_signer):
         raise VerificationError("TDX quote does not bind the ECDSA signing address.")
-    if not secrets.compare_digest(report_data[32:], expected_nonce):
+    if not secrets.compare_digest(report_data[32:], nonce_bytes):
         raise VerificationError("TDX quote does not bind the fresh verification nonce.")
 
     return {
         "tdx_quote_verified": True,
         "tdx_status": status,
+        "tdx_freshness_warning": status == "OutOfDate",
         "signer_bound_to_quote": True,
         "fresh_nonce_bound_to_quote": True,
         "mr_config_id": mr_config or None,
@@ -150,7 +163,7 @@ def _verify_tdx_and_binding(attestation: dict[str, Any], nonce: str) -> dict[str
 
 
 def _check_nvidia_payload(attestation: dict[str, Any], nonce: str, timeout: float) -> dict[str, Any]:
-    """Supplemental NRAS verdict check; does not independently verify JWT signing."""
+    """Check the NRAS verdict and nonce; JWT signature is not verified locally."""
     raw_payload = attestation.get("nvidia_payload")
     if not raw_payload:
         return {"gpu_attestation_checked": False, "gpu_note": "No NVIDIA payload supplied."}
@@ -194,20 +207,22 @@ def verify_near_ai_response(
     response_text: str,
     timeout: float = 30.0,
 ) -> dict[str, Any]:
-    """Verify a NEAR AI Cloud chat completion before its content is consumed."""
+    """Verify a NEAR AI Cloud chat completion before consuming its content."""
     if not chat_id:
         raise VerificationError("NEAR AI response omitted its chat ID.")
     base = base_url.rstrip("/")
     headers = {"Authorization": f"Bearer {api_key}"}
-
+    signature_url = base + SIGNATURE_PATH.format(chat_id=quote(chat_id, safe=""))
     signature_response = requests.get(
-        base + SIGNATURE_PATH.format(chat_id=chat_id),
+        signature_url,
         params={"model": model, "signing_algo": "ecdsa"},
         headers=headers,
         timeout=timeout,
     )
     signature_payload = _response_json(signature_response, "NEAR AI signature endpoint")
-    signer = _verify_signature_payload(request_body, response_text, signature_payload)
+    signature = _verify_signature_payload(request_body, response_text, signature_payload, model)
+    signer = signature["signing_address"]
+    signature_kind = signature["signature_kind"]
 
     nonce = secrets.token_hex(32)
     attestation_response = requests.get(
@@ -222,24 +237,36 @@ def verify_near_ai_response(
         timeout=timeout,
     )
     report = _response_json(attestation_response, "NEAR AI attestation endpoint")
-    candidates = report.get("model_attestations")
-    if isinstance(candidates, list):
+
+    if signature_kind == "provider_tee":
+        candidates = report.get("model_attestations", [])
         attestation = next(
             (item for item in candidates
              if isinstance(item, dict)
              and str(item.get("signing_address", "")).lower() == signer.lower()),
             None,
-        )
+        ) if isinstance(candidates, list) else None
     else:
-        attestation = report
+        candidate = report.get("gateway_attestation")
+        attestation = candidate if (
+            isinstance(candidate, dict)
+            and str(candidate.get("signing_address", "")).lower() == signer.lower()
+        ) else None
+
     if not isinstance(attestation, dict) or attestation.get("error"):
-        raise VerificationError("No model attestation was returned for the response signer.")
+        raise VerificationError("No matching TEE attestation was returned for the response signer.")
+    if attestation.get("signing_algo", "ecdsa").lower() != "ecdsa":
+        raise VerificationError("Attestation signing algorithm is not ECDSA.")
 
     tdx = _verify_tdx_and_binding(attestation, nonce)
-    gpu = _check_nvidia_payload(attestation, nonce, timeout)
+    gpu = _check_nvidia_payload(attestation, nonce, timeout) if signature_kind == "provider_tee" else {
+        "gpu_attestation_checked": False,
+        "gpu_note": "Gateway signature path; model GPU attestation is not asserted here.",
+    }
     return {
         "verified": True,
         "verification_level": "ECDSA_RESPONSE_SIGNATURE_AND_INTEL_TDX_ATTESTATION",
+        "signature_kind": signature_kind,
         "signing_address": signer,
         "request_hash_verified": True,
         "response_hash_verified": True,
@@ -248,7 +275,7 @@ def verify_near_ai_response(
         "verified_at_nonce": nonce,
         "limitations": [
             "NVIDIA NRAS verdict JWT signature is not independently verified by OUTCOME.",
-            "Model/container measurement provenance, compose-manifest binding and Sigstore provenance are not yet independently verified by OUTCOME.",
-            "This verification establishes response integrity and signer-to-TEE binding; it does not prove the model's reasoning is correct.",
+            "Model/container measurements, compose-manifest binding, Sigstore provenance and gateway TLS binding are not independently verified by OUTCOME.",
+            "This establishes response integrity and signer-to-TEE binding; it does not prove the model's reasoning is correct.",
         ],
     }
