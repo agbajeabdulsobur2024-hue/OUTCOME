@@ -9,6 +9,7 @@ Each commitment can have one policy:
 - Maximum amount cannot exceed the recorded commitment value.
 - Exact destination match is required.
 - Full delivery evidence is required by default.
+- Latest applicable delivery and invoice evidence must have a `VERIFIED` review status by default. A newer unreviewed or rejected record invalidates reliance on an older verified record.
 - Invoice amount must exactly match the recorded agreement by default.
 
 ## Proposal lifecycle
@@ -37,6 +38,6 @@ A passing result means only that the proposal is eligible for human review. It i
 
 ## Known limitations
 - Destination is a manually entered exact-match identifier, not a cryptographically verified wallet ownership proof.
-- Evidence is manually entered; source labels are provenance metadata, not proof of authenticity.
+- Evidence is manually entered; source labels are provenance metadata, not proof of authenticity. Review records are append-only, but reviewer names are not authenticated in this MVP.
 - Latest evidence by type is used; evidence review/verification workflow is not yet implemented.
 - The proposal engine does not submit transactions and must not be described as a live NEAR integration.
