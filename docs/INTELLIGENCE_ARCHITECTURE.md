@@ -8,7 +8,7 @@ OUTCOME is a commitment-centred operations intelligence system. The first vertic
 2. **ESTABLISH** — create a durable commitment with expected deliverables, value, dates and conditions.
 3. **MONITOR** — maintain the commitment state as evidence and time evolve.
 4. **DETECT** — identify material changes, missing evidence, contradictions and recurring patterns.
-5. **VALIDATE** — check source, recency, completeness and consistency of evidence.
+5. **VALIDATE** — check source, recency, completeness, consistency and human review state of evidence.
 6. **ASSESS** — determine status, urgency, potential exposure, uncertainty and business impact.
 7. **DECIDE** — recommend a proportionate next step and explain why.
 8. **ACT** — execute only actions explicitly permitted by the owner; require approval for consequential actions.
@@ -37,8 +37,8 @@ Minimum state: identity; parties; agreed deliverables; quantities/units; agreed 
 ### 3. Evidence Intelligence
 **Purpose:** connect observations to the commitment and assess their reliability.
 **Inputs:** receiving records, invoices, delivery notes, receipts, messages and manual observations.
-**Outputs:** append-only evidence records with type, value, source, timestamp and review state.
-**Contract:** preserve source and timestamp; distinguish observed, reported and verified evidence; missing evidence is not proof of failure or success; corrections create a new record or explicit retraction.
+**Outputs:** append-only evidence records with type, value, source, timestamp and an append-only review history.
+**Contract:** preserve source and timestamp; distinguish unreviewed, verified and rejected evidence; reviewer decisions are append-only; a newer unreviewed or rejected record supersedes older verified evidence for current decisions; missing evidence is not proof of failure or success; corrections create a new record or explicit retraction.
 
 ### 4. Pattern Recognition Intelligence
 **Purpose:** detect meaningful anomalies and recurring operational patterns.
@@ -72,12 +72,13 @@ Issues are independent flags. Do not suppress an overdue issue because another d
 For a supplier commitment, OUTCOME must:
 1. Persist a stable commitment ID and the original agreed terms.
 2. Append evidence without overwriting prior observations.
-3. Compare the latest applicable evidence with the commitment.
-4. Flag quantity shortfall, over-delivery, invoice variance, missing evidence and overdue state independently.
-5. Explain each issue with expected value, observed value and source where available.
-6. Estimate potential exposure only where the calculation is defensible and label it as an estimate.
-7. Recommend a safe next action; never approve or execute payment.
-8. Reassess after each new evidence record and retain the assessment basis.
+3. Keep evidence review decisions append-only and require the latest applicable evidence to be verified before a payment proposal can pass.
+4. Compare the latest applicable evidence with the commitment.
+5. Flag quantity shortfall, over-delivery, invoice variance, missing evidence and overdue state independently.
+6. Explain each issue with expected value, observed value and source where available.
+7. Estimate potential exposure only where the calculation is defensible and label it as an estimate.
+8. Recommend a safe next action; never approve or execute payment.
+9. Reassess after each new evidence record and retain the assessment basis.
 
 ## Verification scenarios
 - 100 units agreed; 80 received: shortfall, estimated exposure and hold/reconcile recommendation.
@@ -98,4 +99,4 @@ For a supplier commitment, OUTCOME must:
 6. Add pattern recognition only after sufficient reliable history exists.
 
 ## Non-goals for this hackathon slice
-No autonomous payment execution, custody, credit scoring, supplier fraud accusations, broad ERP integrations or generic agent marketplace. NEAR integration must remain simulated unless a safe, explicitly approved test environment and policy boundary are verified.
+The current payment-policy simulation requires verified latest delivery and invoice evidence by default. Review labels in this demo are manually supplied and are not authenticated identities or cryptographic proofs. No autonomous payment execution, custody, credit scoring, supplier fraud accusations, broad ERP integrations or generic agent marketplace. NEAR integration must remain simulated unless a safe, explicitly approved test environment and policy boundary are verified.
