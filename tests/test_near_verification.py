@@ -80,7 +80,7 @@ def test_tdx_quote_must_bind_signer_and_fresh_nonce(monkeypatch):
     signer = Account.create().address
     nonce = "ab" * 32
     signer_bytes = bytes.fromhex(signer.removeprefix("0x"))
-    report_data = signer_bytes.ljust(32, b"\\x00") + bytes.fromhex(nonce)
+    report_data = signer_bytes.ljust(32, b"\x00") + bytes.fromhex(nonce)
 
     class FakeResult:
         status = "UpToDate"
@@ -105,7 +105,7 @@ def test_tdx_quote_must_bind_signer_and_fresh_nonce(monkeypatch):
 def test_tdx_quote_rejects_nonce_mismatch(monkeypatch):
     signer = Account.create().address
     nonce = "ab" * 32
-    report_data = bytes.fromhex(signer.removeprefix("0x")).ljust(32, b"\\x00") + bytes(32)
+    report_data = bytes.fromhex(signer.removeprefix("0x")).ljust(32, b"\x00") + bytes(32)
 
     class FakeResult:
         status = "UpToDate"
