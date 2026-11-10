@@ -73,6 +73,15 @@ def test_action_lifecycle_requires_approval_and_verified_outcome_evidence(tmp_pa
         assert [event['event_type'] for event in stored['events']] == [
             'APPROVED', 'EXECUTION_REPORTED', 'OUTCOME_VERIFIED',
         ]
+        timeline_types = [event['event_type'] for event in record['timeline']]
+        assert 'COMMITMENT_CREATED' in timeline_types
+        assert 'EVIDENCE_RECORDED' in timeline_types
+        assert 'EVIDENCE_REVIEWED' in timeline_types
+        assert 'ACTION_PROPOSED' in timeline_types
+        assert 'ACTION_EVENT' in timeline_types
+        assert [event['created_at'] for event in record['timeline']] == sorted(
+            event['created_at'] for event in record['timeline']
+        )
 
         terminal = client.post(f'/api/actions/{action_id}/events', json={
             'event_type': 'EXECUTION_REPORTED', 'actor': 'Owner',
