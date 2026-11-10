@@ -2,7 +2,7 @@ import json
 import os
 import sqlite3
 import uuid
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Literal
@@ -26,12 +26,53 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+@contextmanager
 def connect():
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(DB_PATH)
-    db.row_factory = sqlite3.Row
-    db.execute('PRAGMA foreign_keys = ON')
-    return db
+    """Open one database connection and always commit/rollback and close it.
+
+    Local development uses SQLite. Vercel uses Turso's HTTP serverless driver,
+    so no writable local database file or long-lived TCP connection is needed.
+    """
+    backend = os.getenv('OUTCOME_DB_BACKEND', 'sqlite').strip().lower()
+    if backend == 'sqlite':
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        db = sqlite3.connect(DB_PATH)
+        db.row_factory = sqlite3.Row
+    elif backend == 'turso':
+        database_url = os.getenv('TURSO_DATABASE_URL', '').strip()
+        auth_token = os.getenv('TURSO_AUTH_TOKEN', '').strip()
+        if not database_url or not auth_token:
+            raise RuntimeError(
+                'OUTCOME_DB_BACKEND=turso requires TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.'
+            )
+        try:
+            import turso_serverless
+        except ImportError as exc:
+            raise RuntimeError(
+                'The Turso backend requires the turso-serverless package.'
+            ) from exc
+        db = turso_serverless.connect(database_url, auth_token=auth_token)
+        db.row_factory = turso_serverless.Row
+    else:
+        raise RuntimeError(
+            f"Unsupported OUTCOME_DB_BACKEND '{backend}'. Use 'sqlite' or 'turso'."
+        )
+
+    try:
+        # Turso defaults foreign-key enforcement to OFF. Set it on every
+        # connection before any transaction starts; SQLite does the same.
+        db.execute('PRAGMA foreign_keys = ON')
+        yield db
+    except BaseException:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise
+    else:
+        db.commit()
+    finally:
+        db.close()
 
 
 def init_db():
