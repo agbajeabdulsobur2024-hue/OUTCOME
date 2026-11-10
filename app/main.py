@@ -65,6 +65,9 @@ def init_db():
         db.execute('''CREATE TABLE IF NOT EXISTS payment_proposals (
             id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
             status TEXT NOT NULL, proposal_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
+        policy_columns = {row['name'] for row in db.execute('PRAGMA table_info(payment_policies)').fetchall()}
+        if 'require_verified_evidence' not in policy_columns:
+            db.execute('ALTER TABLE payment_policies ADD COLUMN require_verified_evidence INTEGER NOT NULL DEFAULT 1')
 
 
 @asynccontextmanager
@@ -394,6 +397,7 @@ def list_payment_proposals(cid: str):
 def reset_demo():
     with connect() as db:
         db.execute('DELETE FROM payment_proposals')
+        db.execute('DELETE FROM evidence_reviews')
         db.execute('DELETE FROM payment_policies')
         db.execute('DELETE FROM assessment_history')
         db.execute('DELETE FROM commitment_versions')
