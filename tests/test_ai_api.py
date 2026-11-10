@@ -39,7 +39,7 @@ def test_ai_brief_is_optional_and_persisted_as_advisory_output(tmp_path, monkeyp
         assert body['attestation_status'] == 'VERIFIED_BY_OUTCOME'
         record = client.get(f'/api/commitments/{cid}').json()
         assert len(record['ai_brief_history']) == 1
-        assert record['ai_brief_history'][0]['brief']['summary'] == 'Awaiting receiving evidence.'
+        assert record['ai_brief_history'][0]['brief']['brief']['summary'] == 'Awaiting receiving evidence.'
 
 
 
