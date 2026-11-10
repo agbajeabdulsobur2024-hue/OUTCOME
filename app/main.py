@@ -145,6 +145,11 @@ def get_record(cid: str):
                 (SELECT r.created_at FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewed_at
                 FROM evidence e WHERE e.commitment_id=? ORDER BY e.created_at, e.rowid''', (cid,)
         ).fetchall()]
+        for evidence_record in evidence:
+            evidence_record['review_history'] = [dict(row) for row in db.execute(
+                'SELECT status, reviewer, note, created_at FROM evidence_reviews WHERE evidence_id=? ORDER BY created_at, rowid',
+                (evidence_record['id'],)
+            ).fetchall()]
         versions = [dict(row) for row in db.execute(
             'SELECT version, terms_json, reason, created_at FROM commitment_versions WHERE commitment_id=? ORDER BY version', (cid,)
         ).fetchall()]
