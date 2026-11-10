@@ -33,7 +33,8 @@ def connect():
     Local development uses SQLite. Vercel uses Turso's HTTP serverless driver,
     so no writable local database file or long-lived TCP connection is needed.
     """
-    backend = os.getenv('OUTCOME_DB_BACKEND', 'sqlite').strip().lower()
+    default_backend = 'turso' if os.getenv('VERCEL') == '1' else 'sqlite'
+    backend = os.getenv('OUTCOME_DB_BACKEND', default_backend).strip().lower()
     if backend == 'sqlite':
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         db = sqlite3.connect(DB_PATH)
