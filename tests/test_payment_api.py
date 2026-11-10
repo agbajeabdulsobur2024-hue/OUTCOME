@@ -76,7 +76,7 @@ def test_payment_proposal_is_blocked_until_policy_and_evidence_are_valid(tmp_pat
         }).json()['proposal']
         assert stale['status'] == 'BLOCKED'
         assert 'DELIVERY_NOT_VERIFIED' in {r['code'] for r in stale['reasons']}
-        assert len(client.get(f'/api/commitments/{cid}/payment-proposals').json()) == 4
+        assert len(client.get(f'/api/commitments/{cid}/payment-proposals').json()) == 5
 
 
 def test_payment_policy_cannot_exceed_commitment_value(tmp_path, monkeypatch):
