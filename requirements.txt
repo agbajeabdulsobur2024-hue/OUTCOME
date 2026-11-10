@@ -4,3 +4,6 @@ pydantic>=2.8,<3.0
 pytest>=8.0,<9.0
 httpx>=0.27,<1.0
 turso-serverless==0.1.0
+requests>=2.31.0
+eth-account>=0.11.0
+dcap-qvl>=0.3.2
