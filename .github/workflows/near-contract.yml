@@ -1,17 +1,26 @@
-name: NEAR contract checks
+name: OUTCOME verification
 
 on:
   push:
-    paths:
-      - "near/**"
-      - ".github/workflows/near-contract.yml"
+    branches: ["main"]
   pull_request:
-    paths:
-      - "near/**"
-      - ".github/workflows/near-contract.yml"
+    branches: ["main"]
 
 jobs:
-  build:
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Install application dependencies
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt
+      - name: Run full test suite
+        run: pytest -q
+
+  near-contract:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +33,7 @@ jobs:
         run: cargo build --target wasm32-unknown-unknown --release
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
       - name: Install testnet runner dependencies
         run: npm install --prefix near --no-audit --no-fund
       - name: Check testnet runner JavaScript syntax
