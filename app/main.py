@@ -538,6 +538,59 @@ def read_supplier_patterns():
     return detect_supplier_patterns(commitments, evidence_by_commitment)
 
 
+
+
+@app.post('/api/demo/seed', status_code=201)
+def seed_demo():
+    if list_commitments():
+        raise HTTPException(409, 'Demo seed requires an empty workspace. Existing commitments were not changed.')
+    first = create_commitment(CommitmentCreate(
+        supplier='Acme Supplies', description='Packaging boxes — purchase order PO-104',
+        quantity=100, unit='boxes', amount=500, currency='USD',
+        due_date='2026-12-01', payment_condition='Pay after verified full delivery',
+    ))
+    second = create_commitment(CommitmentCreate(
+        supplier='Acme Supplies', description='Additional packaging boxes — purchase order PO-109',
+        quantity=50, unit='boxes', amount=250, currency='USD',
+        due_date='2026-12-05', payment_condition='Pay after verified full delivery',
+    ))
+    for record, received, invoice in ((first, 80, 500), (second, 40, 250)):
+        cid = record['commitment']['id']
+        receiving = add_evidence(cid, EvidenceCreate(
+            kind='quantity_received', value=received,
+            note='Synthetic demo receiving record; not a real supplier document.',
+            source='demo_fixture',
+        ))['evidence'][-1]
+        invoicing = add_evidence(cid, EvidenceCreate(
+            kind='invoice_amount', value=invoice,
+            note='Synthetic demo invoice record; not a real supplier document.',
+            source='demo_fixture',
+        ))['evidence'][-1]
+        review_evidence(receiving['id'], EvidenceReviewCreate(
+            status='VERIFIED', reviewer='DEMO_FIXTURE',
+            note='Synthetic fixture pre-reviewed for demonstration only.',
+        ))
+        review_evidence(invoicing['id'], EvidenceReviewCreate(
+            status='VERIFIED', reviewer='DEMO_FIXTURE',
+            note='Synthetic fixture pre-reviewed for demonstration only.',
+        ))
+    first_id = first['commitment']['id']
+    update_payment_policy(first_id, PaymentPolicyUpdate(
+        enabled=True, max_amount=500, allowed_destination='acme-demo-wallet.near',
+        require_full_delivery=True, require_invoice_match=True,
+        require_verified_evidence=True, allow_partial_payments=False,
+    ))
+    create_payment_proposal(first_id, PaymentProposalCreate(
+        amount=500, currency='USD', destination='acme-demo-wallet.near',
+    ))
+    create_commitment_action(first_id, CommitmentActionCreate(
+        action_type='RECONCILE_DELIVERY',
+        description='Ask the supplier to deliver the missing 20 boxes or issue a credit note.',
+    ))
+    return {'status': 'seeded', 'synthetic_data': True, 'commitments': list_commitments(),
+            'patterns': read_supplier_patterns()}
+
+
 @app.post('/api/demo/reset')
 def reset_demo():
     with connect() as db:
