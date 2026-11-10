@@ -40,3 +40,31 @@ def test_ai_brief_is_optional_and_persisted_as_advisory_output(tmp_path, monkeyp
         record = client.get(f'/api/commitments/{cid}').json()
         assert len(record['ai_brief_history']) == 1
         assert record['ai_brief_history'][0]['brief']['summary'] == 'Awaiting receiving evidence.'
+
+
+
+def test_ai_brief_endpoint_enforces_per_client_rate_limit(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, 'DATA_DIR', tmp_path)
+    monkeypatch.setattr(main, 'DB_PATH', tmp_path / 'test.db')
+    monkeypatch.setenv('NEARAI_API_KEY', 'test-key')
+    monkeypatch.setenv('OUTCOME_AI_RATE_LIMIT_PER_HOUR', '2')
+    monkeypatch.setattr(main, 'generate_operational_brief', lambda record: {
+        'provider': 'NEAR AI Cloud', 'model': 'test-model',
+        'privacy_tier': 'TEE model',
+        'attestation_status': 'NOT_INDEPENDENTLY_VERIFIED_BY_OUTCOME',
+        'brief': {
+            'summary': 'Summary', 'why_it_matters': 'Reason',
+            'recommended_actions': [], 'uncertainties': [],
+            'questions_for_owner': [],
+        },
+        'disclaimer': 'Advisory only.',
+    })
+    with TestClient(main.app) as client:
+        created = client.post('/api/commitments', json={
+            'supplier': 'Acme', 'description': 'Boxes',
+            'quantity': 100, 'amount': 500, 'due_date': '2026-12-01',
+        })
+        cid = created.json()['commitment']['id']
+        assert client.post(f'/api/commitments/{cid}/ai-brief').status_code == 201
+        assert client.post(f'/api/commitments/{cid}/ai-brief').status_code == 201
+        assert client.post(f'/api/commitments/{cid}/ai-brief').status_code == 429
