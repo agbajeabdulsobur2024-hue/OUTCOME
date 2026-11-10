@@ -19,7 +19,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Open http://127.0.0.1:8000. API docs: /docs. Click **Load synthetic demo case** to create two fictional Acme commitments with verified fixture evidence, a blocked payment proposal, an action to reconcile delivery and a repeated-short-delivery early signal. The seed endpoint refuses to run if commitments already exist.
+Open http://127.0.0.1:8000. API docs: /docs. Click **Load synthetic demo case** to create two fictional Acme commitments with verified fixture evidence, a blocked payment proposal, an action to reconcile delivery and a repeated-short-delivery early signal. The seed endpoint refuses to run if commitments already exist. See [the 3-minute demo script](docs/DEMO_SCRIPT.md) for the end-to-end walkthrough.
 
 ## Product principles
 
