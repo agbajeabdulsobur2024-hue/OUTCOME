@@ -91,11 +91,11 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
         if content.startswith("```"):
             content = content.split(chr(10), 1)[-1].rsplit("```", 1)[0].strip()
         brief = json.loads(content)
-    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
+    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
         raise AIProviderError(f"NEAR AI Cloud brief could not be generated: {exc}") from exc
 
     required = ("summary", "why_it_matters", "recommended_actions", "uncertainties", "questions_for_owner")
-    if any(key not in brief for key in required):
+    if not isinstance(brief, dict) or any(key not in brief for key in required):
         raise AIProviderError("NEAR AI Cloud returned an incomplete operational brief.")
     if not isinstance(brief["summary"], str) or not isinstance(brief["why_it_matters"], str):
         raise AIProviderError("NEAR AI Cloud returned invalid summary fields.")
