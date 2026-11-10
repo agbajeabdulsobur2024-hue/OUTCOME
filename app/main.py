@@ -66,6 +66,13 @@ def init_db():
         db.execute('''CREATE TABLE IF NOT EXISTS payment_proposals (
             id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
             status TEXT NOT NULL, proposal_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS commitment_actions (
+            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+            action_type TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS action_events (
+            id TEXT PRIMARY KEY, action_id TEXT NOT NULL REFERENCES commitment_actions(id),
+            event_type TEXT NOT NULL, actor TEXT NOT NULL, note TEXT NOT NULL,
+            evidence_id TEXT REFERENCES evidence(id), created_at TEXT NOT NULL)''')
         policy_columns = {row['name'] for row in db.execute('PRAGMA table_info(payment_policies)').fetchall()}
         if 'require_verified_evidence' not in policy_columns:
             db.execute('ALTER TABLE payment_policies ADD COLUMN require_verified_evidence INTEGER NOT NULL DEFAULT 1')
@@ -121,6 +128,18 @@ class EvidenceReviewCreate(BaseModel):
     note: str = Field(default='', max_length=1000)
 
 
+class CommitmentActionCreate(BaseModel):
+    action_type: Literal['CONTACT_SUPPLIER', 'REQUEST_EVIDENCE', 'HOLD_PAYMENT', 'RECONCILE_DELIVERY', 'OTHER']
+    description: str = Field(min_length=3, max_length=1000)
+
+
+class ActionEventCreate(BaseModel):
+    event_type: Literal['APPROVED', 'REJECTED', 'EXECUTION_REPORTED', 'OUTCOME_VERIFIED', 'OUTCOME_FAILED']
+    actor: str = Field(min_length=1, max_length=120)
+    note: str = Field(default='', max_length=1000)
+    evidence_id: str | None = None
+
+
 class CommitmentAmendment(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
     description: str | None = Field(default=None, min_length=1, max_length=500)
@@ -161,6 +180,18 @@ def get_record(cid: str):
         proposals = [dict(row) for row in db.execute(
             'SELECT id, status, proposal_json, created_at FROM payment_proposals WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
         ).fetchall()]
+        action_rows = [dict(row) for row in db.execute(
+            'SELECT id, action_type, description, created_at FROM commitment_actions WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
+        ).fetchall()]
+        actions = []
+        for action in action_rows:
+            events = [dict(row) for row in db.execute(
+                'SELECT id, event_type, actor, note, evidence_id, created_at FROM action_events WHERE action_id=? ORDER BY created_at, rowid',
+                (action['id'],)
+            ).fetchall()]
+            action['events'] = events
+            action['status'] = events[-1]['event_type'] if events else 'PROPOSED'
+            actions.append(action)
     return {
         'commitment': commitment,
         'evidence': evidence,
@@ -188,6 +219,7 @@ def get_record(cid: str):
             {'id': row['id'], 'status': row['status'], 'proposal': json.loads(row['proposal_json']), 'created_at': row['created_at']}
             for row in proposals
         ],
+        'actions': actions,
     }
 
 
@@ -402,6 +434,67 @@ def list_payment_proposals(cid: str):
     return get_record(cid)['payment_proposals']
 
 
+
+
+@app.post('/api/commitments/{cid}/actions', status_code=201)
+def create_commitment_action(cid: str, payload: CommitmentActionCreate):
+    get_record(cid)
+    action_id = str(uuid.uuid4())
+    created_at = utc_now()
+    with connect() as db:
+        db.execute('''INSERT INTO commitment_actions
+            (id, commitment_id, action_type, description, created_at)
+            VALUES (?, ?, ?, ?, ?)''',
+            (action_id, cid, payload.action_type, payload.description.strip(), created_at))
+    return next(action for action in get_record(cid)['actions'] if action['id'] == action_id)
+
+
+@app.post('/api/actions/{action_id}/events', status_code=201)
+def record_action_event(action_id: str, payload: ActionEventCreate):
+    with connect() as db:
+        action = db.execute('SELECT * FROM commitment_actions WHERE id=?', (action_id,)).fetchone()
+        if not action:
+            raise HTTPException(404, 'Action not found')
+        previous = db.execute(
+            'SELECT event_type FROM action_events WHERE action_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1',
+            (action_id,)
+        ).fetchone()
+        current = previous['event_type'] if previous else 'PROPOSED'
+        transitions = {
+            'PROPOSED': {'APPROVED', 'REJECTED'},
+            'APPROVED': {'EXECUTION_REPORTED'},
+            'EXECUTION_REPORTED': {'OUTCOME_VERIFIED', 'OUTCOME_FAILED'},
+        }
+        if payload.event_type not in transitions.get(current, set()):
+            raise HTTPException(409, f'Invalid action transition: {current} -> {payload.event_type}')
+        if not payload.actor.strip():
+            raise HTTPException(422, 'Actor identity is required')
+        if payload.event_type == 'OUTCOME_VERIFIED' and not payload.evidence_id:
+            raise HTTPException(422, 'Verified outcome must reference verified evidence')
+        if payload.evidence_id:
+            evidence = db.execute(
+                'SELECT id FROM evidence WHERE id=? AND commitment_id=?',
+                (payload.evidence_id, action['commitment_id'])
+            ).fetchone()
+            if not evidence:
+                raise HTTPException(422, 'Evidence must belong to the same commitment as the action')
+            if payload.event_type == 'OUTCOME_VERIFIED':
+                record = get_record(action['commitment_id'])
+                evidence_record = next((item for item in record['evidence'] if item['id'] == payload.evidence_id), None)
+                if not evidence_record or evidence_record['review_status'] != 'VERIFIED':
+                    raise HTTPException(422, 'Outcome evidence must be marked VERIFIED before outcome verification')
+        event_id = str(uuid.uuid4())
+        created_at = utc_now()
+        db.execute('''INSERT INTO action_events
+            (id, action_id, event_type, actor, note, evidence_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            (event_id, action_id, payload.event_type, payload.actor.strip(),
+             payload.note.strip(), payload.evidence_id, created_at))
+    return {'id': event_id, 'action_id': action_id, 'event_type': payload.event_type,
+            'actor': payload.actor.strip(), 'note': payload.note.strip(),
+            'evidence_id': payload.evidence_id, 'created_at': created_at}
+
+
 @app.get('/api/patterns')
 def read_supplier_patterns():
     records = list_commitments()
@@ -416,6 +509,8 @@ def read_supplier_patterns():
 @app.post('/api/demo/reset')
 def reset_demo():
     with connect() as db:
+        db.execute('DELETE FROM action_events')
+        db.execute('DELETE FROM commitment_actions')
         db.execute('DELETE FROM payment_proposals')
         db.execute('DELETE FROM evidence_reviews')
         db.execute('DELETE FROM payment_policies')
