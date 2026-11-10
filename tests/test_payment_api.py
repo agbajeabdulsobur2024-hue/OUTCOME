@@ -89,3 +89,22 @@ def test_payment_policy_cannot_exceed_commitment_value(tmp_path, monkeypatch):
             'allowed_destination': 'supplier-wallet-001',
         })
         assert response.status_code == 422
+
+
+
+def test_partial_payment_permission_is_explicit_and_persisted(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, 'DATA_DIR', tmp_path)
+    monkeypatch.setattr(main, 'DB_PATH', tmp_path / 'test.db')
+    with TestClient(main.app) as client:
+        cid = make_commitment(client)
+        initial = client.get(f'/api/commitments/{cid}/payment-policy').json()
+        assert initial['allow_partial_payments'] is False
+        updated = client.put(f'/api/commitments/{cid}/payment-policy', json={
+            'enabled': True, 'max_amount': 500,
+            'allowed_destination': 'supplier-wallet-001',
+            'allow_partial_payments': True,
+        })
+        assert updated.status_code == 200
+        assert updated.json()['allow_partial_payments'] is True
+        reloaded = client.get(f'/api/commitments/{cid}').json()
+        assert reloaded['payment_policy']['allow_partial_payments'] is True
