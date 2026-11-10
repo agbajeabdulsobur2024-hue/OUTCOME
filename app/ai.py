@@ -78,6 +78,7 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
             json={
                 "model": NEAR_AI_MODEL,
                 "temperature": 0.2,
+                "max_tokens": 700,
                 "messages": [
                     {"role": "system", "content": system},
                     {"role": "user", "content": json.dumps(context, separators=(",", ":"), default=str)},
