@@ -398,7 +398,15 @@ def home():
 
 @app.get('/api/health')
 def health():
-    return {'status': 'ok', 'service': 'outcome', 'version': app.version}
+    backend = os.getenv('OUTCOME_DB_BACKEND', 'sqlite').strip().lower()
+    with connect() as db:
+        db.execute('SELECT 1').fetchone()
+    return {
+        'status': 'ok',
+        'service': 'outcome',
+        'version': app.version,
+        'database_backend': backend,
+    }
 
 
 @app.get('/api/commitments')
