@@ -56,7 +56,8 @@ Minimum state: identity; parties; agreed deliverables; quantities/units; agreed 
 ### 6. Action & Outcome Intelligence
 **Purpose:** coordinate permitted follow-through and verify results.
 **Inputs:** approved recommendation, owner permissions, action policy and current commitment state.
-**Outputs:** proposed/approved/executed action record, execution result and verified outcome.
+**Outputs:** append-only action proposal, approval/rejection, execution report and evidence-backed outcome verification.
+**Current implementation:** actions are proposed per commitment; a human records approval or rejection; execution is reported manually; an outcome can be marked verified only when it references evidence already marked `VERIFIED`. Invalid transitions are rejected. No external action is executed by the application.
 **Contract:** deny actions outside explicit permission; make retries idempotent; record who/what authorized an action; distinguish attempted, executed and verified; provide an emergency stop for future integrations.
 
 ## Assessment semantics
