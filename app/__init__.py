@@ -1,0 +1,1 @@
+"""OUTCOME application package."""
