@@ -146,7 +146,7 @@ def _verify_tdx_and_binding(attestation: dict[str, Any], nonce: str) -> dict[str
     if len(signer_bytes) > 32 or len(nonce_bytes) != 32:
         raise VerificationError("Signer or nonce has an invalid length.")
 
-    expected_signer = signer_bytes.ljust(32, b"\\x00")
+    expected_signer = signer_bytes.ljust(32, b"\x00")
     if not secrets.compare_digest(report_data[:32], expected_signer):
         raise VerificationError("TDX quote does not bind the ECDSA signing address.")
     if not secrets.compare_digest(report_data[32:], nonce_bytes):
