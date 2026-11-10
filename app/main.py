@@ -68,6 +68,9 @@ def init_db():
         db.execute('''CREATE TABLE IF NOT EXISTS payment_proposals (
             id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
             status TEXT NOT NULL, proposal_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS payment_policy_history (
+            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+            policy_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
         db.execute('''CREATE TABLE IF NOT EXISTS commitment_actions (
             id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
             action_type TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL)''')
@@ -188,6 +191,10 @@ def get_record(cid: str):
             'SELECT id, status, assessment_json, created_at FROM assessment_history WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
         ).fetchall()]
         policy_row = db.execute('SELECT * FROM payment_policies WHERE commitment_id=?', (cid,)).fetchone()
+        policy_history = [dict(row) for row in db.execute(
+            'SELECT id, policy_json, created_at FROM payment_policy_history WHERE commitment_id=? ORDER BY created_at, rowid',
+            (cid,)
+        ).fetchall()]
         proposals = [dict(row) for row in db.execute(
             'SELECT id, status, proposal_json, created_at FROM payment_proposals WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
         ).fetchall()]
@@ -243,6 +250,13 @@ def get_record(cid: str):
             'title': 'Assessment: ' + row['status'].replace('_', ' '),
             'created_at': row['created_at'],
             'details': saved.get('summary', ''),
+        })
+    for row in policy_history:
+        timeline.append({
+            'event_type': 'PAYMENT_POLICY_UPDATED',
+            'title': 'Owner payment policy updated',
+            'created_at': row['created_at'],
+            'details': 'Policy snapshot recorded for this commitment.',
         })
     for row in proposals:
         proposal = json.loads(row['proposal_json'])
@@ -300,6 +314,10 @@ def get_record(cid: str):
             'require_invoice_match': True, 'require_verified_evidence': True,
             'allow_partial_payments': False, 'configured': False,
         }),
+        'payment_policy_history': [
+            {'id': row['id'], 'policy': json.loads(row['policy_json']), 'created_at': row['created_at']}
+            for row in policy_history
+        ],
         'payment_proposals': [
             {'id': row['id'], 'status': row['status'], 'proposal': json.loads(row['proposal_json']), 'created_at': row['created_at']}
             for row in proposals
@@ -501,6 +519,11 @@ def update_payment_policy(cid: str, payload: PaymentPolicyUpdate):
             (cid, int(payload.enabled), payload.max_amount, payload.allowed_destination.strip(),
              int(payload.require_full_delivery), int(payload.require_invoice_match),
              int(payload.require_verified_evidence), int(payload.allow_partial_payments), utc_now()))
+        policy_snapshot = get_record(cid)['payment_policy']
+        db.execute(
+            'INSERT INTO payment_policy_history (id, commitment_id, policy_json, created_at) VALUES (?, ?, ?, ?)',
+            (str(uuid.uuid4()), cid, json.dumps(policy_snapshot, sort_keys=True), utc_now())
+        )
     return get_record(cid)['payment_policy']
 
 
@@ -741,6 +764,7 @@ def reset_demo():
         db.execute('DELETE FROM action_events')
         db.execute('DELETE FROM commitment_actions')
         db.execute('DELETE FROM payment_proposals')
+        db.execute('DELETE FROM payment_policy_history')
         db.execute('DELETE FROM evidence_reviews')
         db.execute('DELETE FROM payment_policies')
         db.execute('DELETE FROM assessment_history')
