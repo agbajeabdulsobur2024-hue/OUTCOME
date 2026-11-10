@@ -44,7 +44,7 @@ Minimum state: identity; parties; agreed deliverables; quantities/units; agreed 
 **Purpose:** detect meaningful anomalies and recurring operational patterns.
 **Inputs:** validated evidence and historical commitment outcomes.
 **Outputs:** candidate patterns with supporting records, sample size, observed rate and confidence label.
-**Current implementation:** `/api/patterns` checks repeated short deliveries, invoice overcharges and late full deliveries. A signal requires at least two incidents and only counts the latest applicable evidence when its latest review is `VERIFIED`. Samples below five are labelled `EARLY_SIGNAL`. Signals never assert fraud, intent or misconduct.
+**Current implementation:** `/api/patterns` checks repeated short deliveries, invoice overcharges and late full deliveries. A signal requires at least two incidents and only counts the latest applicable evidence when its latest review is `VERIFIED`. Samples below five, or incident rates below 30%, remain labelled `EARLY_SIGNAL`; only samples of at least five with an incident rate of at least 30% are labelled `RECURRING_PATTERN`. Signals never assert fraud, intent or misconduct.
 **Contract:** patterns are hypotheses until validated; explain the evidence; avoid treating one incident as a trend; do not infer intent or misconduct from anomalies alone.
 
 ### 5. Decision Intelligence
