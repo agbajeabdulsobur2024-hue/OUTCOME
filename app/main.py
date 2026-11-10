@@ -399,7 +399,8 @@ def home():
 
 @app.get('/api/health')
 def health():
-    backend = os.getenv('OUTCOME_DB_BACKEND', 'sqlite').strip().lower()
+    default_backend = 'turso' if os.getenv('VERCEL') == '1' else 'sqlite'
+    backend = os.getenv('OUTCOME_DB_BACKEND', default_backend).strip().lower()
     with connect() as db:
         db.execute('SELECT 1').fetchone()
     return {
