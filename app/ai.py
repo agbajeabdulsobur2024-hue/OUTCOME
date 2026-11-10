@@ -4,6 +4,8 @@ from typing import Any
 
 import httpx
 
+from app.near_verification import verify_near_ai_response
+
 NEAR_AI_URL = "https://cloud-api.near.ai/v1/chat/completions"
 NEAR_AI_MODEL = "Qwen/Qwen3.6-35B-A3B-FP8"
 
@@ -71,28 +73,52 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
         "why_it_matters (string), recommended_actions (array of strings), "
         "uncertainties (array of strings), questions_for_owner (array of strings)."
     )
+    request_body = {
+        "model": NEAR_AI_MODEL,
+        "temperature": 0.2,
+        "max_tokens": 700,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": json.dumps(context, separators=(",", ":"), default=str)},
+        ],
+        "stream": False,
+    }
+    request_body_text = json.dumps(request_body, separators=(",", ":"), ensure_ascii=False)
     try:
         response = httpx.post(
             NEAR_AI_URL,
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={
-                "model": NEAR_AI_MODEL,
-                "temperature": 0.2,
-                "max_tokens": 700,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": json.dumps(context, separators=(",", ":"), default=str)},
-                ],
-            },
+            content=request_body_text,
             timeout=30.0,
         )
         if response.status_code < 200 or response.status_code >= 300:
-            raise AIProviderError(f'NEAR AI Cloud returned HTTP {response.status_code}.')
+            raise AIProviderError(f"NEAR AI Cloud returned HTTP {response.status_code}.")
         body = response.json()
+        chat_id = body["id"]
+        # Fail closed: do not parse or persist model content until its exact
+        # HTTP response and signing TEE have passed cryptographic verification.
+        try:
+            verification = verify_near_ai_response(
+                base_url=NEAR_AI_URL.rsplit("/v1/", 1)[0],
+                api_key=api_key,
+                chat_id=chat_id,
+                model=NEAR_AI_MODEL,
+                request_body=request_body_text,
+                response_text=response.text,
+                timeout=30.0,
+            )
+        except Exception as exc:
+            raise AIProviderError(
+                f"NEAR AI response verification failed closed ({type(exc).__name__})."
+            ) from exc
+        if not verification.get("verified"):
+            raise AIProviderError("NEAR AI response did not pass cryptographic verification.")
         content = body["choices"][0]["message"]["content"]
-        if content.startswith("```"):
-            content = content.split(chr(10), 1)[-1].rsplit("```", 1)[0].strip()
+        if content.startswith(chr(96) * 3):
+            content = content.split(chr(10), 1)[-1].rsplit(chr(96) * 3, 1)[0].strip()
         brief = json.loads(content)
+    except AIProviderError:
+        raise
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
         raise AIProviderError(f"NEAR AI Cloud brief could not be generated: {exc}") from exc
 
@@ -109,7 +135,8 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
         "provider": "NEAR AI Cloud",
         "model": NEAR_AI_MODEL,
         "privacy_tier": "TEE model",
-        "attestation_status": "NOT_INDEPENDENTLY_VERIFIED_BY_OUTCOME",
+        "attestation_status": "VERIFIED_BY_OUTCOME",
+        "verification": verification,
         "brief": brief,
-        "disclaimer": "Advisory explanation only. Deterministic checks and owner approval remain authoritative. OUTCOME has not independently verified this model response's TEE attestation.",
+        "disclaimer": "Advisory explanation only. Deterministic checks and owner approval remain authoritative. OUTCOME verified the response signature and Intel TDX attestation; see verification details and limitations.",
     }
