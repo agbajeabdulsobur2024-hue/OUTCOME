@@ -66,7 +66,25 @@ async function main() {
 
   // The NEAR protocol stores this as a FunctionCall permission:
   // receiver_id = contractId; method_names = ["record_event"]; allowance = 0.25 NEAR.
-  await owner.addKey(functionKey.getPublicKey(), contractId, ["record_event"], ALLOWANCE);
+  const publicKey = functionKey.getPublicKey().toString();
+  const accessKeys = await ownerNear.connection.provider.query({
+    request_type: "view_access_key_list",
+    account_id: ownerId,
+    finality: "final"
+  });
+  const existing = (accessKeys.keys || []).find((item) => item.public_key === publicKey);
+  if (existing) {
+    const permission = existing.access_key && existing.access_key.permission;
+    const fc = permission && permission.FunctionCall;
+    if (!fc || fc.receiver_id !== contractId ||
+        JSON.stringify((fc.method_names || []).slice().sort()) !== JSON.stringify(["record_event"]) ||
+        String(fc.allowance) !== ALLOWANCE) {
+      throw new Error("Existing restricted key does not have the exact receiver/method/allowance scope expected.");
+    }
+    console.log("Reusing existing function-call key with verified exact scope.");
+  } else {
+    await owner.addKey(functionKey.getPublicKey(), contractId, ["record_event"], ALLOWANCE);
+  }
 
   const agentStore = new nearAPI.keyStores.InMemoryKeyStore();
   await agentStore.setKey(NETWORK, ownerId, functionKey);
