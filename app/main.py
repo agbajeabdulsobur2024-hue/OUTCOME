@@ -784,7 +784,10 @@ def get_commitment_audit_anchor(cid: str):
             'issues': record['assessment']['issues'],
             'next_actions': record['assessment']['next_actions'],
         },
-        'commitment_versions': record['commitment_versions'],
+        'commitment_versions': [
+            {'version': item['version'], 'created_at': item['created_at']}
+            for item in record['commitment_versions']
+        ],
         'payment_policy': {
             key: record['payment_policy'][key] for key in (
                 'enabled', 'max_amount', 'require_full_delivery',
