@@ -111,3 +111,14 @@ def test_partial_payment_permission_is_explicit_and_persisted(tmp_path, monkeypa
         assert updated.json()['allow_partial_payments'] is True
         reloaded = client.get(f'/api/commitments/{cid}').json()
         assert reloaded['payment_policy']['allow_partial_payments'] is True
+        assert len(reloaded['payment_policy_history']) == 1
+        second_update = client.put(f'/api/commitments/{cid}/payment-policy', json={
+            'enabled': True, 'max_amount': 400,
+            'allowed_destination': 'supplier-wallet-001',
+            'allow_partial_payments': False,
+        })
+        assert second_update.status_code == 200
+        final_record = client.get(f'/api/commitments/{cid}').json()
+        assert len(final_record['payment_policy_history']) == 2
+        assert final_record['payment_policy_history'][0]['policy']['allow_partial_payments'] is True
+        assert final_record['payment_policy_history'][1]['policy']['allow_partial_payments'] is False
