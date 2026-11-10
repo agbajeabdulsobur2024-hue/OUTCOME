@@ -50,7 +50,7 @@ def test_ai_brief_uses_near_ai_cloud_and_returns_unverified_attestation_label(mo
     def fake_post(url, **kwargs):
         captured["url"] = url
         captured["kwargs"] = kwargs
-        return httpx.Response(200, json={
+        return httpx.Response(200, request=httpx.Request("POST", url), json={
             "choices": [{"message": {"content": json.dumps(content)}}],
         })
 
@@ -69,7 +69,8 @@ def test_ai_brief_uses_near_ai_cloud_and_returns_unverified_attestation_label(mo
 def test_ai_brief_rejects_malformed_model_output(monkeypatch):
     monkeypatch.setenv("NEARAI_API_KEY", "test-key")
     monkeypatch.setattr(ai.httpx, "post", lambda *args, **kwargs: httpx.Response(
-        200, json={"choices": [{"message": {"content": "not json"}}]}
+        200, request=httpx.Request("POST", ai.NEAR_AI_URL),
+        json={"choices": [{"message": {"content": "not json"}}]}
     ))
     with pytest.raises(ai.AIProviderError):
         ai.generate_operational_brief(sample_record())
