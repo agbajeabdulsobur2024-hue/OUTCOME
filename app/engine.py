@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any
 
 
@@ -8,7 +8,7 @@ def assess_commitment(commitment: dict[str, Any], evidence: list[dict[str, Any]]
     Status is a summary; independent issue flags are retained so an overdue
     commitment cannot hide a quantity or invoice discrepancy.
     """
-    today = today or date.today()
+    today = today or datetime.now(timezone.utc).date()
     expected_qty = float(commitment['quantity'])
     expected_amount = float(commitment['amount'])
     currency = commitment.get('currency', 'USD')
