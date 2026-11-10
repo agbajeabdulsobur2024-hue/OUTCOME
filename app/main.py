@@ -706,7 +706,9 @@ def read_ai_status():
         'provider': 'NEAR AI Cloud',
         'model': 'Qwen/Qwen3.6-35B-A3B-FP8',
         'privacy_tier': 'TEE model',
-        'attestation_verified_by_outcome': False,
+        'attestation_verification_required': True,
+        'attestation_verified_by_outcome': None,
+        'verification_method': 'ECDSA response signature + nonce-bound Intel TDX quote',
     }
 
 
