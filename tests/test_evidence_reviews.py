@@ -43,6 +43,8 @@ def test_evidence_reviews_are_append_only_and_latest_review_controls_state(tmp_p
         current = client.get(f'/api/commitments/{cid}').json()['evidence'][0]
         assert current['review_status'] == 'REJECTED'
         assert current['review_note'] == 'Source document later found unreliable'
+        assert len(current['review_history']) == 2
+        assert [r['status'] for r in current['review_history']] == ['VERIFIED', 'REJECTED']
 
         with main.connect() as db:
             count = db.execute('SELECT COUNT(*) FROM evidence_reviews WHERE evidence_id=?', (evidence['id'],)).fetchone()[0]
