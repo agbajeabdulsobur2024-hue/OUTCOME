@@ -58,6 +58,7 @@ def init_db():
             require_full_delivery INTEGER NOT NULL DEFAULT 1,
             require_invoice_match INTEGER NOT NULL DEFAULT 1,
             require_verified_evidence INTEGER NOT NULL DEFAULT 1,
+            allow_partial_payments INTEGER NOT NULL DEFAULT 0,
             updated_at TEXT NOT NULL)''')
         db.execute('''CREATE TABLE IF NOT EXISTS evidence_reviews (
             id TEXT PRIMARY KEY, evidence_id TEXT NOT NULL REFERENCES evidence(id),
@@ -76,6 +77,8 @@ def init_db():
         policy_columns = {row['name'] for row in db.execute('PRAGMA table_info(payment_policies)').fetchall()}
         if 'require_verified_evidence' not in policy_columns:
             db.execute('ALTER TABLE payment_policies ADD COLUMN require_verified_evidence INTEGER NOT NULL DEFAULT 1')
+        if 'allow_partial_payments' not in policy_columns:
+            db.execute('ALTER TABLE payment_policies ADD COLUMN allow_partial_payments INTEGER NOT NULL DEFAULT 0')
 
 
 @asynccontextmanager
@@ -113,6 +116,7 @@ class PaymentPolicyUpdate(BaseModel):
     require_full_delivery: bool = True
     require_invoice_match: bool = True
     require_verified_evidence: bool = True
+    allow_partial_payments: bool = False
 
 
 class PaymentProposalCreate(BaseModel):
@@ -208,12 +212,14 @@ def get_record(cid: str):
             'require_full_delivery': bool(policy_row['require_full_delivery']),
             'require_invoice_match': bool(policy_row['require_invoice_match']),
             'require_verified_evidence': bool(policy_row['require_verified_evidence']),
+            'allow_partial_payments': bool(policy_row['allow_partial_payments']),
             'updated_at': policy_row['updated_at'],
             'configured': True,
         } if policy_row else {
             'enabled': False, 'max_amount': commitment['amount'],
             'allowed_destination': '', 'require_full_delivery': True,
-            'require_invoice_match': True, 'require_verified_evidence': True, 'configured': False,
+            'require_invoice_match': True, 'require_verified_evidence': True,
+            'allow_partial_payments': False, 'configured': False,
         }),
         'payment_proposals': [
             {'id': row['id'], 'status': row['status'], 'proposal': json.loads(row['proposal_json']), 'created_at': row['created_at']}
@@ -397,18 +403,19 @@ def update_payment_policy(cid: str, payload: PaymentPolicyUpdate):
     with connect() as db:
         db.execute('''INSERT INTO payment_policies
             (commitment_id, enabled, max_amount, allowed_destination,
-             require_full_delivery, require_invoice_match, require_verified_evidence, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             require_full_delivery, require_invoice_match, require_verified_evidence, allow_partial_payments, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(commitment_id) DO UPDATE SET
             enabled=excluded.enabled, max_amount=excluded.max_amount,
             allowed_destination=excluded.allowed_destination,
             require_full_delivery=excluded.require_full_delivery,
             require_invoice_match=excluded.require_invoice_match,
             require_verified_evidence=excluded.require_verified_evidence,
+            allow_partial_payments=excluded.allow_partial_payments,
             updated_at=excluded.updated_at''',
             (cid, int(payload.enabled), payload.max_amount, payload.allowed_destination.strip(),
              int(payload.require_full_delivery), int(payload.require_invoice_match),
-             int(payload.require_verified_evidence), utc_now()))
+             int(payload.require_verified_evidence), int(payload.allow_partial_payments), utc_now()))
     return get_record(cid)['payment_policy']
 
 
