@@ -9,6 +9,7 @@ Verification coverage in the current build:
 - Latest-evidence semantics: a newer unreviewed or rejected record supersedes an older verified record.
 - Payment proposals blocked by missing, unverified, rejected or discrepant evidence.
 - Partial payment proposals blocked unless explicitly enabled by owner policy.
+- Payment policy updates are append-only and included in the shared commitment timeline.
 - Supplier pattern signals require at least two incidents backed by latest verified evidence; recurring-pattern labels additionally require a sample of at least five and an incident rate of at least 30%.
 - Action lifecycle rejects invalid transitions and requires same-commitment verified evidence to verify an outcome.
 - Synthetic demo seeding is non-destructive and refuses to run when existing commitments are present.
