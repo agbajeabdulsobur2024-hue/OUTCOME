@@ -1,152 +1,1069 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#101d1a">
-<title>OUTCOME — Business operations intelligence</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2312221d'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%2380c69a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{font-family:"DM Sans",system-ui,sans-serif;color:#1c2925;background:#f5f7f4;font-synthesis:none;text-rendering:optimizeLegibility;--ink:#13211d;--muted:#75827b;--line:#e5ebe6;--green:#197451;--mint:#eaf4ee;--paper:#fff;--amber:#a66b19;--red:#a64c3b;--shadow:0 12px 34px rgba(19,42,31,.055)}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#f5f7f4}button,input,select{font:inherit}button{border:0;border-radius:9px;padding:11px 15px;background:#176d4c;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:transform .15s,background .15s,box-shadow .15s;box-shadow:0 3px 8px #176d4c20}button:hover{background:#10583d;transform:translateY(-1px)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #8dc9a9;outline-offset:2px}
-.app-shell{min-height:100vh;display:grid;grid-template-columns:244px minmax(0,1fr)}.sidebar{position:sticky;top:0;height:100vh;background:#12221d;color:#eaf1ed;padding:28px 17px;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:11px;padding:0 12px 34px;font-family:Manrope,sans-serif;font-size:18px;font-weight:800;letter-spacing:.12em}.brand-mark{width:31px;height:31px;border-radius:10px;background:linear-gradient(145deg,#80c69a,#2b805a);display:grid;place-items:center;color:#10251b;font-size:16px;box-shadow:0 5px 18px #4eaa7535}.nav-label{padding:0 12px 10px;color:#82968a;font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}.nav{display:grid;gap:5px}.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:9px;color:#b9c8bf;text-decoration:none;font-size:13px;font-weight:600}.nav a:hover,.nav a.active{background:#233b30;color:#fff}.nav-icon{width:18px;text-align:center;color:#83c29a;font-size:15px}.sidebar-foot{margin-top:auto;padding:16px 12px;border-top:1px solid #2a3d33;color:#91a298;font-size:11px;line-height:1.6}.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#75c895;margin-right:7px;box-shadow:0 0 0 4px #75c89520}
-.main{min-width:0}.topbar{height:76px;padding:0 clamp(22px,4vw,54px);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e8ede8;background:#ffffffc9;backdrop-filter:blur(12px)}.crumb{font-size:12px;color:#7b8981}.crumb b{color:#24352d}.top-right{display:flex;align-items:center;gap:12px}.env-pill{font-size:10px;letter-spacing:.08em;font-weight:800;color:#8b651e;background:#fff5dc;border:1px solid #f0e3bf;padding:7px 10px;border-radius:20px}.avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#e4f0e8;color:#276748;font-weight:800;font-size:12px}
-.content{max-width:1440px;margin:auto;padding:34px clamp(22px,4vw,54px) 60px}.eyebrow{color:#38815c;font-size:10px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;margin-bottom:11px}.hero{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:28px;background:#142820;color:#fff;border-radius:18px;padding:34px 38px;margin-bottom:22px;box-shadow:0 18px 38px #10251c18}.hero:after{content:"";position:absolute;width:360px;height:360px;border:1px solid #ffffff13;border-radius:50%;right:8%;top:-210px;box-shadow:0 0 0 38px #ffffff08,0 0 0 78px #ffffff05}.hero-copy{position:relative;z-index:1;max-width:680px}.hero .eyebrow{color:#8bd1a5}.hero h1{font-family:Manrope,sans-serif;font-size:clamp(27px,3.2vw,40px);line-height:1.13;letter-spacing:-.04em;margin:0 0 12px;font-weight:800}.hero p{font-size:14px;line-height:1.7;color:#c3d2c8;max-width:610px;margin:0}.hero-actions{position:relative;z-index:1;min-width:190px}.hero-actions button{background:#8bd1a5;color:#123021;box-shadow:none}.hero-actions button:hover{background:#a5e0b8}.hero-note{display:block;color:#a9bdb0;font-size:10px;line-height:1.5;margin-top:9px}
-.signal-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:24px}.signal{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;align-items:flex-start;gap:12px}.signal-icon{width:34px;height:34px;flex:0 0 34px;border-radius:10px;background:#edf5ef;color:#28754f;display:grid;place-items:center;font-size:15px}.signal b{display:block;font-family:Manrope,sans-serif;font-size:12px;margin:1px 0 4px}.signal span{display:block;font-size:11px;color:#849087;line-height:1.45}
-.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:26px 0 13px}.section-head h2{font-family:Manrope,sans-serif;font-size:18px;letter-spacing:-.025em;margin:0;color:#1a2a23}.section-head p{font-size:11px;color:#869188;margin:5px 0 0}.section-kicker{font-size:10px;color:#8a968e;letter-spacing:.1em;text-transform:uppercase;font-weight:800}
-.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--shadow);min-width:0}.panel h2{font-family:Manrope,sans-serif;font-size:15px;letter-spacing:-.02em;margin:0 0 16px}.panel h3{font-family:Manrope,sans-serif;color:#23372d}.work-grid{display:grid;grid-template-columns:minmax(280px,.78fr) minmax(0,1.22fr);gap:16px;align-items:start}.commitment-panel{min-height:300px}.item{padding:14px 15px;border:1px solid #e7ece8;border-radius:10px;margin:9px 0;cursor:pointer;transition:border .15s,background .15s,transform .15s}.item:hover{border-color:#9dc7ab;transform:translateY(-1px)}.item.active{border-color:#62a77e;background:#f1f8f3;box-shadow:inset 3px 0 #32815a}.muted,.small{font-size:11px;color:#7e8b82;margin-top:6px;line-height:1.55}.badge{display:inline-flex;align-items:center;font-size:9px;font-weight:800;letter-spacing:.055em;padding:5px 8px;border-radius:20px;background:#edf2ee;color:#52665a}.AWAITING_EVIDENCE{background:#edf4fb;color:#426b8d}.DISCREPANCY{background:#fff0e9;color:#a44420}.REVIEW_REQUIRED,.OVERDUE{background:#fff5df;color:#89620b}.issue{background:#fff8f3;border:1px solid #f1e1d6;border-left:3px solid #d8875f;border-radius:8px;padding:12px 13px;margin:10px 0;font-size:12px;line-height:1.6}.actions{font-size:12px;line-height:1.8;padding-left:19px;color:#526158}.detail{margin-top:18px}.summary{font-size:13px;line-height:1.65;color:#405148}.empty{font-size:12px;color:#8b968e;padding:18px 2px;line-height:1.6}.evidence{border-top:1px solid #edf0ed;margin-top:20px;padding-top:18px}.evidence h3{font-size:13px;margin:0 0 8px}
-label{display:block;font-size:10px;color:#627269;font-weight:700;letter-spacing:.035em;margin:13px 0 6px}input:not([type=checkbox]),select{width:100%;padding:11px 12px;border:1px solid #dfe7e1;border-radius:8px;background:#fbfcfb;color:#24352d;font-size:12px;transition:border .15s,box-shadow .15s}input:not([type=checkbox]):focus,select:focus{border-color:#6eaa84;box-shadow:0 0 0 3px #6eaa8418;outline:0}input::placeholder{color:#a4aea7}input[type=checkbox]{accent-color:#24764e;transform:translateY(1px)}.row{display:grid;grid-template-columns:1fr 1fr;gap:11px}form>button{margin-top:15px}.evidence button{margin-right:5px}.evidence .small{color:#87938b}
-#patterns{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px}#patterns .issue{margin:0}.pattern-panel{background:#fbfdfb}.detail .evidence:first-of-type{border-top:0;padding-top:6px}
-footer{padding:20px 2px 0;color:#89958d;font-size:10px;line-height:1.7}.foot-strong{color:#53655a;font-weight:700}
-@media(max-width:1000px){.app-shell{grid-template-columns:205px minmax(0,1fr)}.work-grid{grid-template-columns:1fr}.hero{padding:28px}.hero-actions{min-width:165px}}
-@media(max-width:700px){.app-shell{display:block}.sidebar{position:relative;height:auto;padding:15px 17px;display:block}.brand{padding:0 4px 13px}.nav-label,.sidebar-foot{display:none}.nav{display:flex;overflow:auto;gap:4px;padding-bottom:2px}.nav a{white-space:nowrap;padding:9px 10px;font-size:11px}.nav-icon{display:none}.topbar{height:54px;padding:0 18px}.content{padding:22px 15px 40px}.hero{display:block;padding:25px 22px;border-radius:14px}.hero-actions{margin-top:20px}.signal-strip{grid-template-columns:1fr;gap:8px}.signal{padding:12px 14px}.panel{padding:17px}.section-head{margin-top:22px}.row{grid-template-columns:1fr 1fr}}
-@media(max-width:390px){.row{grid-template-columns:1fr}.hero h1{font-size:27px}.top-right{gap:7px}.env-pill{font-size:9px;padding:6px 8px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
-.metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 16px}.metric-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:17px 18px;box-shadow:var(--shadow);min-width:0}.metric-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.metric-label{font-size:10px;color:#7c8a81;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.metric-mark{width:28px;height:28px;display:grid;place-items:center;border-radius:9px;background:#edf5ef;color:#28754f;font-size:13px}.metric-value{font-family:Manrope,sans-serif;font-size:29px;line-height:1.1;letter-spacing:-.05em;font-weight:800;color:#1a2b23;margin:11px 0 5px}.metric-note{font-size:10px;color:#8a968e;line-height:1.4}.metric-card.alert .metric-mark{background:#fff2e9;color:#a65b30}.metric-card.pending .metric-mark{background:#fff6e2;color:#9b741f}
-@media(max-width:1000px){.metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:390px){.metrics-grid{gap:8px}.metric-card{padding:13px}.metric-value{font-size:25px}.metric-label{font-size:9px}}
-</style></head>
-<body><div class="app-shell">
+:root{
+  --ink:#13211d;--muted:#4e5e56;--faint:#5d6e66;--line:#e3ebe6;--line-strong:#d5e0da;
+  --green:#176d4c;--green-deep:#0e3d2c;--mint:#e7f3ec;--mint-2:#f4faf6;--paper:#fff;
+  --canvas:#f4f7f4;--amber:#8a5a10;--red:#8d3d32;--shadow:0 1px 2px rgba(16,37,28,.04),0 14px 36px rgba(16,37,28,.05);
+  --sidebar:#12221d;--sans:"DM Sans",system-ui,sans-serif;--display:Manrope,sans-serif;
+  font-family:var(--sans);color:var(--ink);background:var(--canvas);font-synthesis:none;text-rendering:optimizeLegibility;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--canvas);font-size:15px;line-height:1.5}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+button{background:transparent;border:0;padding:0;cursor:pointer}
+a{color:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{
+  outline:3px solid #8dc9a9;outline-offset:2px;
+}
+.skip{position:absolute;left:12px;top:-48px;background:#fff;color:var(--ink);padding:10px 14px;border-radius:10px;z-index:80;font-weight:700}
+.skip:focus{top:12px}
+.app-shell{min-height:100vh;display:grid;grid-template-columns:252px minmax(0,1fr)}
+.sidebar{position:sticky;top:0;height:100vh;background:var(--sidebar);color:#e7f1eb;padding:26px 16px;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:11px;padding:0 12px 28px;font-family:var(--display);font-size:18px;font-weight:800;letter-spacing:.12em}
+.brand-mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(145deg,#80c69a,#2b805a);display:grid;place-items:center;color:#10251b;font-size:16px;font-weight:800;box-shadow:0 6px 18px #4eaa7535}
+.nav-label{padding:0 12px 10px;color:#a8bdb2;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.nav{display:grid;gap:4px}
+.nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;color:#d7e4dc;text-decoration:none;font-size:14.5px;font-weight:600}
+.nav a:hover,.nav a.active{background:#233b30;color:#fff}
+.nav-icon{width:18px;height:18px;display:grid;place-items:center;color:#8dcaa4;flex:0 0 auto}
+.sidebar-foot{margin-top:auto;padding:16px 12px;border-top:1px solid #2a3d33;color:#c5d4cc;font-size:13.5px;line-height:1.55}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#75c895;margin-right:8px;box-shadow:0 0 0 4px #75c89522}
+.main{min-width:0}
+.topbar{position:sticky;top:0;z-index:6;height:68px;padding:0 clamp(20px,4vw,48px);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e6eee9;background:#fffc;backdrop-filter:blur(14px)}
+.crumb{font-size:14px;color:#66776e}
+.crumb b{color:#1d3128;font-weight:700}
+.top-right{display:flex;align-items:center;gap:12px}
+.env-pill{font-size:12px;letter-spacing:.08em;font-weight:700;color:#7a5a16;background:#fff6e4;border:1px solid #f0e3bf;padding:7px 11px;border-radius:999px}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#e4f0e8;color:#276748;font-weight:800;font-size:13px}
+.content{max-width:1280px;margin:0 auto;padding:28px clamp(20px,4vw,48px) 64px}
+.eyebrow,.kicker,.section-kicker{color:#2f7a52;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.section-kicker{color:#66776e}
+.hero{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:28px;background:#142820;color:#fff;border-radius:16px;padding:22px 26px;margin-bottom:18px;box-shadow:0 16px 34px #10251c14}
+.hero::after{content:"";position:absolute;width:280px;height:280px;border:1px solid #ffffff14;border-radius:50%;right:6%;top:-170px;box-shadow:0 0 0 34px #ffffff0a,0 0 0 68px #ffffff06;pointer-events:none}
+.hero-copy{position:relative;z-index:1;max-width:680px}
+.hero .eyebrow{color:#8bd1a5;margin-bottom:8px}
+.hero h1{font-family:var(--display);font-size:clamp(24px,2.5vw,32px);line-height:1.15;letter-spacing:-.035em;margin:0 0 8px;font-weight:800}
+.hero p{font-size:15px;line-height:1.55;color:#d5e4db;max-width:62ch;margin:0}
+.hero.is-welcome{padding:30px 32px}
+.hero.is-welcome h1{font-size:clamp(28px,3vw,40px)}
+.hero-actions{position:relative;z-index:1;max-width:250px;flex:0 0 auto}
+.hero-note{display:block;color:#c5d5cb;font-size:13.5px;line-height:1.45;margin-top:10px}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 22px}
+.metric-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);min-width:0}
+.metric-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.metric-label{font-size:12px;color:#5d6e66;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.metric-mark{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:#edf5ef;color:#28754f}
+.metric-value{font-family:var(--display);font-size:32px;line-height:1.1;letter-spacing:-.045em;font-weight:800;color:#1a2b23;margin:12px 0 4px;font-variant-numeric:tabular-nums}
+.metric-note{font-size:13.5px;color:var(--muted);line-height:1.4}
+.metric-card.alert .metric-mark{background:#fff1e8;color:#a65b30}
+.metric-card.pending .metric-mark{background:#fff6e2;color:#9b741f}
+.overview-grid,.decision-grid,.commit-layout{display:grid;gap:16px;align-items:start}
+.overview-grid{grid-template-columns:minmax(0,1.45fr) minmax(280px,.8fr);margin-bottom:22px}
+.commit-layout{grid-template-columns:minmax(260px,340px) minmax(0,1fr)}
+.decision-grid{grid-template-columns:minmax(0,1.35fr) minmax(280px,.82fr)}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 12px}
+.section-head h1,.section-head h2,.page-title{font-family:var(--display);font-size:22px;letter-spacing:-.03em;margin:0;color:#1a2a23;font-weight:800}
+.section-head p,.lede{font-size:14.5px;color:var(--muted);margin:6px 0 0;line-height:1.5;max-width:68ch}
+.signal-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.signal{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;align-items:flex-start;gap:12px}
+.signal-icon{width:36px;height:36px;flex:0 0 36px;border-radius:11px;background:#edf5ef;color:#28754f;display:grid;place-items:center}
+.signal b{display:block;font-family:var(--display);font-size:15px;margin:0 0 4px}
+.signal span{display:block;font-size:14px;color:var(--muted);line-height:1.45}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:20px 22px;box-shadow:var(--shadow);min-width:0}
+.panel h2{font-family:var(--display);font-size:16px;letter-spacing:-.02em;margin:0;font-weight:700}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.stack{display:grid;gap:10px}
+.item{display:block;width:100%;text-align:left;padding:14px 14px;border:1px solid #e6eeea;border-radius:12px;background:#fff;transition:border-color .15s,background .15s}
+.item:hover{border-color:#9dc7ab;background:#fbfefc}
+.item.active{border-color:#62a77e;background:#f1f8f3;box-shadow:inset 3px 0 #32815a}
+.item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.item-title{font-family:var(--display);font-weight:700;font-size:15px}
+.item-desc{display:block;margin-top:4px;font-size:14.5px;color:#24352d}
+.item-meta{display:block;margin-top:6px;color:var(--muted);font-size:13.5px}
+.badge,.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.02em;padding:5px 9px;border-radius:999px;background:#eef2ef;color:#3e5248;white-space:nowrap;flex:0 0 auto}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge.ON_TRACK,.badge.VERIFIED,.badge.APPROVED,.badge.OUTCOME_VERIFIED{background:#e7f5ec;color:#17693f}
+.badge.DISCREPANCY,.badge.BLOCKED,.badge.REJECTED,.badge.OUTCOME_FAILED{background:#fff0ea;color:#9a3f28}
+.badge.AWAITING_EVIDENCE{background:#edf4fb;color:#3d6484}
+.badge.REVIEW_REQUIRED,.badge.OVERDUE,.badge.UNREVIEWED,.badge.AWAITING_HUMAN_APPROVAL,.badge.PROPOSED,.badge.EXECUTION_REPORTED,.badge.EARLY_SIGNAL,.badge.RECURRING_PATTERN{background:#fff6e2;color:#8a5d10}
+.text-link{color:#17693f;font-weight:700;font-size:14px;text-decoration:none}
+.text-link:hover{text-decoration:underline}
+.pattern-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.signal-card{border:1px solid #e7eeea;border-radius:12px;padding:16px;background:#fbfefc}
+.signal-card h3{font-family:var(--display);font-size:16px;margin:0}
+.signal-card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.signal-type{margin:8px 0 0;font-weight:700}
+.signal-stat,.signal-note,.meta,.quiet-line{color:var(--muted);font-size:14px;line-height:1.5}
+.signal-note{margin:8px 0 0}
+.form-card{max-width:740px}
+label{display:block;font-size:13.5px;color:#3e5148;font-weight:700;margin:14px 0 6px}
+label.check{display:flex;align-items:flex-start;gap:10px;font-size:14.5px;font-weight:600;color:var(--ink);margin:12px 0}
+label.check input{width:16px;height:16px;margin-top:3px;accent-color:#24764e}
+input:not([type=checkbox]),select{width:100%;padding:12px 13px;border:1px solid #d5e2db;border-radius:10px;background:#fbfcfb;color:#24352d;font-size:15px;min-height:46px}
+input:not([type=checkbox]):focus,select:focus{border-color:#6eaa84;box-shadow:0 0 0 4px #6eaa8422}
+input::placeholder{color:#8b9a93}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-error{color:#9a3f28;font-size:13.5px;font-weight:600;margin:6px 0 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;padding:11px 16px;background:#176d4c;color:#fff;font-size:14.5px;font-weight:700;text-decoration:none;box-shadow:0 1px 2px #176d4c22;min-height:44px}
+.btn:hover{background:#10583d}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn-hero{background:#8bd1a5;color:#123021;box-shadow:none}
+.btn-hero:hover{background:#a5e0b8}
+.btn-ghost{background:#fff;color:#174b34;border:1px solid #d3e3da;box-shadow:none}
+.btn-ghost:hover{background:#f3f8f5}
+.btn-danger{background:#fff;color:#8d3b30;border:1px solid #e7cfc9;box-shadow:none}
+.btn-danger:hover{background:#fff6f4}
+.btn-danger-solid{background:#9c4d3d;color:#fff;border:0}
+.btn-danger-solid:hover{background:#833f32}
+.btn-sm{min-height:40px;padding:8px 12px;font-size:14px}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+form .btn{margin-top:16px}
+.empty{padding:8px 2px 4px}
+.empty-mark{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--mint);color:#28754f;margin-bottom:12px}
+.empty h3{font-family:var(--display);font-size:16px;margin:0 0 6px}
+.empty p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.55;max-width:58ch}
+.empty-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.detail-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+#detail-title{font-family:var(--display);font-size:26px;letter-spacing:-.03em;margin:4px 0 0;scroll-margin-top:88px}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0 0}
+.facts div{background:var(--mint-2);border-radius:12px;padding:12px 14px;min-width:0}
+.facts dt{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.facts dd{margin:4px 0 0;font-family:var(--display);font-size:15px;font-weight:700;line-height:1.35}
+button.jump{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:0;color:#1d4d36;font-weight:700;font-size:14.5px;text-align:left}
+button.jump:hover{text-decoration:underline}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:18px 0 18px;overflow:auto}
+.tabs button{border-radius:0;padding:10px 14px 12px;color:#5c6d64;font-weight:700;font-size:14.5px;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:#143528;border-bottom-color:#1f7a52}
+.tabs button:hover{color:#143528}
+.summary{font-size:16px;line-height:1.55;margin:0 0 12px}
+.issue{background:#fff8f4;border:1px solid #f1e1d6;border-left:3px solid #d8875f;border-radius:12px;padding:14px 14px;margin:0}
+.issue h3,.card-title{font-family:var(--display);font-size:15px;margin:0 0 6px}
+.issue p{margin:0;font-size:14.5px;line-height:1.5}
+.exposure{margin-top:8px;font-weight:700;color:#8a3e22}
+.actions{font-size:15px;line-height:1.55;padding-left:20px;margin:8px 0 0;color:#24352d}
+.actions li+li{margin-top:6px}
+.subhead{font-family:var(--display);font-size:16px;margin:20px 0 10px;letter-spacing:-.02em}
+.inset{background:#f7faf8;border:1px solid #e5eee9;border-radius:12px;padding:14px 16px;margin-top:12px}
+.record{border:1px solid #e6eeea;border-radius:12px;padding:14px;background:#fff}
+.record-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.record h3{font-family:var(--display);font-size:15px;margin:0}
+.record .value{font-family:var(--display);font-size:20px;font-weight:700;margin:8px 0 0}
+.log{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.log li{font-size:13.5px;color:var(--muted);line-height:1.45}
+.rail-card{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fbfcfb}
+.rail-card+.rail-card{margin-top:12px}
+.rail-card h3{font-family:var(--display);font-size:16px;margin:0 0 8px}
+.rail-card.quiet{background:#f6f8f6}
+.brief p{margin:0 0 8px;font-size:14.5px;line-height:1.55}
+.brief h4{margin:12px 0 4px;font-size:13.5px;letter-spacing:.04em;text-transform:uppercase;color:#5d6e66}
+.timeline{list-style:none;margin:0;padding:0}
+.timeline li{position:relative;padding:0 0 18px 20px;border-left:1px solid var(--line-strong)}
+.timeline li:last-child{border-left-color:transparent;padding-bottom:0}
+.timeline li::before{content:"";position:absolute;left:-5px;top:4px;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid #1f7a52}
+.tl-title{font-weight:700}
+.tl-detail{color:#24352d;font-size:14.5px;margin-top:2px}
+.timeline time,.meta time{color:var(--muted);font-size:13.5px}
+.version{padding:12px 0;border-top:1px solid #edf1ee}
+.version:first-child{border-top:0;padding-top:0}
+.disclosure{border:1px solid #f0d9d2;background:#fff8f5;border-radius:12px;padding:12px 14px;margin-top:16px}
+.disclosure summary{cursor:pointer;font-family:var(--display);font-weight:700;color:#8d4435;font-size:15px}
+.disclosure p{margin:8px 0 0;font-size:14.5px;line-height:1.55;color:#5c403a}
+.disclosure .btn{margin-top:12px}
+#overview{display:flex;flex-direction:column}
+#overview.is-working .metrics-grid{order:1}
+#overview.is-working .overview-grid{order:2}
+#overview.is-working .signal-strip{order:3}
+#overview.is-working .hero{order:4;margin:22px 0 0;padding:16px 20px}
+#overview.is-working .hero h1{font-size:clamp(20px,2vw,26px)}
+#overview.is-working .hero p,#overview.is-working .hero::after{display:none}
+.check-note{margin-top:14px}
+footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
+.foot-strong{color:#31483c;font-weight:700}
+.toasts{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:30;display:grid;gap:8px;width:min(420px,calc(100vw - 40px));pointer-events:none}
+.toast{display:flex;align-items:flex-start;gap:10px;background:#142820;color:#f4faf6;border-radius:12px;padding:12px 12px 12px 14px;font-size:14.5px;line-height:1.45;box-shadow:0 12px 30px rgba(16,32,24,.22);pointer-events:auto}
+.toast p{margin:0;flex:1}
+.toast.error{background:#6e332b}
+.toast.warn{background:#6d5014}
+.toast.ok{background:#14543a}
+.toast-x{color:inherit;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto}
+.toast-x:hover{background:#ffffff18}
+.ico{display:block}
+.back-mobile{display:none;margin-bottom:12px}
+@media(min-width:1001px){
+  .list-pane{position:sticky;top:84px;max-height:calc(100vh - 104px);overflow:auto}
+}
+@media(max-width:1000px){
+  .app-shell{grid-template-columns:220px minmax(0,1fr)}
+  .overview-grid,.commit-layout,.decision-grid,.signal-strip{grid-template-columns:1fr}
+  .metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .facts{grid-template-columns:1fr 1fr}
+  .hero{padding:22px}
+}
+@media(max-width:700px){
+  .app-shell{display:block}
+  .sidebar{position:relative;height:auto;padding:16px}
+  .brand{padding:0 4px 12px}
+  .nav-label,.sidebar-foot{display:none}
+  .nav{display:flex;overflow:auto;gap:4px}
+  .nav a{white-space:nowrap;padding:10px 12px}
+  .nav-icon{display:none}
+  .topbar{height:58px;padding:0 16px}
+  .content{padding:20px 16px 128px}
+  .toasts{bottom:12px;width:min(420px,calc(100vw - 24px))}
+  .hero{display:block;padding:22px 18px}
+  .hero.is-welcome{padding:24px 18px}
+  .hero::after{display:none}
+  .hero-actions{margin-top:16px;max-width:none}
+  .panel{padding:16px}
+  .commit-layout.has-selection .list-pane{display:none}
+  .commit-layout:not(.has-selection) .detail-pane{display:none}
+  .back-mobile{display:inline-flex}
+  #detail-title{font-size:22px}
+}
+@media(max-width:390px){
+  .row,.facts{grid-template-columns:1fr}
+  .metric-value{font-size:28px}
+  .env-pill{letter-spacing:.04em}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#content">Skip to workspace</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2.2-5.5L13 18l2.2-6H21" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M12 8v5M12 16h.01" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="M12 8v4.5l2.8 1.8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 9.2 17 19 7.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.2 5.2 6.2v5.6c0 4 2.7 6.9 6.8 8.6 4.1-1.7 6.8-4.6 6.8-8.6V6.2z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.75"/><path d="m16 16.5 4 4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="m3.5 8 8.5-4 8.5 4-8.5 4-8.5-4zM3.5 8v8L12 20l8.5-4V8M12 12v8" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3.5h7l4.5 4.5V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1zM14 3.5V8h4.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v3.2M12 17.8V21M3 12h3.2M17.8 12H21M6.1 6.1l2.2 2.2M15.7 15.7l2.2 2.2M17.9 6.1l-2.2 2.2M8.3 15.7l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
+</svg>
+<div class="app-shell">
 <aside class="sidebar">
   <div class="brand"><span class="brand-mark">O</span> OUTCOME</div>
   <div class="nav-label">Workspace</div>
-  <nav class="nav" aria-label="Main navigation">
-    <a class="active" href="#overview"><span class="nav-icon">⌂</span>Overview</a>
-    <a href="#commitments"><span class="nav-icon">▤</span>Commitments</a>
-    <a href="#patterns-section"><span class="nav-icon">⌁</span>Supplier signals</a>
-    <a href="#new-commitment"><span class="nav-icon">＋</span>New commitment</a>
+  <nav class="nav" aria-label="Workspace">
+    <a class="active" data-view="overview" href="#overview" aria-current="page"><span class="nav-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-home"/></svg></span>Overview</a>
+    <a data-view="commitments" href="#commitments"><span class="nav-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-list"/></svg></span>Commitments</a>
+    <a data-view="signals" href="#patterns-section"><span class="nav-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-pulse"/></svg></span>Supplier signals</a>
+    <a data-view="new" href="#new-commitment"><span class="nav-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-plus"/></svg></span>New commitment</a>
   </nav>
   <div class="sidebar-foot"><span class="live-dot"></span>Intelligence workspace<br>Human approval stays in control.</div>
 </aside>
 <div class="main">
-  <header class="topbar"><div class="crumb">Workspace <span style="color:#b7c1ba">/</span> <b>Overview</b></div><div class="top-right"><span class="env-pill">DEMO WORKSPACE</span><span class="avatar">O</span></div></header>
-  <main class="content" id="overview">
-    <section class="hero">
-      <div class="hero-copy"><div class="eyebrow">Business operations intelligence</div><h1>See the gap between<br>what was promised and what happened.</h1><p>OUTCOME connects supplier commitments to real-world evidence, catches discrepancies early, and helps you decide what should happen next — before money or trust is lost.</p></div>
-      <div class="hero-actions"><button id="demoSeed" type="button">Explore the live demo</button><span class="hero-note">Loads two fictional supplier cases.<br>Existing records are never overwritten.</span></div>
-    </section>
-    <section class="metrics-grid" id="overviewMetrics" aria-label="Live workspace summary">
-      <article class="metric-card"><div class="metric-top"><span class="metric-label">Commitments</span><span class="metric-mark">▤</span></div><div class="metric-value" id="metricCommitments">—</div><div class="metric-note">Recorded in this workspace</div></article>
-      <article class="metric-card alert"><div class="metric-top"><span class="metric-label">Needs attention</span><span class="metric-mark">!</span></div><div class="metric-value" id="metricAttention">—</div><div class="metric-note">Discrepancy, overdue or awaiting evidence</div></article>
-      <article class="metric-card pending"><div class="metric-top"><span class="metric-label">Evidence to review</span><span class="metric-mark">◷</span></div><div class="metric-value" id="metricPending">—</div><div class="metric-note">Evidence not yet reviewed by a person</div></article>
-      <article class="metric-card"><div class="metric-top"><span class="metric-label">Verified evidence</span><span class="metric-mark">✓</span></div><div class="metric-value" id="metricVerified">—</div><div class="metric-note">Evidence currently marked verified</div></article>
-    </section>
-    <div class="signal-strip" aria-label="How OUTCOME works">
-      <div class="signal"><div class="signal-icon">◎</div><div><b>Understand the agreement</b><span>Keep original terms and amendments connected.</span></div></div>
-      <div class="signal"><div class="signal-icon">⌕</div><div><b>Validate what happened</b><span>Compare verified evidence against the commitment.</span></div></div>
-      <div class="signal"><div class="signal-icon">↗</div><div><b>Protect the next decision</b><span>Surface exposure and keep consequential actions human-approved.</span></div></div>
-    </div>
-    <section id="patterns-section">
-      <div class="section-head"><div><div class="section-kicker">Pattern recognition</div><h2>Emerging supplier signals</h2><p>Repeated, verified discrepancies across commitments.</p></div><span class="badge">Evidence-led · Not allegations</span></div>
-      <div class="panel pattern-panel"><div id="patterns" class="empty">Looking for repeated, verified signals…</div><p class="small">Patterns require at least two verified incidents. These are review signals, not findings of misconduct.</p></div>
-    </section>
-    <div class="section-head" id="commitments"><div><div class="section-kicker">Operations workspace</div><h2>Commitment intelligence</h2><p>Create an agreement, then follow its evidence, exposure and resolution.</p></div><span class="badge">Shared commitment record</span></div>
-    <div class="work-grid">
-      <section class="panel" id="new-commitment"><h2>＋ &nbsp;Record a commitment</h2>
-        <form id="create"><label>Supplier</label><input name="supplier" placeholder="Acme Supplies" required><label>What was agreed?</label><input name="description" placeholder="Delivery of packaging materials" required><div class="row"><div><label>Quantity</label><input name="quantity" type="number" min=".01" step="any" value="100" required></div><div><label>Unit</label><input name="unit" value="units" required></div></div><div class="row"><div><label>Agreed amount</label><input name="amount" type="number" min=".01" step="any" value="500" required></div><div><label>Currency</label><input name="currency" value="USD"></div></div><label>Due date</label><input name="due_date" type="date" required><label>Payment condition</label><input name="payment_condition" value="Pay after verified delivery"><button>Create commitment</button></form>
-        <p class="small">Start with the agreement. Add evidence as it arrives.</p>
+  <header class="topbar">
+    <div class="crumb">Workspace <span aria-hidden="true">/</span> <b id="crumb-current">Overview</b></div>
+    <div class="top-right"><span class="env-pill">DEMO WORKSPACE</span><span class="avatar" aria-hidden="true">O</span></div>
+  </header>
+  <main class="content" id="content">
+    <section id="overview" data-view="overview">
+      <section class="hero is-welcome" id="hero">
+        <div class="hero-copy">
+          <div class="eyebrow">Business operations intelligence</div>
+          <h1>See the gap between<br>what was promised and what happened.</h1>
+          <p>OUTCOME connects supplier commitments to real-world evidence, catches discrepancies early, and helps you decide what should happen next — before money or trust is lost.</p>
+        </div>
+        <div class="hero-actions">
+          <button id="demoSeed" class="btn btn-hero" type="button" data-demo-seed>Explore the live demo</button>
+          <span class="hero-note">Loads two fictional supplier cases. Existing records are never overwritten.</span>
+        </div>
       </section>
-      <section class="panel commitment-panel"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2 style="margin:0">Your commitments</h2><span class="section-kicker">Select to inspect</span></div><div id="list" class="empty">Loading…</div><div id="detail" class="detail"><p class="empty">Select a commitment to inspect its evidence and next actions.</p></div></section>
-    </div>
+      <section class="metrics-grid" id="overviewMetrics" aria-label="Live workspace summary">
+        <article class="metric-card"><div class="metric-top"><span class="metric-label">Commitments</span><span class="metric-mark"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-list"/></svg></span></div><div class="metric-value" id="metricCommitments">—</div><div class="metric-note">Recorded in this workspace</div></article>
+        <article class="metric-card alert"><div class="metric-top"><span class="metric-label">Needs attention</span><span class="metric-mark"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-alert"/></svg></span></div><div class="metric-value" id="metricAttention">—</div><div class="metric-note">Discrepancy, overdue or awaiting evidence</div></article>
+        <article class="metric-card pending"><div class="metric-top"><span class="metric-label">Evidence to review</span><span class="metric-mark"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-clock"/></svg></span></div><div class="metric-value" id="metricPending">—</div><div class="metric-note">Evidence not yet reviewed by a person</div></article>
+        <article class="metric-card"><div class="metric-top"><span class="metric-label">Verified evidence</span><span class="metric-mark"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-check"/></svg></span></div><div class="metric-value" id="metricVerified">—</div><div class="metric-note">Evidence currently marked verified</div></article>
+      </section>
+      <div class="overview-grid">
+        <section aria-labelledby="attention-title">
+          <div class="section-head">
+            <div>
+              <div class="section-kicker">Workspace</div>
+              <h2 id="attention-title">Needs attention</h2>
+              <p id="attention-note">Discrepancies, overdue commitments and missing evidence.</p>
+            </div>
+            <a class="text-link" href="#commitments">All commitments</a>
+          </div>
+          <div class="panel"><div id="attention" class="stack"></div></div>
+        </section>
+        <section aria-labelledby="overview-signals-title">
+          <div class="section-head">
+            <div>
+              <div class="section-kicker">Pattern recognition</div>
+              <h2 id="overview-signals-title">Supplier signals</h2>
+              <p>Repeated, verified discrepancies.</p>
+            </div>
+            <a class="text-link" href="#patterns-section">View signals</a>
+          </div>
+          <div class="panel" id="overview-patterns"></div>
+        </section>
+      </div>
+      <div class="signal-strip" aria-label="How OUTCOME works">
+        <div class="signal"><div class="signal-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-file"/></svg></div><div><b>Understand the agreement</b><span>Keep original terms and amendments connected.</span></div></div>
+        <div class="signal"><div class="signal-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-search"/></svg></div><div><b>Validate what happened</b><span>Compare verified evidence against the commitment.</span></div></div>
+        <div class="signal"><div class="signal-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-shield"/></svg></div><div><b>Protect the next decision</b><span>Surface exposure and keep consequential actions human-approved.</span></div></div>
+      </div>
+    </section>
+
+    <section id="commitments" data-view="commitments" hidden>
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Operations workspace</div>
+          <h1 class="page-title">Commitments</h1>
+          <p>Open a record to review its status, evidence and the next decision.</p>
+        </div>
+        <a class="btn btn-ghost" href="#new-commitment">New commitment</a>
+      </div>
+      <div class="commit-layout" id="commit-layout">
+        <section class="panel list-pane" aria-labelledby="list-heading">
+          <div class="panel-head"><h2 id="list-heading">Your commitments</h2><span class="meta" id="list-count"></span></div>
+          <div id="list" class="stack"></div>
+        </section>
+        <section class="panel detail-pane" id="detail" aria-label="Commitment detail">
+          <div class="empty"><div class="empty-mark"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-list"/></svg></div><h3>Select a commitment</h3><p>Open a record to review its status, evidence and the next decision.</p></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="patterns-section" data-view="signals" hidden>
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Pattern recognition</div>
+          <h1 class="page-title">Emerging supplier signals</h1>
+          <p>Repeated, verified discrepancies across commitments. Patterns need at least two verified incidents. They are review signals, not findings of misconduct.</p>
+        </div>
+        <span class="pill">Evidence-led</span>
+      </div>
+      <div class="panel"><div id="patterns"></div></div>
+    </section>
+
+    <section id="new-commitment" data-view="new" hidden>
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">Operations workspace</div>
+          <h1 class="page-title">Record a commitment</h1>
+          <p>Start with the agreement. Add evidence as it arrives.</p>
+        </div>
+      </div>
+      <div class="panel form-card">
+        <form id="create" autocomplete="off">
+          <label for="supplier">Supplier</label>
+          <input id="supplier" name="supplier" placeholder="Acme Supplies" required maxlength="120">
+          <label for="description">What was agreed?</label>
+          <input id="description" name="description" placeholder="Delivery of packaging materials" required maxlength="500">
+          <div class="row">
+            <div><label for="quantity">Quantity</label><input id="quantity" name="quantity" type="number" min=".01" step="any" value="100" required></div>
+            <div><label for="unit">Unit</label><input id="unit" name="unit" value="units" required maxlength="40"></div>
+          </div>
+          <div class="row">
+            <div><label for="amount">Agreed amount</label><input id="amount" name="amount" type="number" min=".01" step="any" value="500" required></div>
+            <div><label for="currency">Currency</label><input id="currency" name="currency" value="USD" required minlength="3" maxlength="8"></div>
+          </div>
+          <label for="due_date">Due date</label>
+          <input id="due_date" name="due_date" type="date" required>
+          <label for="payment_condition">Payment condition</label>
+          <input id="payment_condition" name="payment_condition" value="Pay after verified delivery" maxlength="300">
+          <button class="btn" type="submit">Create commitment</button>
+        </form>
+      </div>
+    </section>
     <footer><span class="foot-strong">OUTCOME</span> is decision support, not an autonomous payment service. It does not approve invoices, custody funds or move money. Human review remains required. Use synthetic data only in this hackathon demo.</footer>
   </main>
-</div></div>
+</div>
+</div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
 <script>
-let selected=null;const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));async function api(p,o={}){let r=await fetch(p,{headers:{'Content-Type':'application/json'},...o}),d=await r.json();if(!r.ok)throw Error(d.detail||'Request failed');return d}function cash(n,c){return c+' '+Number(n||0).toFixed(2)}
-function updateMetrics(xs){
-const attention=xs.filter(x=>x.assessment.status!=='ON_TRACK').length;
-const pending=xs.reduce((n,x)=>n+x.evidence.filter(e=>e.review_status==='UNREVIEWED').length,0);
-const verified=xs.reduce((n,x)=>n+x.evidence.filter(e=>e.review_status==='VERIFIED').length,0);
-$('#metricCommitments').textContent=xs.length;
-$('#metricAttention').textContent=attention;
-$('#metricPending').textContent=pending;
-$('#metricVerified').textContent=verified;
+const $ = selector => document.querySelector(selector);
+const state = { commitments: [], patterns: [], record: null, ai: { configured: false } };
+let selected = null;
+let view = 'overview';
+let detailTab = 'decision';
+let detailToken = 0;
+let securityOpen = false;
+let loadError = '';
+const RANK = { DISCREPANCY: 0, OVERDUE: 1, REVIEW_REQUIRED: 2, AWAITING_EVIDENCE: 3, ON_TRACK: 4 };
+const TABS = ['decision', 'timeline', 'amendments', 'payments'];
+const BADGE = new Set(['AWAITING_EVIDENCE','DISCREPANCY','REVIEW_REQUIRED','OVERDUE','ON_TRACK','UNREVIEWED','VERIFIED','REJECTED','BLOCKED','AWAITING_HUMAN_APPROVAL','PROPOSED','APPROVED','EXECUTION_REPORTED','OUTCOME_VERIFIED','OUTCOME_FAILED','EARLY_SIGNAL','RECURRING_PATTERN']);
+const LABELS = {
+  AWAITING_EVIDENCE:'Awaiting evidence', DISCREPANCY:'Discrepancy', REVIEW_REQUIRED:'Review required', OVERDUE:'Overdue', ON_TRACK:'On track',
+  UNREVIEWED:'Unreviewed', VERIFIED:'Verified', REJECTED:'Rejected', BLOCKED:'Blocked', AWAITING_HUMAN_APPROVAL:'Awaiting approval',
+  PROPOSED:'Proposed', APPROVED:'Approved', EXECUTION_REPORTED:'Execution reported', OUTCOME_VERIFIED:'Outcome verified', OUTCOME_FAILED:'Outcome failed',
+  EARLY_SIGNAL:'Early signal', RECURRING_PATTERN:'Recurring pattern', REPEATED_SHORT_DELIVERY:'Repeated short delivery',
+  REPEATED_INVOICE_OVERCHARGE:'Repeated invoice overcharge', REPEATED_LATE_DELIVERY:'Repeated late delivery',
+  CONTACT_SUPPLIER:'Contact supplier', REQUEST_EVIDENCE:'Request evidence', HOLD_PAYMENT:'Hold payment', RECONCILE_DELIVERY:'Reconcile delivery', OTHER:'Other',
+  quantity_received:'Quantity received', invoice_amount:'Invoice amount', note:'Observation'
+};
+const VIEW_NAMES = { overview:'Overview', commitments:'Commitments', signals:'Supplier signals', new:'New commitment' };
+
+function esc(value){return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function ico(name, size=18){return `<svg class="ico" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${name}"/></svg>`;}
+function humanize(text){
+  return String(text ?? '')
+    .replace(/\b[A-Z][A-Z0-9_]{3,}\b/g, token => /^[A-Z]{3}$/.test(token) ? token : pretty(token))
+    .replace(/\b[a-z]+(?:_[a-z0-9]+)+\b/g, token => token.replaceAll('_', ' '))
+    .replace(/(\d+)\.0(?!\d)/g, '$1');
 }
-async function load(){let [xs,patterns]=await Promise.all([api('/api/commitments'),api('/api/patterns')]);updateMetrics(xs);$('#patterns').innerHTML=patterns.length?patterns.map(p=>'<div class="issue"><b>'+esc(p.supplier)+' · '+esc(p.pattern_type.replaceAll('_',' '))+'</b><br>'+p.occurrences+' verified incidents across '+p.observed_commitments+' observed commitments ('+Math.round(p.rate*100)+'%). <span class="badge">'+esc(p.confidence)+'</span><br><span class="small">'+esc(p.interpretation)+'</span></div>').join(''):'No repeated verified supplier signals yet.';$('#list').innerHTML=xs.length?xs.map(x=>{let c=x.commitment,a=x.assessment;return '<div class="item '+(selected===c.id?'active':'')+'" data-id="'+c.id+'"><div style="display:flex;justify-content:space-between"><b>'+esc(c.supplier)+'</b><span class="badge '+a.status+'">'+a.status.replace('_',' ')+'</span></div><div class="muted">'+esc(c.description)+' · '+cash(c.amount,c.currency)+'</div></div>'}).join(''):'No commitments yet. Create one to begin.';document.querySelectorAll('.item').forEach(el=>el.onclick=()=>show(el.dataset.id));if(selected&&xs.some(x=>x.commitment.id===selected))await showDetail(selected)}
-async function show(id){selected=id;await showDetail(id)}async function showDetail(id){
-let x=await api('/api/commitments/'+id),c=x.commitment,a=x.assessment,p=x.payment_policy,aiStatus=await api('/api/ai/status');
-const actionCards=x.actions.map(ac=>{
-let controls='';
-if(ac.status==='PROPOSED') controls='<button type="button" class="action-event" data-action-id="'+esc(ac.id)+'" data-event="APPROVED">Approve action</button><button type="button" class="action-event" data-action-id="'+esc(ac.id)+'" data-event="REJECTED" style="background:#9b4438">Reject action</button>';
-else if(ac.status==='APPROVED') controls='<button type="button" class="action-event" data-action-id="'+esc(ac.id)+'" data-event="EXECUTION_REPORTED">Report execution</button>';
-else if(ac.status==='EXECUTION_REPORTED') controls='<label>Verified outcome evidence</label><select data-action-evidence="'+esc(ac.id)+'"><option value="">Choose verified evidence</option>'+x.evidence.filter(ev=>ev.review_status==='VERIFIED').map(ev=>'<option value="'+esc(ev.id)+'">'+esc(ev.kind)+' · '+esc(ev.value??'')+' · '+esc(ev.id.slice(0,8))+'</option>').join('')+'</select><button type="button" class="action-event" data-action-id="'+esc(ac.id)+'" data-event="OUTCOME_VERIFIED">Verify outcome</button><button type="button" class="action-event" data-action-id="'+esc(ac.id)+'" data-event="OUTCOME_FAILED" style="background:#9b4438">Record failed outcome</button>';
-return '<div class="issue"><b>'+esc(ac.action_type.replaceAll('_',' '))+' · '+esc(ac.status.replaceAll('_',' '))+'</b><br>'+esc(ac.description)+'<br><span class="small">'+ac.events.map(ev=>esc(ev.event_type)+' by '+esc(ev.actor)+' · '+esc(ev.created_at)+(ev.note?' — '+esc(ev.note):'')).join('<br>')+'</span><br><input data-action-actor="'+esc(ac.id)+'" value="Business owner" placeholder="Actor name">'+controls+'</div>';
-}).join('');
-$('#detail').innerHTML=`
-<div style="display:flex;justify-content:space-between"><h2>Commitment review</h2><span class="badge ${a.status}">${a.status.replaceAll('_',' ')}</span></div>
-<p class="summary">${esc(a.summary)}</p><p class="small">${c.quantity} ${esc(c.unit)} agreed · ${cash(c.amount,c.currency)} · Due ${esc(c.due_date)}<br>Condition: ${esc(c.payment_condition)}</p>
-${a.issues.map(i=>'<div class="issue"><b>'+esc(i.code.replaceAll('_',' '))+'</b><br>'+esc(i.message)+(i.financial_exposure_estimate?'<br><b>Estimated exposure: '+cash(i.financial_exposure_estimate,i.currency||c.currency)+'</b>':'')+'</div>').join('')}
-<h3 style="font-size:14px">What should happen next</h3><ol class="actions">${a.next_actions.map(t=>'<li>'+esc(t)+'</li>').join('')}</ol>
-<div class="evidence"><h3 style="font-size:14px">Add evidence</h3><form id="evidenceForm">
-<label>Evidence type</label><select name="kind"><option value="quantity_received">Quantity received</option><option value="invoice_amount">Invoice amount</option><option value="note">Observation / note</option></select>
-<label>Value (quantity or invoice amount)</label><input name="value" type="number" step="any" placeholder="e.g. 80">
-<label>Evidence note / reference</label><input name="note" placeholder="Receiving note #DN-104">
-<label>Evidence source</label><input name="source" value="manual"><button>Save evidence & reassess</button></form>
-<p class="small">Evidence recorded: ${a.evidence_count}. New observations are appended; previous records are retained.</p>
-<h3 style="font-size:14px">Evidence history & review</h3>${x.evidence.length?x.evidence.map(ev=>'<div class="issue" style="background:#f8faf8;border-color:#dce6df"><b>'+esc(ev.kind.replaceAll('_',' '))+'</b> · '+esc(ev.value??'')+'<br><span class="small">Source: '+esc(ev.source)+' · '+esc(ev.created_at)+'<br>'+esc(ev.note)+'<br>Review: <b>'+esc(ev.review_status)+'</b>'+(ev.reviewer?' by '+esc(ev.reviewer):'')+(ev.review_note?' — '+esc(ev.review_note):'')+'</span>'+(ev.review_history&&ev.review_history.length?'<div class="small">Review log: '+ev.review_history.map(rv=>esc(rv.status)+' by '+esc(rv.reviewer)+' ('+esc(rv.created_at)+')'+(rv.note?' — '+esc(rv.note):'')).join(' · ')+'</div>':'')+'<br><input data-reviewer-for="'+esc(ev.id)+'" placeholder="Reviewer name" value="Business owner" style="margin-top:7px"><button type="button" class="review-evidence" data-id="'+esc(ev.id)+'" data-status="VERIFIED" style="margin:6px 4px 0 0">Verify</button><button type="button" class="review-evidence" data-id="'+esc(ev.id)+'" data-status="REJECTED" style="margin:6px 0 0;background:#9b4438">Reject</button></div>').join(''):'<p class="small">No evidence recorded yet.</p>'}<p class="small">Demo review labels are not authenticated signatures. Production use requires verified reviewer identity and source authenticity.</p>
-<h3 style="font-size:14px;margin-top:14px">Assessment history</h3>${x.assessment_history.length?x.assessment_history.map(h=>'<div class="small">'+esc(h.status.replaceAll('_',' '))+' · '+esc(h.created_at)+'</div>').join(''):'<p class="small">No saved assessments yet.</p>'}
-<h3 style="font-size:14px;margin-top:16px">Shared commitment timeline</h3><p class="small">One chronological record connecting agreement changes, evidence, reviews, assessments, payment proposals, actions and AI briefs.</p>
-${x.timeline.map(ev=>'<div class="small" style="padding:7px 0;border-bottom:1px solid #e7ece8"><b>'+esc(ev.title)+'</b><br>'+esc(ev.details)+'<br><span class="muted">'+esc(ev.created_at)+'</span></div>').join('')}
-</div>
-<div class="evidence"><h3 style="font-size:14px">Commitment amendments</h3><p class="small">Changes create a new version. Original terms and previous evidence remain preserved.</p>
-<form id="amendmentForm"><label>Reason for amendment (required)</label><input name="reason" required minlength="3" placeholder="Reason agreed by both parties">
-<div class="row"><div><label>New quantity (optional)</label><input name="quantity" type="number" min=".01" step="any" placeholder="${esc(c.quantity)}"></div><div><label>New amount (optional)</label><input name="amount" type="number" min=".01" step="any" placeholder="${esc(c.amount)}"></div></div>
-<div class="row"><div><label>New due date (optional)</label><input name="due_date" type="date"></div><div><label>New unit (optional)</label><input name="unit" placeholder="${esc(c.unit)}"></div></div>
-<label>New description (optional)</label><input name="description" placeholder="${esc(c.description)}">
-<label>New payment condition (optional)</label><input name="payment_condition" placeholder="${esc(c.payment_condition)}">
-<label>New currency (optional)</label><input name="currency" maxlength="8" placeholder="${esc(c.currency)}"><button>Record amendment</button></form>
-<h3 style="font-size:13px;margin-top:14px">Version history</h3>${x.commitment_versions.map(v=>{let t=JSON.parse(v.terms_json);return '<div class="small"><b>Version '+v.version+'</b> · '+esc(v.reason)+' · '+esc(v.created_at)+'<br>'+esc(t.quantity)+' '+esc(t.unit)+' · '+cash(t.amount,t.currency)+' · due '+esc(t.due_date)+'</div>'}).join('')}
-</div>
-<div class="evidence"><h3 style="font-size:14px">Owner payment policy</h3><p class="small">Simulation only. Policy starts disabled. Set an exact approved destination and spending cap.</p>
-<form id="policyForm"><label><input name="enabled" type="checkbox" ${p.enabled?'checked':''} style="width:auto"> Enable policy checks</label>
-<label>Maximum permitted amount</label><input name="max_amount" type="number" min=".01" step="any" value="${esc(p.max_amount)}" required>
-<label>Exact approved destination</label><input name="allowed_destination" value="${esc(p.allowed_destination)}" required>
-<label><input name="require_full_delivery" type="checkbox" ${p.require_full_delivery?'checked':''} style="width:auto"> Require full delivery evidence</label>
-<label><input name="require_invoice_match" type="checkbox" ${p.require_invoice_match?'checked':''} style="width:auto"> Require exact invoice match</label>
-<label><input name="require_verified_evidence" type="checkbox" ${p.require_verified_evidence?'checked':''} style="width:auto"> Require latest evidence to be reviewed and verified</label>
-<label><input name="allow_partial_payments" type="checkbox" ${p.allow_partial_payments?'checked':''} style="width:auto"> Allow partial payment proposals</label><button>Save payment policy</button></form>
-<h3 style="font-size:14px;margin-top:18px">Evaluate payment proposal</h3>
-<form id="proposalForm"><label>Proposed amount</label><input name="amount" type="number" min=".01" step="any" value="${esc(c.amount)}" required>
-<label>Currency</label><input name="currency" value="${esc(c.currency)}" required>
-<label>Destination</label><input name="destination" value="${esc(p.allowed_destination)}" required><button>Evaluate proposal — no transfer</button></form><div style="margin-top:12px;padding:13px;border:1px solid #f0d9d2;background:#fff8f5;border-radius:9px"><b style="font-size:12px;color:#8d4435">Security test · hostile agent request</b><p class="small" style="margin:5px 0 0">Simulate a prompt-injected agent trying to exceed the owner cap and pay an unapproved destination. The policy gate should block it before any signing or transfer.</p><button id="redTeamPaymentButton" type="button" style="background:#9c4d3d;box-shadow:none">Run adversarial payment test</button></div>
-<h3 style="font-size:14px;margin-top:16px">Proposal history</h3>
-${x.payment_proposals.length?x.payment_proposals.map(q=>'<div class="issue"><b>'+esc(q.status.replaceAll('_',' '))+'</b><br>'+esc(q.proposal.message)+'<br><span class="small">'+esc(q.created_at)+'</span>'+(q.proposal.reasons||[]).map(r=>'<br>'+esc(r.code)+': '+esc(r.message)).join('')+'</div>').join(''):'<p class="small">No payment proposals evaluated.</p>'}
-<p class="small">A passing proposal is not approval. No funds move; no wallet or blockchain transaction is connected.</p></div>
-<div class="evidence"><h3 style="font-size:14px">AI operational brief · NEAR AI Cloud</h3><p class="small">Optional reasoning through NEAR AI Cloud. Before a brief is shown, OUTCOME preflights an UpToDate Intel TDX quote (debug bit clear, signing address and nonce bound, MRCONFIGID and RTMR3 checked) and then checks the ECDSA signature over the exact response bytes. A provider-TEE signature also requires an NVIDIA NRAS verdict of true. A gateway signature is labelled separately and does not claim the model quote signed those bytes. Verification fails closed. Deterministic checks and human approval remain authoritative.</p><button id="aiBriefButton" type="button" ${aiStatus.configured?'':'disabled'}>${aiStatus.configured?'Generate AI brief':'Configure NEARAI_API_KEY to enable'}</button>${x.ai_brief_history.length?x.ai_brief_history.map(h=>'<div class="issue"><b>'+esc(h.brief.brief.summary)+'</b><br>'+esc(h.brief.brief.why_it_matters)+'<br><b>Recommended actions</b><ul>'+h.brief.brief.recommended_actions.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul><b>Uncertainties</b><ul>'+h.brief.brief.uncertainties.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul><b>Questions</b><ul>'+h.brief.brief.questions_for_owner.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul><span class="small">'+esc(h.provider)+' · '+esc(h.model)+' · '+esc(h.created_at)+' · verification '+esc(h.brief.attestation_status)+(h.brief.verification?' · '+esc(h.brief.verification.signature_kind||'unclassified')+' · TDX '+esc(h.brief.verification.tdx_status||'verified'):'')+'</span>'+(h.brief.verification&&h.brief.verification.limitations&&h.brief.verification.limitations.length?'<br><span class="small">'+h.brief.verification.limitations.map(t=>esc(t)).join(' ')+'</span>':'')+'</div>').join(''):'<p class="small">No AI brief generated yet.</p>'}</div>
-<div class="evidence"><h3 style="font-size:14px">Follow-through & outcome verification</h3><p class="small">Record an action, obtain owner approval, report what was done, then verify the outcome against reviewed evidence. OUTCOME does not perform the external action.</p>
-<form id="actionForm"><label>Action type</label><select name="action_type"><option value="CONTACT_SUPPLIER">Contact supplier</option><option value="REQUEST_EVIDENCE">Request evidence</option><option value="HOLD_PAYMENT">Hold payment</option><option value="RECONCILE_DELIVERY">Reconcile delivery</option><option value="OTHER">Other</option></select><label>Action description</label><input name="description" minlength="3" maxlength="1000" required placeholder="Ask supplier to reconcile the missing quantity"><button>Propose action</button></form>
-<h3 style="font-size:14px;margin-top:16px">Action history</h3>${actionCards||'<p class="small">No actions recorded yet.</p>'}
-<p class="small">Actor names are demo labels, not authenticated identities. Verified outcomes require evidence already marked VERIFIED.</p></div>`;
-$('#evidenceForm').onsubmit=async e=>{e.preventDefault();let f=new FormData(e.target),k=f.get('kind'),v=f.get('value');try{await api('/api/commitments/'+id+'/evidence',{method:'POST',body:JSON.stringify({kind:k,value:k==='note'||v===''?null:Number(v),note:f.get('note'),source:f.get('source')})});await load()}catch(err){alert(err.message)}};
-document.querySelectorAll('.review-evidence').forEach(btn=>btn.onclick=async()=>{const input=document.querySelector('[data-reviewer-for="'+btn.dataset.id+'"]');const reviewer=input?.value?.trim();if(!reviewer){alert('Enter the reviewer name first.');return}try{await api('/api/evidence/'+btn.dataset.id+'/reviews',{method:'POST',body:JSON.stringify({status:btn.dataset.status,reviewer,note:btn.dataset.status==='VERIFIED'?'Manually checked in demo interface':'Rejected during manual review'})});await showDetail(id)}catch(err){alert(err.message)}});
-$('#aiBriefButton').onclick=async()=>{try{await api('/api/commitments/'+id+'/ai-brief',{method:'POST'});await showDetail(id)}catch(err){alert(err.message)}};
-$('#actionForm').onsubmit=async e=>{e.preventDefault();let f=new FormData(e.target);try{await api('/api/commitments/'+id+'/actions',{method:'POST',body:JSON.stringify({action_type:f.get('action_type'),description:f.get('description')})});await showDetail(id)}catch(err){alert(err.message)}};
-document.querySelectorAll('.action-event').forEach(btn=>btn.onclick=async()=>{const aid=btn.dataset.actionId,actor=document.querySelector('[data-action-actor="'+aid+'"]')?.value?.trim();if(!actor){alert('Enter the actor name.');return}const body={event_type:btn.dataset.event,actor,note:'Recorded through the OUTCOME demo interface'};if(body.event_type==='OUTCOME_VERIFIED'){body.evidence_id=document.querySelector('[data-action-evidence="'+aid+'"]')?.value;if(!body.evidence_id){alert('Choose evidence already marked VERIFIED.');return}}try{await api('/api/actions/'+aid+'/events',{method:'POST',body:JSON.stringify(body)});await showDetail(id)}catch(err){alert(err.message)}});
-$('#amendmentForm').onsubmit=async e=>{e.preventDefault();let f=new FormData(e.target),body={reason:f.get('reason')};['quantity','amount'].forEach(k=>{if(f.get(k)!=='')body[k]=Number(f.get(k))});['due_date','unit','description','payment_condition','currency'].forEach(k=>{if(f.get(k)!=='')body[k]=f.get(k)});if(Object.keys(body).length===1){alert('Enter at least one changed term.');return}try{await api('/api/commitments/'+id+'/amendments',{method:'POST',body:JSON.stringify(body)});await load()}catch(err){alert(err.message)}};
-$('#policyForm').onsubmit=async e=>{e.preventDefault();let f=new FormData(e.target);try{await api('/api/commitments/'+id+'/payment-policy',{method:'PUT',body:JSON.stringify({enabled:f.has('enabled'),max_amount:Number(f.get('max_amount')),allowed_destination:f.get('allowed_destination'),require_full_delivery:f.has('require_full_delivery'),require_invoice_match:f.has('require_invoice_match'),require_verified_evidence:f.has('require_verified_evidence'),allow_partial_payments:f.has('allow_partial_payments')})});await showDetail(id)}catch(err){alert(err.message)}};
-$('#proposalForm').onsubmit=async e=>{e.preventDefault();let f=new FormData(e.target);try{await api('/api/commitments/'+id+'/payment-proposals',{method:'POST',body:JSON.stringify({amount:Number(f.get('amount')),currency:f.get('currency'),destination:f.get('destination')})});await showDetail(id)}catch(err){alert(err.message)}};
-$('#redTeamPaymentButton').onclick=async()=>{const hostileAmount=Math.max(Number(p.max_amount||0)+1,Number(c.amount)+1);try{const result=await api('/api/commitments/'+id+'/payment-proposals',{method:'POST',body:JSON.stringify({amount:hostileAmount,currency:c.currency,destination:'attacker-controlled.near'})});await showDetail(id);if(result.proposal.status!=='BLOCKED')alert('Security test did not block this request. Review the policy configuration before relying on the demo.')}catch(err){alert(err.message)}};
-document.querySelectorAll('.item').forEach(el=>el.classList.toggle('active',el.dataset.id===selected))
-}$('#demoSeed').onclick=async()=>{try{await api('/api/demo/seed',{method:'POST'});selected=null;await load()}catch(err){alert(err.message)}};
-$('#create').onsubmit=async e=>{e.preventDefault();let d=Object.fromEntries(new FormData(e.target));d.quantity=Number(d.quantity);d.amount=Number(d.amount);try{let x=await api('/api/commitments',{method:'POST',body:JSON.stringify(d)});selected=x.commitment.id;e.target.reset();await load()}catch(err){alert(err.message)}};load().catch(e=>$('#list').textContent=e.message);
-</script></body></html>
+function pretty(value){
+  const raw = String(value ?? '');
+  if (LABELS[raw]) return LABELS[raw];
+  if (!raw) return '';
+  return raw.replaceAll('_',' ').toLowerCase().replace(/\b\w/g, ch => ch.toUpperCase());
+}
+function badge(status){
+  const key = BADGE.has(status) ? status : 'neutral';
+  return `<span class="badge ${key}">${esc(pretty(status))}</span>`;
+}
+function cash(amount, currency){
+  const number = Number(amount);
+  const code = currency || '';
+  if (!Number.isFinite(number)) return code;
+  return `${code} ${number.toFixed(2)}`.trim();
+}
+function num(value){
+  const number = Number(value);
+  if (!Number.isFinite(number)) return String(value ?? '');
+  return new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 }).format(number);
+}
+function formatDate(value){
+  const raw = String(value ?? '').trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return raw;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (Number.isNaN(date.getTime())) return raw;
+  return new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' }).format(date);
+}
+function formatStamp(value){
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return formatDate(raw);
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  const day = new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' }).format(date);
+  const time = new Intl.DateTimeFormat('en-GB', { hour:'2-digit', minute:'2-digit', hourCycle:'h23', timeZone:'UTC' }).format(date);
+  return `${day} · ${time} UTC`;
+}
+function when(value){
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  return `<time datetime="${esc(raw)}" title="${esc(raw)}">${esc(formatStamp(raw))}</time>`;
+}
+function emptyBlock(icon, title, body, actions=''){
+  return `<div class="empty"><div class="empty-mark">${ico(icon)}</div><h3>${esc(title)}</h3><p>${esc(body)}</p>${actions ? `<div class="empty-actions">${actions}</div>` : ''}</div>`;
+}
+function errorMessage(data){
+  const detail = data && data.detail;
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (Array.isArray(detail)){
+    const parts = detail.map(item => typeof item === 'string' ? item : (item && item.msg) || '').filter(Boolean);
+    if (parts.length) return parts.join(' ');
+  }
+  return 'Request failed';
+}
+async function api(path, options={}){
+  let response;
+  try { response = await fetch(path, { headers:{'Content-Type':'application/json'}, ...options }); }
+  catch { throw Error('The workspace could not be reached.'); }
+  let data = null;
+  try { data = await response.json(); } catch { data = null; }
+  if (!response.ok) throw Error(errorMessage(data));
+  return data;
+}
+function toast(message, tone='ok'){
+  const region = $('#toasts');
+  const item = document.createElement('div');
+  item.className = `toast ${tone}`;
+  const text = document.createElement('p');
+  text.textContent = message;
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'toast-x';
+  close.setAttribute('aria-label', 'Dismiss notification');
+  close.innerHTML = ico('x', 16);
+  close.onclick = () => item.remove();
+  item.append(text, close);
+  region.append(item);
+  while (region.children.length > 3) region.firstElementChild.remove();
+  setTimeout(() => item.remove(), tone === 'error' || tone === 'warn' ? 6400 : 3800);
+}
+function setFieldError(input, message){
+  if (!input) return;
+  const slot = input.closest('.field') || input.parentElement;
+  let note = slot.querySelector(':scope > .field-error');
+  if (!message){
+    input.removeAttribute('aria-invalid');
+    note?.remove();
+    return;
+  }
+  input.setAttribute('aria-invalid', 'true');
+  if (!note){
+    note = document.createElement('p');
+    note.className = 'field-error';
+    note.setAttribute('role', 'alert');
+    input.insertAdjacentElement('afterend', note);
+  }
+  note.textContent = message;
+}
+async function withBusy(button, work){
+  if (button){
+    if (button.dataset.busy === '1') return;
+    button.dataset.busy = '1';
+    button.disabled = true;
+  }
+  try { await work(); }
+  finally {
+    if (button?.isConnected){
+      button.disabled = false;
+      delete button.dataset.busy;
+    }
+  }
+}
+function checked(flag){ return flag ? 'checked' : ''; }
+function commitmentButton(record){
+  const commitment = record.commitment;
+  const assessment = record.assessment;
+  const exposure = Number(assessment.financial_exposure) > 0 ? ` · ${cash(assessment.financial_exposure, assessment.currency)} exposure` : '';
+  return `<button type="button" class="item${selected===commitment.id ? ' active' : ''}" data-open="${esc(commitment.id)}" aria-pressed="${selected===commitment.id ? 'true' : 'false'}"><span class="item-top"><span class="item-title">${esc(commitment.supplier)}</span>${badge(assessment.status)}</span><span class="item-desc">${esc(commitment.description)}</span><span class="item-meta">${esc(cash(commitment.amount, commitment.currency))} · Due ${esc(formatDate(commitment.due_date))}${esc(exposure)}</span></button>`;
+}
+function patternCard(pattern){
+  return `<article class="signal-card"><div class="signal-card-top"><h3>${esc(pattern.supplier)}</h3>${badge(pattern.confidence)}</div><p class="signal-type">${esc(pretty(pattern.pattern_type))}</p><p class="signal-stat">${esc(pattern.occurrences)} verified incidents across ${esc(pattern.observed_commitments)} observed commitments (${Math.round(Number(pattern.rate) * 100)}%).</p><p class="signal-note">${esc(pattern.interpretation)}</p></article>`;
+}
+function updateMetrics(records){
+  const attention = records.filter(record => record.assessment.status !== 'ON_TRACK').length;
+  const pending = records.reduce((sum, record) => sum + record.evidence.filter(item => item.review_status === 'UNREVIEWED').length, 0);
+  const verified = records.reduce((sum, record) => sum + record.evidence.filter(item => item.review_status === 'VERIFIED').length, 0);
+  $('#metricCommitments').textContent = records.length;
+  $('#metricAttention').textContent = attention;
+  $('#metricPending').textContent = pending;
+  $('#metricVerified').textContent = verified;
+}
+function renderAttention(){
+  const host = $('#attention');
+  const title = $('#attention-title');
+  const note = $('#attention-note');
+  if (loadError && !state.commitments.length){
+    title.textContent = 'Workspace';
+    note.textContent = 'The latest records could not be loaded.';
+    host.innerHTML = emptyBlock('alert', 'Workspace unavailable', loadError);
+    return;
+  }
+  if (!state.commitments.length){
+    title.textContent = 'Commitments';
+    note.textContent = 'Nothing is recorded in this workspace yet.';
+    host.innerHTML = emptyBlock('box', 'No commitments yet', 'Record an agreement, or load the fictional demo to see a short delivery and a blocked payment.', '<a class="btn" href="#new-commitment">Record a commitment</a><button class="btn btn-ghost" type="button" data-demo-seed>Explore the live demo</button>');
+    return;
+  }
+  const needs = state.commitments.filter(record => record.assessment.status !== 'ON_TRACK')
+    .map((record, index) => ({ record, index }))
+    .sort((a, b) => (RANK[a.record.assessment.status] ?? 9) - (RANK[b.record.assessment.status] ?? 9) || a.index - b.index)
+    .map(item => item.record);
+  if (!needs.length){
+    title.textContent = 'Commitments';
+    note.textContent = 'Nothing needs attention right now.';
+    host.innerHTML = state.commitments.map(commitmentButton).join('');
+    return;
+  }
+  title.textContent = 'Needs attention';
+  note.textContent = 'Discrepancies, overdue commitments and missing evidence.';
+  host.innerHTML = needs.map(commitmentButton).join('');
+}
+function renderPatterns(){
+  const overview = $('#overview-patterns');
+  const full = $('#patterns');
+  if (loadError && !state.patterns.length && !state.commitments.length){
+    const block = emptyBlock('alert', 'Signals unavailable', loadError);
+    overview.innerHTML = block;
+    full.innerHTML = block;
+    return;
+  }
+  if (!state.patterns.length){
+    const block = emptyBlock('pulse', 'No repeated signals', 'Patterns appear after at least two verified incidents for the same supplier. They are review signals, not findings of misconduct.');
+    overview.innerHTML = block;
+    full.innerHTML = block;
+    return;
+  }
+  overview.innerHTML = `<div class="stack">${state.patterns.slice(0, 2).map(patternCard).join('')}</div>`;
+  full.innerHTML = `<div class="pattern-grid">${state.patterns.map(patternCard).join('')}</div>`;
+}
+function renderList(){
+  const host = $('#list');
+  const count = state.commitments.length;
+  $('#list-count').textContent = count ? `${count} recorded` : '';
+  if (loadError && !count){
+    host.innerHTML = emptyBlock('alert', 'Commitments unavailable', loadError);
+    return;
+  }
+  host.innerHTML = count
+    ? state.commitments.map(commitmentButton).join('')
+    : emptyBlock('box', 'No commitments yet', 'Record an agreement to begin the evidence trail.', '<a class="btn" href="#new-commitment">Record a commitment</a>');
+}
+function renderEmptyDetail(){
+  $('#detail').innerHTML = emptyBlock('list', 'Select a commitment', 'Open a record to review its status, evidence and the next decision.');
+  $('#commit-layout').classList.toggle('has-selection', false);
+}
+function applyHash(){
+  const raw = (location.hash || '#overview').slice(1);
+  if (raw === 'patterns-section') view = 'signals';
+  else if (raw === 'new-commitment') view = 'new';
+  else if (raw === 'commitments') view = 'commitments';
+  else view = 'overview';
+}
+function paint(){
+  const previous = paint.current;
+  document.querySelectorAll('[data-view]').forEach(section => { section.hidden = section.dataset.view !== view; });
+  document.querySelectorAll('.nav a').forEach(link => {
+    const active = link.dataset.view === view;
+    link.classList.toggle('active', active);
+    if (active) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+  $('#crumb-current').textContent = VIEW_NAMES[view] || 'Overview';
+  $('#overview')?.classList.toggle('is-working', state.commitments.length > 0);
+  $('#hero')?.classList.toggle('is-welcome', state.commitments.length === 0);
+  $('#commit-layout')?.classList.toggle('has-selection', Boolean(selected));
+  if (previous && previous !== view) window.scrollTo(0, 0);
+  paint.current = view;
+}
+function markActive(){
+  document.querySelectorAll('[data-open]').forEach(button => {
+    const active = button.dataset.open === selected;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  $('#commit-layout')?.classList.toggle('has-selection', Boolean(selected));
+}
+function listHtml(items){
+  const rows = (Array.isArray(items) ? items : []).filter(item => typeof item === 'string' && item);
+  if (!rows.length) return '';
+  return `<ul class="actions">${rows.map(item => `<li>${esc(item)}</li>`).join('')}</ul>`;
+}
+function renderBrief(entry){
+  const brief = entry.brief && entry.brief.brief ? entry.brief.brief : {};
+  const verification = entry.brief && entry.brief.verification;
+  const limitations = verification && Array.isArray(verification.limitations) ? verification.limitations : [];
+  const meta = [
+    entry.provider, entry.model, formatStamp(entry.created_at),
+    entry.brief && entry.brief.attestation_status ? `verification ${entry.brief.attestation_status}` : '',
+    verification ? (verification.signature_kind || 'unclassified') : '',
+    verification ? `TDX ${verification.tdx_status || 'verified'}` : ''
+  ].filter(Boolean).join(' · ');
+  return `<article class="record brief"><h3>${esc(brief.summary || 'Operational brief')}</h3><p>${esc(brief.why_it_matters || '')}</p><h4>Recommended actions</h4>${listHtml(brief.recommended_actions) || '<p class="meta">None recorded.</p>'}<h4>Uncertainties</h4>${listHtml(brief.uncertainties) || '<p class="meta">None recorded.</p>'}<h4>Questions for the owner</h4>${listHtml(brief.questions_for_owner) || '<p class="meta">None recorded.</p>'}${entry.brief && entry.brief.disclaimer ? `<p class="meta">${esc(entry.brief.disclaimer)}</p>` : ''}<p class="meta">${esc(meta)}</p>${limitations.length ? `<p class="meta">${limitations.map(item => esc(item)).join(' ')}</p>` : ''}</article>`;
+}
+function verificationNote(){
+  return `<details class="disclosure"><summary>How a brief is checked</summary><p>Before a brief is shown, OUTCOME preflights an UpToDate Intel TDX quote (debug bit clear, signing address and nonce bound, MRCONFIGID and RTMR3 checked) and then checks the ECDSA signature over the exact response bytes. A provider-TEE signature also requires an NVIDIA NRAS verdict of true. A gateway signature is labelled separately and does not claim the model quote signed those bytes. Verification fails closed. Deterministic checks and human approval remain authoritative.</p></details>`;
+}
+function renderAi(record){
+  const history = record.ai_brief_history || [];
+  if (!state.ai.configured){
+    const title = state.ai.unknown ? 'Brief status unavailable' : 'Brief unavailable';
+    const body = state.ai.unknown
+      ? 'OUTCOME could not check whether operational briefs are enabled. The assessment on this page still comes from deterministic checks.'
+      : 'An operational brief is not enabled in this workspace. The assessment on this page comes from OUTCOME’s own checks.';
+    return `<section class="rail-card quiet"><h3>Operational brief</h3>${emptyBlock('spark', title, body)}${verificationNote()}</section>`;
+  }
+  const historyHtml = history.length
+    ? `<div class="stack" style="margin-top:12px">${history.map(renderBrief).join('')}</div>`
+    : emptyBlock('spark', 'No brief yet', 'Generate an explanation of this commitment. The brief is advisory. Payment rules and a person’s approval stay in charge.');
+  return `<section class="rail-card"><h3>Operational brief</h3><p class="meta">NEAR AI Cloud can explain the evidence and list questions. It does not change the assessment or approve payment.</p><button id="aiBriefButton" class="btn" type="button">Generate AI brief</button>${historyHtml}${verificationNote()}</section>`;
+}
+function renderEvidence(record){
+  const items = record.evidence || [];
+  if (!items.length) return emptyBlock('file', 'No evidence yet', 'Record what arrived: a received quantity, an invoice amount, or a note. Earlier records stay in the history.');
+  return `<div class="stack">${items.map(item => {
+    const value = item.value == null || item.value === '' ? '' : `<div class="value">${esc(num(item.value))}</div>`;
+    const reviews = (item.review_history || []).map(review => `<li>${esc(pretty(review.status))} by ${esc(review.reviewer)} · ${when(review.created_at)}${review.note ? ` — ${esc(review.note)}` : ''}</li>`).join('');
+    return `<article class="record"><div class="record-top"><h3>${esc(pretty(item.kind))}</h3>${badge(item.review_status)}</div>${value}<p class="meta">Source ${esc(item.source)} · ${when(item.created_at)}</p>${item.note ? `<p>${esc(item.note)}</p>` : ''}${reviews ? `<ul class="log">${reviews}</ul>` : ''}<div class="field"><label for="reviewer-${esc(item.id)}">Reviewer</label><input id="reviewer-${esc(item.id)}" data-reviewer-for="${esc(item.id)}" value="Business owner" maxlength="120"></div><div class="btn-row"><button type="button" class="btn btn-sm review-evidence" data-id="${esc(item.id)}" data-status="VERIFIED">Verify</button><button type="button" class="btn btn-sm btn-danger review-evidence" data-id="${esc(item.id)}" data-status="REJECTED">Reject</button></div></article>`;
+  }).join('')}</div>`;
+}
+function renderActions(record){
+  const actions = record.actions || [];
+  const verified = (record.evidence || []).filter(item => item.review_status === 'VERIFIED');
+  const cards = actions.map(action => {
+    let controls = '';
+    if (action.status === 'PROPOSED') controls = `<div class="btn-row"><button type="button" class="btn btn-sm action-event" data-action-id="${esc(action.id)}" data-event="APPROVED">Approve action</button><button type="button" class="btn btn-sm btn-danger action-event" data-action-id="${esc(action.id)}" data-event="REJECTED">Reject action</button></div>`;
+    else if (action.status === 'APPROVED') controls = `<div class="btn-row"><button type="button" class="btn btn-sm action-event" data-action-id="${esc(action.id)}" data-event="EXECUTION_REPORTED">Report execution</button></div>`;
+    else if (action.status === 'EXECUTION_REPORTED') controls = `<div class="field"><label for="evidence-${esc(action.id)}">Verified outcome evidence</label><select id="evidence-${esc(action.id)}" data-action-evidence="${esc(action.id)}"><option value="">Choose verified evidence</option>${verified.map(item => `<option value="${esc(item.id)}">${esc(pretty(item.kind))} · ${esc(item.value ?? '')}</option>`).join('')}</select></div><div class="btn-row"><button type="button" class="btn btn-sm action-event" data-action-id="${esc(action.id)}" data-event="OUTCOME_VERIFIED">Verify outcome</button><button type="button" class="btn btn-sm btn-danger action-event" data-action-id="${esc(action.id)}" data-event="OUTCOME_FAILED">Record failed outcome</button></div>`;
+    const events = (action.events || []).map(event => `<li>${esc(pretty(event.event_type))} by ${esc(event.actor)} · ${when(event.created_at)}${event.note ? ` — ${esc(event.note)}` : ''}</li>`).join('');
+    return `<article class="record"><div class="record-top"><h3>${esc(pretty(action.action_type))}</h3>${badge(action.status)}</div><p>${esc(action.description)}</p>${events ? `<ul class="log">${events}</ul>` : ''}<div class="field"><label for="actor-${esc(action.id)}">Actor</label><input id="actor-${esc(action.id)}" data-action-actor="${esc(action.id)}" value="Business owner" maxlength="120"></div>${controls}</article>`;
+  }).join('');
+  return `<section class="rail-card"><h3>Follow-through</h3><p class="meta">Record an action, obtain approval, report what was done, then verify the outcome against reviewed evidence. OUTCOME does not perform the external action.</p>${cards ? `<div class="stack">${cards}</div>` : emptyBlock('check', 'No follow-through yet', 'Propose a human action. OUTCOME records the approval and the outcome. It does not contact the supplier or move money.')}<div class="inset"><h3 class="card-title">${actions.length ? 'Propose another action' : 'Propose an action'}</h3><form id="actionForm" autocomplete="off"><div class="field"><label for="action_type">Action type</label><select id="action_type" name="action_type"><option value="CONTACT_SUPPLIER">Contact supplier</option><option value="REQUEST_EVIDENCE">Request evidence</option><option value="HOLD_PAYMENT">Hold payment</option><option value="RECONCILE_DELIVERY">Reconcile delivery</option><option value="OTHER">Other</option></select></div><div class="field"><label for="action_description">Action description</label><input id="action_description" name="description" minlength="3" maxlength="1000" required placeholder="Ask supplier to reconcile the missing quantity"></div><button class="btn" type="submit">Propose action</button></form></div><p class="meta">Actor names are demo labels, not authenticated identities. Verified outcomes require evidence already marked verified.</p></section>`;
+}
+function renderDecision(record){
+  const assessment = record.assessment;
+  const issues = (assessment.issues || []).map(issue => `<article class="issue"><h3>${esc(pretty(issue.code))}</h3><p>${esc(issue.message)}</p>${issue.financial_exposure_estimate ? `<p class="exposure">Estimated exposure ${esc(cash(issue.financial_exposure_estimate, issue.currency || record.commitment.currency))}</p>` : ''}</article>`).join('');
+  return `<div class="decision-grid"><div><p class="summary">${esc(assessment.summary)}</p>${issues ? `<div class="stack">${issues}</div>` : '<p class="quiet-line">No discrepancy is flagged on the latest evidence. This is not payment authorization.</p>'}<h3 class="subhead">Evidence</h3><p class="meta">${esc(assessment.evidence_count)} recorded. New observations are appended. Previous records are retained.</p>${renderEvidence(record)}<div class="inset"><h3 class="card-title">Add evidence</h3><form id="evidenceForm" autocomplete="off"><div class="field"><label for="evidence_kind">Evidence type</label><select id="evidence_kind" name="kind"><option value="quantity_received">Quantity received</option><option value="invoice_amount">Invoice amount</option><option value="note">Observation / note</option></select></div><div class="field"><label for="evidence_value">Value</label><input id="evidence_value" name="value" type="number" step="any" min="0" placeholder="e.g. 80"></div><div class="field"><label for="evidence_note">Evidence note</label><input id="evidence_note" name="note" maxlength="1000" placeholder="Receiving note #DN-104"></div><div class="field"><label for="evidence_source">Evidence source</label><input id="evidence_source" name="source" value="manual" maxlength="100"></div><button class="btn" type="submit">Save evidence and reassess</button></form></div><p class="meta">Demo review labels are not authenticated signatures. Production use requires verified reviewer identity and source authenticity.</p></div><div><section class="rail-card"><h3>What should happen next</h3><ol class="actions">${(assessment.next_actions || []).map(item => `<li>${esc(item)}</li>`).join('')}</ol></section>${renderAi(record)}${renderActions(record)}</div></div>`;
+}
+function renderTimeline(record){
+  const events = record.timeline || [];
+  const history = record.assessment_history || [];
+  const timeline = events.length
+    ? `<ol class="timeline">${events.map(event => `<li><div class="tl-title">${esc(humanize(event.title))}</div><div class="tl-detail">${esc(humanize(event.details))}</div>${when(event.created_at)}</li>`).join('')}</ol>`
+    : emptyBlock('clock', 'No timeline yet', 'Agreement changes, evidence, reviews and decisions will appear here in order.');
+  const assessments = history.length
+    ? history.map(item => `<article class="version"><b>${esc(pretty(item.status))}</b><div class="meta">${when(item.created_at)}</div><p class="meta">${esc(item.assessment && item.assessment.summary || '')}</p></article>`).join('')
+    : '<p class="meta">No saved assessments yet.</p>';
+  return `<h3 class="card-title">Shared commitment timeline</h3><p class="meta">One chronological record connecting agreement changes, evidence, reviews, assessments, payment proposals, actions and operational briefs.</p>${timeline}<h3 class="subhead">Assessment history</h3>${assessments}`;
+}
+function renderAmendments(record){
+  const commitment = record.commitment;
+  const versions = (record.commitment_versions || []).map(version => {
+    let terms = {};
+    try { terms = JSON.parse(version.terms_json); } catch { terms = {}; }
+    return `<article class="version"><b>Version ${esc(version.version)}</b> · ${esc(version.reason)}<div class="meta">${when(version.created_at)}</div><p class="meta">${esc(num(terms.quantity))} ${esc(terms.unit || '')} · ${esc(cash(terms.amount, terms.currency))} · due ${esc(formatDate(terms.due_date))}</p></article>`;
+  }).join('');
+  return `<h3 class="card-title">Amendments</h3><p class="meta">Changes create a new version. Original terms and previous evidence remain preserved.</p><form id="amendmentForm" autocomplete="off"><div class="field"><label for="amend_reason">Reason for amendment</label><input id="amend_reason" name="reason" required minlength="3" maxlength="500" placeholder="Reason agreed by both parties"></div><div class="row"><div class="field"><label for="amend_quantity">New quantity</label><input id="amend_quantity" name="quantity" type="number" min=".01" step="any" placeholder="${esc(commitment.quantity)}"></div><div class="field"><label for="amend_amount">New amount</label><input id="amend_amount" name="amount" type="number" min=".01" step="any" placeholder="${esc(commitment.amount)}"></div></div><div class="row"><div class="field"><label for="amend_due">New due date</label><input id="amend_due" name="due_date" type="date"></div><div class="field"><label for="amend_unit">New unit</label><input id="amend_unit" name="unit" maxlength="40" placeholder="${esc(commitment.unit)}"></div></div><div class="field"><label for="amend_description">New description</label><input id="amend_description" name="description" maxlength="500" placeholder="${esc(commitment.description)}"></div><div class="field"><label for="amend_condition">New payment condition</label><input id="amend_condition" name="payment_condition" maxlength="300" placeholder="${esc(commitment.payment_condition)}"></div><div class="field"><label for="amend_currency">New currency</label><input id="amend_currency" name="currency" minlength="3" maxlength="8" placeholder="${esc(commitment.currency)}"></div><button class="btn" type="submit">Record amendment</button></form><h3 class="subhead">Version history</h3>${versions || '<p class="meta">No versions recorded.</p>'}`;
+}
+function renderPayments(record){
+  const commitment = record.commitment;
+  const policy = record.payment_policy;
+  const proposals = record.payment_proposals || [];
+  const history = proposals.length
+    ? `<div class="stack">${proposals.map(item => `<article class="record"><div class="record-top"><h3>${esc(cash(item.proposal.requested_amount, item.proposal.currency))}</h3>${badge(item.status)}</div><p>${esc(item.proposal.message || '')}</p><p class="meta">${esc(item.proposal.destination || '')} · ${when(item.created_at)}</p>${(item.proposal.reasons || []).length ? `<ul class="log">${item.proposal.reasons.map(reason => `<li><b>${esc(pretty(reason.code))}</b> — ${esc(reason.message)}</li>`).join('')}</ul>` : ''}</article>`).join('')}</div>`
+    : emptyBlock('shield', 'No proposals yet', 'Evaluate a payment against the owner policy. A passing result still needs a person. Nothing is transferred.');
+  return `<h3 class="card-title">Payment protection</h3><p class="meta">Simulation only. The policy starts disabled. Set an exact approved destination and a spending cap. OUTCOME never approves, signs or submits a transfer.</p><form id="policyForm" autocomplete="off"><label class="check"><input name="enabled" type="checkbox" ${checked(policy.enabled)}> Enable policy checks</label><div class="field"><label for="max_amount">Maximum permitted amount</label><input id="max_amount" name="max_amount" type="number" min=".01" step="any" value="${esc(policy.max_amount)}" required></div><div class="field"><label for="allowed_destination">Exact approved destination</label><input id="allowed_destination" name="allowed_destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><label class="check"><input name="require_full_delivery" type="checkbox" ${checked(policy.require_full_delivery)}> Require full delivery evidence</label><label class="check"><input name="require_invoice_match" type="checkbox" ${checked(policy.require_invoice_match)}> Require exact invoice match</label><label class="check"><input name="require_verified_evidence" type="checkbox" ${checked(policy.require_verified_evidence)}> Require latest evidence to be reviewed and verified</label><label class="check"><input name="allow_partial_payments" type="checkbox" ${checked(policy.allow_partial_payments)}> Allow partial payment proposals</label><button class="btn" type="submit">Save payment policy</button></form><h3 class="subhead">Evaluate a proposal</h3><form id="proposalForm" autocomplete="off"><div class="row"><div class="field"><label for="proposal_amount">Proposed amount</label><input id="proposal_amount" name="amount" type="number" min=".01" step="any" value="${esc(commitment.amount)}" required></div><div class="field"><label for="proposal_currency">Currency</label><input id="proposal_currency" name="currency" value="${esc(commitment.currency)}" required minlength="3" maxlength="8"></div></div><div class="field"><label for="proposal_destination">Destination</label><input id="proposal_destination" name="destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><button class="btn" type="submit">Evaluate proposal — no transfer</button></form><details id="security-test" class="disclosure"${securityOpen ? ' open' : ''}><summary>Adversarial payment test</summary><p>Simulate a prompt-injected agent trying to exceed the owner cap and pay an unapproved destination. The policy gate should block it before any signing or transfer.</p><button id="redTeamPaymentButton" class="btn btn-danger-solid" type="button">Run adversarial payment test</button></details><h3 class="subhead">Proposal history</h3>${history}<p class="meta check-note">A passing proposal is not approval. No funds move. No wallet or blockchain transaction is connected.</p>`;
+}
+function renderDetail(){
+  const record = state.record;
+  if (!record){ renderEmptyDetail(); return; }
+  const commitment = record.commitment;
+  const assessment = record.assessment;
+  const proposals = record.payment_proposals || [];
+  const latest = proposals[proposals.length - 1];
+  const tab = TABS.includes(detailTab) ? detailTab : 'decision';
+  detailTab = tab;
+  const panel = tab === 'timeline' ? renderTimeline(record) : tab === 'amendments' ? renderAmendments(record) : tab === 'payments' ? renderPayments(record) : renderDecision(record);
+  $('#detail').innerHTML = `<button type="button" class="btn btn-ghost btn-sm back-mobile" id="backToList">${ico('arrow', 16)} Back to commitments</button><div class="detail-top"><div><p class="kicker">Commitment</p><h2 id="detail-title" tabindex="-1">${esc(commitment.supplier)}</h2><p class="lede">${esc(commitment.description)}</p></div><div>${badge(assessment.status)}</div></div><dl class="facts"><div><dt>Quantity</dt><dd>${esc(num(commitment.quantity))} ${esc(commitment.unit)}</dd></div><div><dt>Amount</dt><dd>${esc(cash(commitment.amount, commitment.currency))}</dd></div><div><dt>Due</dt><dd>${esc(formatDate(commitment.due_date))}</dd></div><div><dt>Condition</dt><dd>${esc(commitment.payment_condition)}</dd></div></dl>${latest ? `<button type="button" class="jump" data-goto-tab="payments">Latest payment proposal ${badge(latest.status)}</button>` : ''}<div class="tabs" role="tablist" aria-label="Commitment sections">${TABS.map(name => `<button type="button" role="tab" id="tab-${name}" data-tab="${name}" aria-controls="commitment-panel" aria-selected="${name===tab ? 'true' : 'false'}" tabindex="${name===tab ? '0' : '-1'}">${name === 'decision' ? 'Decision' : name === 'timeline' ? 'Timeline' : name === 'amendments' ? 'Amendments' : 'Payments'}</button>`).join('')}</div><div id="commitment-panel" role="tabpanel" aria-labelledby="tab-${tab}">${panel}</div>`;
+  syncEvidenceValue();
+  $('#commit-layout')?.classList.toggle('has-selection', true);
+}
+function syncEvidenceValue(){
+  const form = $('#evidenceForm');
+  if (!form) return;
+  const isNote = form.elements.kind.value === 'note';
+  form.elements.value.disabled = isNote;
+  form.elements.value.required = !isNote;
+  form.elements.value.placeholder = isNote ? 'Not used for a note' : 'e.g. 80';
+}
+function activateTab(name, focus){
+  if (!TABS.includes(name) || !state.record) return;
+  detailTab = name;
+  renderDetail();
+  if (focus !== false) document.querySelector(`[role="tab"][data-tab="${name}"]`)?.focus();
+}
+async function showDetail(id, options={}){
+  const token = ++detailToken;
+  if (!state.record || state.record.commitment.id !== id){
+    $('#detail').innerHTML = emptyBlock('clock', 'Opening commitment', 'Loading status, evidence and the next decision.');
+    $('#commit-layout')?.classList.add('has-selection');
+  }
+  try {
+    const record = await api('/api/commitments/' + encodeURIComponent(id));
+    let ai = { configured:false, unknown:true };
+    try { ai = await api('/api/ai/status'); } catch { ai = { configured:false, unknown:true }; }
+    if (token !== detailToken || selected !== id) return;
+    state.record = record;
+    state.ai = ai;
+    renderDetail();
+    if (options.focus) $('#detail-title')?.focus();
+  } catch (error) {
+    if (token !== detailToken || selected !== id) return;
+    toast(error.message, 'error');
+    $('#detail').innerHTML = emptyBlock('alert', 'Could not open this commitment', error.message);
+  }
+}
+async function openCommitment(id){
+  if (!id) return;
+  if (selected !== id) detailTab = 'decision';
+  const focus = selected !== id || view !== 'commitments';
+  selected = id;
+  if (location.hash !== '#commitments') location.hash = '#commitments';
+  applyHash();
+  paint();
+  markActive();
+  await showDetail(id, { focus });
+}
+async function load(){
+  loadError = '';
+  const [commitments, patterns] = await Promise.all([api('/api/commitments'), api('/api/patterns')]);
+  state.commitments = commitments;
+  state.patterns = patterns;
+  updateMetrics(commitments);
+  renderAttention();
+  renderPatterns();
+  renderList();
+  if (selected && commitments.some(record => record.commitment.id === selected)) await showDetail(selected);
+  else {
+    selected = null;
+    state.record = null;
+    renderEmptyDetail();
+  }
+  paint();
+}
+async function seedDemo(button){
+  await withBusy(button, async () => {
+    try {
+      await api('/api/demo/seed', { method:'POST' });
+      selected = null;
+      state.record = null;
+      detailTab = 'decision';
+      await load();
+      if (location.hash !== '#overview') location.hash = '#overview';
+      applyHash();
+      paint();
+      toast('Demo loaded. Two fictional supplier commitments are ready.', 'ok');
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function createCommitment(form){
+  const button = form.querySelector('[type="submit"]');
+  await withBusy(button, async () => {
+    const data = Object.fromEntries(new FormData(form));
+    data.quantity = Number(data.quantity);
+    data.amount = Number(data.amount);
+    try {
+      const created = await api('/api/commitments', { method:'POST', body:JSON.stringify(data) });
+      form.reset();
+      detailTab = 'decision';
+      selected = created.commitment.id;
+      await load();
+      if (location.hash !== '#commitments') location.hash = '#commitments';
+      applyHash();
+      paint();
+      toast('Commitment recorded.', 'ok');
+      $('#detail-title')?.focus();
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function saveEvidence(form){
+  const id = state.record?.commitment.id;
+  if (!id) return;
+  const data = new FormData(form);
+  const kind = data.get('kind');
+  const raw = data.get('value');
+  if (kind !== 'note' && (raw == null || raw === '' || Number.isNaN(Number(raw)))){
+    setFieldError(form.elements.value, 'Enter a quantity or invoice amount for this evidence.');
+    form.elements.value.focus();
+    return;
+  }
+  const button = form.querySelector('[type="submit"]');
+  await withBusy(button, async () => {
+    try {
+      await api('/api/commitments/' + encodeURIComponent(id) + '/evidence', { method:'POST', body:JSON.stringify({ kind, value: kind === 'note' || raw == null || raw === '' ? null : Number(raw), note: data.get('note') || '', source: data.get('source') || 'manual' }) });
+      toast('Evidence saved. The commitment was reassessed.', 'ok');
+      await load();
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function reviewEvidence(button){
+  const id = state.record?.commitment.id;
+  const evidenceId = button.dataset.id;
+  const input = document.querySelector(`[data-reviewer-for="${CSS.escape(evidenceId)}"]`);
+  const reviewer = input?.value?.trim();
+  if (!reviewer){ setFieldError(input, 'Enter the reviewer name first.'); input?.focus(); return; }
+  await withBusy(button, async () => {
+    try {
+      await api('/api/evidence/' + encodeURIComponent(evidenceId) + '/reviews', { method:'POST', body:JSON.stringify({ status: button.dataset.status, reviewer, note: button.dataset.status === 'VERIFIED' ? 'Manually checked in demo interface' : 'Rejected during manual review' }) });
+      toast(button.dataset.status === 'VERIFIED' ? 'Evidence marked verified.' : 'Evidence marked rejected.', 'ok');
+      if (selected === id) await load();
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function saveAmendment(form){
+  const id = state.record?.commitment.id;
+  if (!id) return;
+  const data = new FormData(form);
+  const body = { reason: data.get('reason') };
+  ['quantity','amount'].forEach(key => { if (data.get(key) !== '') body[key] = Number(data.get(key)); });
+  ['due_date','unit','description','payment_condition','currency'].forEach(key => { if (data.get(key) !== '') body[key] = data.get(key); });
+  if (Object.keys(body).length === 1){ setFieldError(form.elements.reason, 'Enter at least one changed term.'); return; }
+  const button = form.querySelector('[type="submit"]');
+  await withBusy(button, async () => {
+    try {
+      await api('/api/commitments/' + encodeURIComponent(id) + '/amendments', { method:'POST', body:JSON.stringify(body) });
+      toast('Amendment recorded as a new version.', 'ok');
+      await load();
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function savePolicy(form){
+  const id = state.record?.commitment.id;
+  if (!id) return;
+  const data = new FormData(form);
+  const button = form.querySelector('[type="submit"]');
+  await withBusy(button, async () => {
+    try {
+      await api('/api/commitments/' + encodeURIComponent(id) + '/payment-policy', { method:'PUT', body:JSON.stringify({ enabled: data.has('enabled'), max_amount: Number(data.get('max_amount')), allowed_destination: data.get('allowed_destination'), require_full_delivery: data.has('require_full_delivery'), require_invoice_match: data.has('require_invoice_match'), require_verified_evidence: data.has('require_verified_evidence'), allow_partial_payments: data.has('allow_partial_payments') }) });
+      toast('Payment policy saved. No transfer was enabled.', 'ok');
+      await showDetail(id);
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function saveProposal(form){
+  const id = state.record?.commitment.id;
+  if (!id) return;
+  const data = new FormData(form);
+  const button = form.querySelector('[type="submit"]');
+  await withBusy(button, async () => {
+    try {
+      const result = await api('/api/commitments/' + encodeURIComponent(id) + '/payment-proposals', { method:'POST', body:JSON.stringify({ amount: Number(data.get('amount')), currency: data.get('currency'), destination: data.get('destination') }) });
+      toast(`${pretty(result.proposal.status)}. No funds moved.`, result.proposal.status === 'BLOCKED' ? 'warn' : 'ok');
+      await showDetail(id);
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function runSecurityTest(button){
+  const record = state.record;
+  if (!record) return;
+  const id = record.commitment.id;
+  const policy = record.payment_policy;
+  const commitment = record.commitment;
+  await withBusy(button, async () => {
+    const hostileAmount = Math.max(Number(policy.max_amount || 0) + 1, Number(commitment.amount) + 1);
+    try {
+      const result = await api('/api/commitments/' + encodeURIComponent(id) + '/payment-proposals', { method:'POST', body:JSON.stringify({ amount: hostileAmount, currency: commitment.currency, destination: 'attacker-controlled.near' }) });
+      securityOpen = true;
+      await showDetail(id);
+      if (result.proposal.status !== 'BLOCKED') toast('Security test did not block this request. Review the policy before relying on the demo.', 'warn');
+      else toast('Adversarial payment was blocked. No transfer was attempted.', 'ok');
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function saveAction(form){
+  const id = state.record?.commitment.id;
+  if (!id) return;
+  const data = new FormData(form);
+  const button = form.querySelector('[type="submit"]');
+  await withBusy(button, async () => {
+    try {
+      await api('/api/commitments/' + encodeURIComponent(id) + '/actions', { method:'POST', body:JSON.stringify({ action_type: data.get('action_type'), description: data.get('description') }) });
+      toast('Action proposed. It still needs a person’s decision.', 'ok');
+      await showDetail(id);
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function recordActionEvent(button){
+  const id = state.record?.commitment.id;
+  const actionId = button.dataset.actionId;
+  const actorInput = document.querySelector(`[data-action-actor="${CSS.escape(actionId)}"]`);
+  const actor = actorInput?.value?.trim();
+  if (!actor){ setFieldError(actorInput, 'Enter the actor name.'); actorInput?.focus(); return; }
+  const body = { event_type: button.dataset.event, actor, note: 'Recorded through the OUTCOME demo interface' };
+  if (body.event_type === 'OUTCOME_VERIFIED'){
+    const select = document.querySelector(`[data-action-evidence="${CSS.escape(actionId)}"]`);
+    body.evidence_id = select?.value;
+    if (!body.evidence_id){ setFieldError(select, 'Choose evidence already marked verified.'); select?.focus(); return; }
+  }
+  await withBusy(button, async () => {
+    try {
+      await api('/api/actions/' + encodeURIComponent(actionId) + '/events', { method:'POST', body:JSON.stringify(body) });
+      toast('Follow-through updated.', 'ok');
+      if (selected === id) await showDetail(id);
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+function hit(event, selector){
+  const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+  for (const node of path){
+    if (node instanceof Element && node.matches(selector)) return node;
+  }
+  const target = event.target;
+  return target instanceof Element ? target.closest(selector) : null;
+}
+document.addEventListener('click', event => {
+  const opener = hit(event, '[data-open]');
+  if (opener){ openCommitment(opener.dataset.open); return; }
+  const demo = hit(event, '[data-demo-seed]');
+  if (demo){ seedDemo(demo); return; }
+  if (!hit(event, '#detail')) return;
+  if (hit(event, '#backToList')){ selected = null; state.record = null; renderEmptyDetail(); markActive(); return; }
+  const tab = hit(event, '[role="tab"]');
+  if (tab){ activateTab(tab.dataset.tab); return; }
+  const jump = hit(event, '[data-goto-tab]');
+  if (jump){ activateTab(jump.dataset.gotoTab, false); return; }
+  const review = hit(event, '.review-evidence');
+  if (review){ reviewEvidence(review); return; }
+  const action = hit(event, '.action-event');
+  if (action){ recordActionEvent(action); return; }
+  const brief = hit(event, '#aiBriefButton');
+  if (brief){
+    const id = state.record?.commitment.id;
+    if (!id) return;
+    withBusy(brief, async () => {
+      try { await api('/api/commitments/' + encodeURIComponent(id) + '/ai-brief', { method:'POST' }); toast('Operational brief added.', 'ok'); await showDetail(id); }
+      catch (error) { toast(error.message, 'error'); }
+    });
+    return;
+  }
+  const redTeam = hit(event, '#redTeamPaymentButton');
+  if (redTeam) runSecurityTest(redTeam);
+});
+document.addEventListener('submit', event => {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement)) return;
+  if (!['create','evidenceForm','amendmentForm','policyForm','proposalForm','actionForm'].includes(form.id)) return;
+  event.preventDefault();
+  if (form.id === 'create') createCommitment(form);
+  else if (form.id === 'evidenceForm') saveEvidence(form);
+  else if (form.id === 'amendmentForm') saveAmendment(form);
+  else if (form.id === 'policyForm') savePolicy(form);
+  else if (form.id === 'proposalForm') saveProposal(form);
+  else saveAction(form);
+});
+document.addEventListener('keydown', event => {
+  const tab = event.target.closest?.('[role="tab"]');
+  if (!tab || !tab.closest('#detail')) return;
+  const index = TABS.indexOf(tab.dataset.tab);
+  if (index < 0) return;
+  let next = null;
+  if (event.key === 'ArrowRight') next = TABS[(index + 1) % TABS.length];
+  else if (event.key === 'ArrowLeft') next = TABS[(index - 1 + TABS.length) % TABS.length];
+  else if (event.key === 'Home') next = TABS[0];
+  else if (event.key === 'End') next = TABS[TABS.length - 1];
+  else return;
+  event.preventDefault();
+  activateTab(next);
+});
+document.addEventListener('input', event => {
+  if (event.target.matches?.('input, select, textarea')) setFieldError(event.target, '');
+});
+document.addEventListener('change', event => {
+  if (event.target?.form?.id === 'evidenceForm' && event.target.name === 'kind') syncEvidenceValue();
+});
+$('#detail').addEventListener('toggle', event => {
+  if (event.target.id === 'security-test') securityOpen = event.target.open;
+}, true);
+window.addEventListener('hashchange', () => { applyHash(); paint(); });
+applyHash();
+paint();
+$('#attention').innerHTML = emptyBlock('clock', 'Loading the workspace', 'Fetching commitments, evidence and signals.');
+$('#list').innerHTML = emptyBlock('clock', 'Loading commitments', 'Fetching the shared records.');
+load().catch(error => {
+  loadError = error.message || 'Could not load the workspace.';
+  toast(loadError, 'error');
+  renderAttention();
+  renderList();
+  renderPatterns();
+});
+</script>
+</body>
+</html>
