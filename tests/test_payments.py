@@ -4,8 +4,8 @@ from app.payments import evaluate_payment_proposal
 def base():
     commitment = {"quantity": 100, "amount": 500, "currency": "USD"}
     evidence = [
-        {"kind": "quantity_received", "value": 100},
-        {"kind": "invoice_amount", "value": 500},
+        {"kind": "quantity_received", "value": 100, "review_status": "VERIFIED"},
+        {"kind": "invoice_amount", "value": 500, "review_status": "VERIFIED"},
     ]
     policy = {
         "enabled": True,
