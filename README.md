@@ -2,7 +2,7 @@
 
 An operations intelligence agent for commitments, evidence and follow-through.
 
-The first workflow protects supplier payments by comparing what was agreed with what the evidence shows. OUTCOME also surfaces repeated supplier patterns only when at least two latest evidence records are verified; it labels small samples as early signals and never infers fraud or intent. It now includes versioned amendments, append-only evidence reviews, owner-defined payment policies and a simulated proposal workflow. The latest applicable evidence must be marked verified before a proposal can pass; a passing proposal still requires human approval.
+The first workflow protects supplier payments by comparing what was agreed with what the evidence shows. OUTCOME also surfaces repeated supplier patterns only when at least two latest evidence records are verified; it labels small samples as early signals and never infers fraud or intent. Follow-through actions have an approval, execution-report and evidence-backed outcome lifecycle; OUTCOME records these steps but does not perform external actions. It now includes versioned amendments, append-only evidence reviews, owner-defined payment policies and a simulated proposal workflow. The latest applicable evidence must be marked verified before a proposal can pass; a passing proposal still requires human approval.
 
 ## First demo
 
@@ -33,6 +33,10 @@ Open http://127.0.0.1:8000. API docs: /docs.
 ## Safety boundary
 
 This MVP is decision support. It does not custody funds, approve invoices or submit blockchain transactions. The NEAR Intents Agent API is currently documented as an experimental, mainnet-only beta; its quickstart warns that real assets are at risk and no testnet is available. We will not connect a live wallet or move real funds in this demo. See the [official overview](https://docs.agentsonintents.com/integration/agent-api/overview) and [quickstart](https://docs.agentsonintents.com/integration/agent-api/quickstart/introduction).
+
+## Action and outcome tracking
+
+Propose an action against a commitment, record owner approval or rejection, report what was done, and verify the result against evidence already marked `VERIFIED`. Invalid state transitions are rejected. This tracks human follow-through; it does not execute email, calls, supplier contact or payments.
 
 ## Payment policy simulation
 
