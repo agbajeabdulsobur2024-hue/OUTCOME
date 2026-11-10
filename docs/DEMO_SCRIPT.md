@@ -30,10 +30,15 @@ In the action panel:
 
 The action lifecycle records approval, execution report and evidence-backed outcome verification. OUTCOME does not send the email or make the phone call.
 
-## 4. Reassess payment (30 seconds)
+## 4. Demonstrate the security boundary (30 seconds)
+In the payment protection panel, run **Run adversarial payment test**. This simulates a prompt-injected agent trying to send more than the owner-defined cap to `attacker-controlled.near`. OUTCOME records the proposal as BLOCKED with spending-limit and destination violations. No signing key is available to the application and no transaction is attempted.
+
+This is an application-level policy-gate demonstration, not a live NEAR wallet or function-call-key enforcement demo.
+
+## 5. Reassess payment (30 seconds)
 Submit the payment proposal again. With the latest delivery evidence verified, invoice evidence verified, exact destination matched and policy cap respected, the proposal becomes AWAITING_HUMAN_APPROVAL.
 
 Emphasize the boundary: this is not payment approval, no wallet is connected, no transaction is submitted and no money moves.
 
-## 5. Close (15 seconds)
+## 6. Close (15 seconds)
 OUTCOME connects what was agreed, what happened, what evidence supports it, what action was taken and whether the intended result was verified. The shared commitment record keeps that history together.
