@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from app import ai
+from app.near_verification import VerificationError
 
 
 def sample_record():
@@ -72,7 +73,19 @@ def test_ai_brief_rejects_malformed_model_output(monkeypatch):
     monkeypatch.setenv("NEARAI_API_KEY", "test-key")
     monkeypatch.setattr(ai.httpx, "post", lambda *args, **kwargs: httpx.Response(
         200, request=httpx.Request("POST", ai.NEAR_AI_URL),
-        json={"choices": [{"message": {"content": "not json"}}]}
+        json={"id": "chat-123", "choices": [{"message": {"content": "not json"}}]}
     ))
     with pytest.raises(ai.AIProviderError):
+        ai.generate_operational_brief(sample_record())
+
+def test_ai_brief_fails_closed_when_cryptographic_verification_fails(monkeypatch):
+    monkeypatch.setenv("NEARAI_API_KEY", "test-key")
+    monkeypatch.setattr(ai.httpx, "post", lambda *args, **kwargs: httpx.Response(
+        200, request=httpx.Request("POST", ai.NEAR_AI_URL),
+        json={"id": "chat-123", "choices": [{"message": {"content": "{}"}}]}
+    ))
+    monkeypatch.setattr(ai, "verify_near_ai_response", lambda **kwargs: (_ for _ in ()).throw(
+        VerificationError("bad signature")
+    ))
+    with pytest.raises(ai.AIProviderError, match="failed closed"):
         ai.generate_operational_brief(sample_record())
