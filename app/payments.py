@@ -34,21 +34,29 @@ def evaluate_payment_proposal(
     if not approved_destination or destination.strip() != approved_destination:
         reasons.append({"code": "DESTINATION_NOT_ALLOWED", "message": "Destination does not exactly match the owner-approved destination."})
 
+    def latest(kind: str):
+        records = [e for e in evidence if e.get("kind") == kind and e.get("value") is not None]
+        return records[-1] if records else None
+
     if policy.get("require_full_delivery", True):
-        qty_records = [e for e in evidence if e.get("kind") == "quantity_received" and e.get("value") is not None]
-        if not qty_records:
+        qty_record = latest("quantity_received")
+        if not qty_record:
             reasons.append({"code": "DELIVERY_NOT_EVIDENCED", "message": "No receiving quantity evidence is recorded."})
-        elif float(qty_records[-1]["value"]) < float(commitment["quantity"]):
-            reasons.append({"code": "DELIVERY_SHORTFALL", "message": "Recorded delivery is below the committed quantity."})
-        elif float(qty_records[-1]["value"]) > float(commitment["quantity"]):
-            reasons.append({"code": "DELIVERY_REQUIRES_REVIEW", "message": "Recorded delivery exceeds the commitment and needs human review."})
+        elif policy.get("require_verified_evidence", True) and qty_record.get("review_status") != "VERIFIED":
+            reasons.append({"code": "DELIVERY_NOT_VERIFIED", "message": "The latest receiving evidence has not been verified by an authorized reviewer."})
+        elif float(qty_record["value"]) < float(commitment["quantity"]):
+            reasons.append({"code": "DELIVERY_SHORTFALL", "message": "Verified delivery is below the committed quantity."})
+        elif float(qty_record["value"]) > float(commitment["quantity"]):
+            reasons.append({"code": "DELIVERY_REQUIRES_REVIEW", "message": "Verified delivery exceeds the commitment and needs human review."})
 
     if policy.get("require_invoice_match", True):
-        invoice_records = [e for e in evidence if e.get("kind") == "invoice_amount" and e.get("value") is not None]
-        if not invoice_records:
+        invoice_record = latest("invoice_amount")
+        if not invoice_record:
             reasons.append({"code": "INVOICE_NOT_EVIDENCED", "message": "No invoice amount evidence is recorded."})
-        elif round(float(invoice_records[-1]["value"]), 2) != round(float(commitment["amount"]), 2):
-            reasons.append({"code": "INVOICE_MISMATCH", "message": "Latest invoice amount does not exactly match the recorded commitment."})
+        elif policy.get("require_verified_evidence", True) and invoice_record.get("review_status") != "VERIFIED":
+            reasons.append({"code": "INVOICE_NOT_VERIFIED", "message": "The latest invoice evidence has not been verified by an authorized reviewer."})
+        elif round(float(invoice_record["value"]), 2) != round(float(commitment["amount"]), 2):
+            reasons.append({"code": "INVOICE_MISMATCH", "message": "Latest verified invoice amount does not exactly match the recorded commitment."})
 
     blocked = bool(reasons)
     return {
