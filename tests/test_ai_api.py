@@ -23,7 +23,7 @@ def test_ai_brief_is_optional_and_persisted_as_advisory_output(tmp_path, monkeyp
             'provider': 'NEAR AI Cloud',
             'model': 'Qwen/Qwen3.6-35B-A3B-FP8',
             'privacy_tier': 'TEE model',
-            'attestation_status': 'NOT_INDEPENDENTLY_VERIFIED_BY_OUTCOME',
+            'attestation_status': 'VERIFIED_BY_OUTCOME',
             'brief': {
                 'summary': 'Awaiting receiving evidence.',
                 'why_it_matters': 'Delivery is not yet verified.',
