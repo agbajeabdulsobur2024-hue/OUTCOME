@@ -36,7 +36,7 @@ def test_ai_provider_requires_explicit_api_key(monkeypatch):
         ai.generate_operational_brief(sample_record())
 
 
-def test_ai_brief_uses_near_ai_cloud_and_returns_unverified_attestation_label(monkeypatch):
+def test_ai_brief_uses_near_ai_cloud_and_returns_verified_attestation(monkeypatch):
     monkeypatch.setenv("NEARAI_API_KEY", "test-key")
     content = {
         "summary": "80 of 100 boxes are recorded as received.",
@@ -51,16 +51,17 @@ def test_ai_brief_uses_near_ai_cloud_and_returns_unverified_attestation_label(mo
         captured["url"] = url
         captured["kwargs"] = kwargs
         return httpx.Response(200, request=httpx.Request("POST", url), json={
-            "choices": [{"message": {"content": json.dumps(content)}}],
+            "id": "chat-123", "choices": [{"message": {"content": json.dumps(content)}}],
         })
 
     monkeypatch.setattr(ai.httpx, "post", fake_post)
+    monkeypatch.setattr(ai, "verify_near_ai_response", lambda **kwargs: {"verified": True, "tdx_quote_verified": True})
     result = ai.generate_operational_brief(sample_record())
     assert result["provider"] == "NEAR AI Cloud"
-    assert result["attestation_status"] == "NOT_INDEPENDENTLY_VERIFIED_BY_OUTCOME"
+    assert result["attestation_status"] == "VERIFIED_BY_OUTCOME"
     assert result["brief"] == content
     assert captured["url"] == ai.NEAR_AI_URL
-    assert captured["kwargs"]["json"]["model"] == ai.NEAR_AI_MODEL
+    assert json.loads(captured["kwargs"]["content"])["model"] == ai.NEAR_AI_MODEL
     assert captured["kwargs"]["json"]["max_tokens"] == 700
     user_context = captured["kwargs"]["json"]["messages"][1]["content"]
     assert "review_history" not in user_context
