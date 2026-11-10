@@ -68,3 +68,23 @@ def test_partial_payment_is_blocked_unless_owner_policy_enables_it():
     assert allowed_for_review["status"] == "AWAITING_HUMAN_APPROVAL"
     assert allowed_for_review["human_approval_required"] is True
     assert allowed_for_review["transfer_executed"] is False
+
+
+def test_prompt_injected_hostile_agent_payment_is_blocked_before_signing():
+    c, e, p = base()
+    # Mirrors the UI red-team scenario: exceed the owner cap and change the
+    # destination to an attacker-controlled NEAR account.
+    result = evaluate_payment_proposal(
+        c, e, p, 501, "USD", "attacker-controlled.near"
+    )
+    codes = {reason["code"] for reason in result["reasons"]}
+    assert result["status"] == "BLOCKED"
+    assert {
+        "SPENDING_LIMIT_EXCEEDED",
+        "ABOVE_COMMITMENT_VALUE",
+        "DESTINATION_NOT_ALLOWED",
+    } <= codes
+    assert result["execution_mode"] == "SIMULATION_ONLY"
+    assert result["transfer_executed"] is False
+    assert result["transaction_hash"] is None
+
