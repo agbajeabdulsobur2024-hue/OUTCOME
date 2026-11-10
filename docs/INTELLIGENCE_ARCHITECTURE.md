@@ -43,7 +43,8 @@ Minimum state: identity; parties; agreed deliverables; quantities/units; agreed 
 ### 4. Pattern Recognition Intelligence
 **Purpose:** detect meaningful anomalies and recurring operational patterns.
 **Inputs:** validated evidence and historical commitment outcomes.
-**Outputs:** candidate patterns with supporting records, confidence and time window.
+**Outputs:** candidate patterns with supporting records, sample size, observed rate and confidence label.
+**Current implementation:** `/api/patterns` checks repeated short deliveries, invoice overcharges and late full deliveries. A signal requires at least two incidents and only counts the latest applicable evidence when its latest review is `VERIFIED`. Samples below five are labelled `EARLY_SIGNAL`. Signals never assert fraud, intent or misconduct.
 **Contract:** patterns are hypotheses until validated; explain the evidence; avoid treating one incident as a trend; do not infer intent or misconduct from anomalies alone.
 
 ### 5. Decision Intelligence
@@ -96,7 +97,7 @@ For a supplier commitment, OUTCOME must:
 3. Add commitment amendments/versioning and evidence review states.
 4. Add policy-bound action proposals (simulation only).
 5. Add outcome verification and audit trail.
-6. Add pattern recognition only after sufficient reliable history exists.
+6. Add cautious supplier pattern recognition after sufficient verified history exists (implemented as a minimum-two-incident candidate signal; larger samples receive a stronger label).
 
 ## Non-goals for this hackathon slice
 The current payment-policy simulation requires verified latest delivery and invoice evidence by default. Review labels in this demo are manually supplied and are not authenticated identities or cryptographic proofs. No autonomous payment execution, custody, credit scoring, supplier fraud accusations, broad ERP integrations or generic agent marketplace. NEAR integration must remain simulated unless a safe, explicitly approved test environment and policy boundary are verified.
