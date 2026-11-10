@@ -21,6 +21,12 @@ uvicorn app.main:app --reload
 
 Open http://127.0.0.1:8000. API docs: /docs. Click **Load synthetic demo case** to create two fictional Acme commitments with verified fixture evidence, a blocked payment proposal, an action to reconcile delivery and a repeated-short-delivery early signal. The seed endpoint refuses to run if commitments already exist. See [the 3-minute demo script](docs/DEMO_SCRIPT.md) for the end-to-end walkthrough. Optional NEAR AI Cloud reasoning can be enabled by copying `.env.example`, exporting `NEARAI_API_KEY` in the server environment (the app does not auto-load `.env` files) and restarting; generation is user-triggered and pay-as-you-go. See [AI integration and data boundaries](docs/AI_INTEGRATION.md).
 
+## Deployment: Vercel + Turso
+
+The application can run on Vercel with its existing FastAPI backend and a persistent Turso database. Local development defaults to SQLite; hosted deployments set `OUTCOME_DB_BACKEND=turso` and provide `TURSO_DATABASE_URL` plus `TURSO_AUTH_TOKEN`. The root `index.py` is the Vercel FastAPI entrypoint, and `.python-version` pins Python 3.12.
+
+See [Vercel + Turso deployment instructions](docs/VERCEL_TURSO_DEPLOYMENT.md) for setup and the required live verification checklist. The remote Turso Python driver is currently beta, so a successful deployment alone is not enough: verify persistence across separate function invocations and redeployments before relying on it.
+
 ## Product principles
 
 - Understand before acting.
