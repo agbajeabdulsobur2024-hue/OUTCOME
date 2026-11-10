@@ -426,6 +426,27 @@ def create_payment_proposal(cid: str, payload: PaymentProposalCreate):
         record['commitment'], record['evidence'], record['payment_policy'],
         payload.amount, payload.currency, payload.destination,
     )
+    latest_evidence = {}
+    for item in record['evidence']:
+        if item['kind'] in ('quantity_received', 'invoice_amount'):
+            latest_evidence[item['kind']] = item
+    assessment['evaluation_basis'] = {
+        'commitment_version': max((v['version'] for v in record['commitment_versions']), default=1),
+        'commitment_terms': {
+            key: record['commitment'][key] for key in (
+                'supplier', 'description', 'quantity', 'unit', 'amount',
+                'currency', 'due_date', 'payment_condition'
+            )
+        },
+        'policy_snapshot': record['payment_policy'],
+        'evidence_snapshot': [
+            {
+                'id': item['id'], 'kind': item['kind'], 'value': item['value'],
+                'review_status': item['review_status'], 'reviewed_at': item['reviewed_at'],
+            }
+            for item in latest_evidence.values()
+        ],
+    }
     proposal_id = str(uuid.uuid4())
     created_at = utc_now()
     with connect() as db:
