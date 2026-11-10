@@ -135,8 +135,8 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
         "provider": "NEAR AI Cloud",
         "model": NEAR_AI_MODEL,
         "privacy_tier": "TEE model",
-        "attestation_status": "VERIFIED_BY_OUTCOME",
+        "attestation_status": "RESPONSE_SIGNATURE_AND_TDX_BINDING_VERIFIED",
         "verification": verification,
         "brief": brief,
-        "disclaimer": "Advisory explanation only. Deterministic checks and owner approval remain authoritative. OUTCOME verified the response signature and Intel TDX attestation; see verification details and limitations.",
+        "disclaimer": "Advisory explanation only. Deterministic checks and owner approval remain authoritative. OUTCOME verified response integrity, the ECDSA signer and fresh-nonce Intel TDX binding. This is not full model supply-chain verification.",
     }
