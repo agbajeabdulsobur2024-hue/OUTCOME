@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.engine import assess_commitment
 from app.payments import evaluate_payment_proposal
+from app.patterns import detect_supplier_patterns
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv('OUTCOME_DATA_DIR', ROOT / 'data'))
@@ -399,6 +400,17 @@ def create_payment_proposal(cid: str, payload: PaymentProposalCreate):
 @app.get('/api/commitments/{cid}/payment-proposals')
 def list_payment_proposals(cid: str):
     return get_record(cid)['payment_proposals']
+
+
+@app.get('/api/patterns')
+def read_supplier_patterns():
+    records = list_commitments()
+    commitments = [record['commitment'] for record in records]
+    evidence_by_commitment = {
+        record['commitment']['id']: record['evidence']
+        for record in records
+    }
+    return detect_supplier_patterns(commitments, evidence_by_commitment)
 
 
 @app.post('/api/demo/reset')
