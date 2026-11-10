@@ -32,7 +32,7 @@ Open http://127.0.0.1:8000. API docs: /docs. Click **Load synthetic demo case** 
 
 ## Safety boundary
 
-This MVP is decision support. It does not custody funds, approve invoices or submit blockchain transactions. The NEAR Intents Agent API is currently documented as an experimental, mainnet-only beta; its quickstart warns that real assets are at risk and no testnet is available. We will not connect a live wallet or move real funds in this demo. See the [official overview](https://docs.agentsonintents.com/integration/agent-api/overview) and [quickstart](https://docs.agentsonintents.com/integration/agent-api/quickstart/introduction).
+This MVP is a hackathon demo, not a production financial service. It has no user authentication or tenant isolation; actor/reviewer names are manually entered labels, not authenticated identities or signatures. Do not enter sensitive live business or payment data. The destructive demo reset endpoint is disabled unless OUTCOME_ALLOW_DEMO_RESET=true is explicitly set in a disposable local environment. OUTCOME does not custody funds, approve invoices or submit blockchain transactions. The NEAR Intents Agent API is currently documented as an experimental, mainnet-only beta; its quickstart warns that real assets are at risk and no testnet is available. We will not connect a live wallet or move real funds in this demo. See the [official overview](https://docs.agentsonintents.com/integration/agent-api/overview) and [quickstart](https://docs.agentsonintents.com/integration/agent-api/quickstart/introduction).
 
 ## Action and outcome tracking
 
