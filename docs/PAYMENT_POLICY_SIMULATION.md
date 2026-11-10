@@ -7,6 +7,7 @@ Demonstrate how OUTCOME's commitment intelligence governs a proposed supplier pa
 Each commitment can have one policy:
 - Disabled by default.
 - Maximum amount cannot exceed the recorded commitment value.
+- Partial payment proposals are blocked unless the owner explicitly enables them.
 - Exact destination match is required.
 - Full delivery evidence is required by default.
 - Latest applicable delivery and invoice evidence must have a `VERIFIED` review status by default. A newer unreviewed or rejected record invalidates reliance on an older verified record.
