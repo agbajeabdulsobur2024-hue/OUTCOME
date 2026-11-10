@@ -40,7 +40,7 @@ Propose an action against a commitment, record owner approval or rejection, repo
 
 ## Payment policy simulation
 
-Configure a disabled-by-default policy per commitment with a spending cap, exact approved destination, full-delivery requirement, invoice-match requirement and verified-evidence requirement. Evidence reviews are append-only; a newer unreviewed or rejected record supersedes an older verified record. Submit a proposed payment for evaluation. OUTCOME returns explicit block reasons or `AWAITING_HUMAN_APPROVAL`. It never approves, signs, submits or executes a transfer. See [payment policy simulation](docs/PAYMENT_POLICY_SIMULATION.md).
+Configure a disabled-by-default policy per commitment with a spending cap, exact approved destination, full-delivery requirement, invoice-match requirement, verified-evidence requirement and an explicit partial-payment permission (off by default). Evidence reviews are append-only; a newer unreviewed or rejected record supersedes an older verified record. Submit a proposed payment for evaluation. OUTCOME returns explicit block reasons or `AWAITING_HUMAN_APPROVAL`. It never approves, signs, submits or executes a transfer. See [payment policy simulation](docs/PAYMENT_POLICY_SIMULATION.md).
 
 ## Scope
 
