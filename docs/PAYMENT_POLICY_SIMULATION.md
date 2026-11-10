@@ -4,7 +4,7 @@
 Demonstrate how OUTCOME's commitment intelligence governs a proposed supplier payment without custody, signing, or transfer execution.
 
 ## Owner-defined policy
-Each commitment can have one policy:
+Each commitment has one current policy plus an append-only history of every policy update:
 - Disabled by default.
 - Maximum amount cannot exceed the recorded commitment value.
 - Partial payment proposals are blocked unless the owner explicitly enables them.
@@ -18,9 +18,10 @@ Each commitment can have one policy:
 2. A payment proposal is submitted with amount, currency, and destination.
 3. OUTCOME evaluates the proposal against the policy and latest applicable evidence.
 4. Any failed check produces `BLOCKED` with explicit reason codes.
-5. The proposal stores an immutable evaluation basis: commitment version and terms, policy snapshot, and latest evidence IDs/review states used.
-6. If every check passes, status is `AWAITING_HUMAN_APPROVAL`.
-7. No endpoint approves, signs, submits, or executes a transfer.
+5. Every policy change is retained as a timestamped snapshot.
+6. The proposal stores an immutable evaluation basis: commitment version and terms, policy snapshot, and latest evidence IDs/review states used.
+7. If every check passes, status is `AWAITING_HUMAN_APPROVAL`.
+8. No endpoint approves, signs, submits, or executes a transfer.
 
 A passing result means only that the proposal is eligible for human review. It is not a payment authorization and is not evidence that a transfer is safe.
 
