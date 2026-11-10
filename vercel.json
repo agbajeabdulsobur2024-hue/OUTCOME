@@ -3,6 +3,7 @@
   "functions": {
     "index.py": {
       "includeFiles": "static/**",
+      "maxDuration": 60,
       "excludeFiles": "{tests/**,docs/**,.git/**}"
     }
   }
