@@ -207,6 +207,74 @@ def get_record(cid: str):
             action['events'] = events
             action['status'] = events[-1]['event_type'] if events else 'PROPOSED'
             actions.append(action)
+    timeline = [{
+        'event_type': 'COMMITMENT_CREATED',
+        'title': 'Original commitment recorded',
+        'created_at': commitment['created_at'],
+        'details': 'Version 1 · ' + commitment['supplier'],
+    }]
+    for version in versions:
+        if int(version['version']) > 1:
+            terms = json.loads(version['terms_json'])
+            timeline.append({
+                'event_type': 'COMMITMENT_AMENDED',
+                'title': 'Commitment amended to version ' + str(version['version']),
+                'created_at': version['created_at'],
+                'details': version['reason'] + ' · ' + str(terms['quantity']) + ' ' + terms['unit'] + ' · ' + str(terms['amount']) + ' ' + terms['currency'],
+            })
+    for item in evidence:
+        timeline.append({
+            'event_type': 'EVIDENCE_RECORDED',
+            'title': 'Evidence recorded: ' + item['kind'].replace('_', ' '),
+            'created_at': item['created_at'],
+            'details': str(item.get('value') if item.get('value') is not None else '') + ' · source ' + item['source'],
+        })
+        for review in item['review_history']:
+            timeline.append({
+                'event_type': 'EVIDENCE_REVIEWED',
+                'title': 'Evidence ' + review['status'].lower(),
+                'created_at': review['created_at'],
+                'details': 'Reviewer: ' + review['reviewer'] + ((' · ' + review['note']) if review['note'] else ''),
+            })
+    for row in history:
+        saved = json.loads(row['assessment_json'])
+        timeline.append({
+            'event_type': 'ASSESSMENT_SAVED',
+            'title': 'Assessment: ' + row['status'].replace('_', ' '),
+            'created_at': row['created_at'],
+            'details': saved.get('summary', ''),
+        })
+    for row in proposals:
+        proposal = json.loads(row['proposal_json'])
+        timeline.append({
+            'event_type': 'PAYMENT_PROPOSAL_EVALUATED',
+            'title': 'Payment proposal: ' + row['status'].replace('_', ' '),
+            'created_at': row['created_at'],
+            'details': proposal.get('message', '') + ' · ' + ', '.join(reason['code'] for reason in proposal.get('reasons', [])),
+        })
+    for action in actions:
+        timeline.append({
+            'event_type': 'ACTION_PROPOSED',
+            'title': 'Action proposed: ' + action['action_type'].replace('_', ' '),
+            'created_at': action['created_at'],
+            'details': action['description'],
+        })
+        for event in action['events']:
+            timeline.append({
+                'event_type': 'ACTION_EVENT',
+                'title': 'Action ' + event['event_type'].replace('_', ' ').lower(),
+                'created_at': event['created_at'],
+                'details': event['actor'] + ((' · ' + event['note']) if event['note'] else ''),
+            })
+    for row in ai_briefs:
+        ai_result = json.loads(row['brief_json'])
+        timeline.append({
+            'event_type': 'AI_BRIEF_GENERATED',
+            'title': 'AI operational brief generated',
+            'created_at': row['created_at'],
+            'details': ai_result.get('brief', {}).get('summary', ''),
+        })
+    timeline.sort(key=lambda item: item['created_at'])
     return {
         'commitment': commitment,
         'evidence': evidence,
@@ -242,6 +310,7 @@ def get_record(cid: str):
              'brief': json.loads(row['brief_json']), 'created_at': row['created_at']}
             for row in ai_briefs
         ],
+        'timeline': timeline,
     }
 
 
