@@ -65,7 +65,15 @@ Run the full test suite:
 pytest
 ```
 
-Then, against a disposable Turso database and a Vercel Preview deployment, verify:
+Then, against a disposable Turso database, run the live driver and end-to-end checks:
+
+```bash
+OUTCOME_DB_BACKEND=turso pytest tests/test_turso_live.py -q
+```
+
+The live tests initialize the schema, check foreign-key enforcement, exercise the commitment/evidence/payment/action lifecycle, and remove their synthetic test record. They are skipped when Turso credentials are not present.
+
+Then, against a Vercel Preview deployment, verify:
 
 1. `GET /api/health` succeeds, returns `database_backend: turso`, and confirms a database query.
 2. Create a commitment and reload it in a separate request.
