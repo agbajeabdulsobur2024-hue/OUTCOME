@@ -30,12 +30,28 @@ def test_latest_receiving_evidence_is_used():
     assert r['status']=='ON_TRACK'
 
 
-def test_missing_delivery_evidence_keeps_payment_pending():
+def test_missing_delivery_evidence_is_awaiting_not_on_track():
     r=assess_commitment(commitment(),[],today=date(2026,11,10))
-    assert r['status']=='ON_TRACK'
+    assert r['status']=='AWAITING_EVIDENCE'
     assert any('payment approval pending' in x for x in r['next_actions'])
 
 
 def test_overdue_commitment_is_flagged():
     r=assess_commitment(commitment(),[],today=date(2026,12,2))
     assert r['status']=='OVERDUE'
+    assert any(i['code']=='COMMITMENT_OVERDUE' for i in r['issues'])
+
+
+def test_overdue_and_short_delivery_flags_coexist():
+    r=assess_commitment(commitment(),[{'kind':'quantity_received','value':80}],today=date(2026,12,2))
+    codes={i['code'] for i in r['issues']}
+    assert r['status']=='DISCREPANCY'
+    assert {'QUANTITY_SHORTFALL','COMMITMENT_OVERDUE'} <= codes
+
+
+def test_exposure_estimates_are_separate_when_they_may_overlap():
+    r=assess_commitment(commitment(),[{'kind':'quantity_received','value':80},{'kind':'invoice_amount','value':550}],today=date(2026,11,10))
+    assert r['exposure_estimates']['quantity_shortfall']==100
+    assert r['exposure_estimates']['invoice_overcharge']==50
+    assert r['exposure_estimates']['may_overlap'] is True
+    assert r['financial_exposure']==100
