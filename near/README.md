@@ -40,9 +40,9 @@ From the repository root, with your testnet account available in the NEAR CLI ke
 \`\`\`bash
 near contract deploy YOUR_CONTRACT.testnet \\
   use-file near/contract/target/wasm32-unknown-unknown/release/outcome_audit_anchor.wasm \\
-  with-init-call new '{"owner_id":"YOUR_OWNER.testnet"}' \\
-  --prepaid-gas '100 Tgas' \\
-  --attached-deposit '0 NEAR' \\
+  with-init-call new json-args '{"owner_id":"YOUR_OWNER.testnet"}' \\
+  prepaid-gas '100 Tgas' \\
+  attached-deposit '0 NEAR' \\
   network-config testnet \\
   sign-as YOUR_OWNER.testnet \\
   sign-with-keychain \\
