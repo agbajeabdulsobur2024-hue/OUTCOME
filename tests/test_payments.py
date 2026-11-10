@@ -56,3 +56,15 @@ def test_disabled_policy_blocks():
     result = evaluate_payment_proposal(c, e, p, 500, "USD", "supplier-wallet-001")
     assert result["status"] == "BLOCKED"
     assert "POLICY_DISABLED" in {x["code"] for x in result["reasons"]}
+
+
+
+def test_partial_payment_is_blocked_unless_owner_policy_enables_it():
+    c, e, p = base()
+    blocked = evaluate_payment_proposal(c, e, p, 250, "USD", "supplier-wallet-001")
+    assert "PARTIAL_PAYMENT_NOT_ALLOWED" in {x["code"] for x in blocked["reasons"]}
+    p["allow_partial_payments"] = True
+    allowed_for_review = evaluate_payment_proposal(c, e, p, 250, "USD", "supplier-wallet-001")
+    assert allowed_for_review["status"] == "AWAITING_HUMAN_APPROVAL"
+    assert allowed_for_review["human_approval_required"] is True
+    assert allowed_for_review["transfer_executed"] is False
