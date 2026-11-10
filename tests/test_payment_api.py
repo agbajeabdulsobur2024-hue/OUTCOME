@@ -67,7 +67,16 @@ def test_payment_proposal_is_blocked_until_policy_and_evidence_are_valid(tmp_pat
         assert result['human_approval_required'] is True
         assert result['transfer_executed'] is False
         assert result['transaction_hash'] is None
-        assert len(client.get(f'/api/commitments/{cid}/payment-proposals').json()) == 3
+        # A newer, unreviewed receiving record invalidates reliance on the older verified record.
+        client.post(f'/api/commitments/{cid}/evidence', json={
+            'kind': 'quantity_received', 'value': 80, 'note': 'New conflicting count',
+        })
+        stale = client.post(f'/api/commitments/{cid}/payment-proposals', json={
+            'amount': 500, 'currency': 'USD', 'destination': 'supplier-wallet-001',
+        }).json()['proposal']
+        assert stale['status'] == 'BLOCKED'
+        assert 'DELIVERY_NOT_VERIFIED' in {r['code'] for r in stale['reasons']}
+        assert len(client.get(f'/api/commitments/{cid}/payment-proposals').json()) == 4
 
 
 def test_payment_policy_cannot_exceed_commitment_value(tmp_path, monkeypatch):
