@@ -17,14 +17,16 @@ The request is sent only when a user explicitly clicks **Generate AI brief** and
 - Up to the latest 10 evidence records, excluding free-text evidence notes and review-history details.
 - Payment policy fields and action type/description/status.
 
-Do not enter sensitive live business data into this hackathon demo. The application does not independently verify the model's hardware attestation or response signature. The API result is labelled NOT_INDEPENDENTLY_VERIFIED_BY_OUTCOME.
+Do not enter sensitive live business data into this hackathon demo. Before parsing or persisting model output, OUTCOME verifies the exact request and raw response SHA-256 hashes against the provider's signed chat payload, recovers and checks the ECDSA signing address, fetches a fresh nonce-bound model attestation, verifies the Intel TDX quote using dcap-qvl, and checks that the quote report data binds both the signing address and fresh nonce. If any check fails, the brief is rejected and is not stored or displayed. The returned record is labelled VERIFIED_BY_OUTCOME only after those checks pass.
+
+The NVIDIA NRAS verdict is checked as supplemental evidence and its nonce is matched, but OUTCOME does not independently validate the NRAS JWT signature. TDX verification accepts Intel UpToDate and OutOfDate statuses as cryptographically valid, matching the upstream verifier's stated behavior; an OutOfDate platform status should still be surfaced as a security freshness warning. Verification proves response integrity and signer-to-TEE binding, not correctness of the model's reasoning. The upstream verifier is the protocol reference: https://github.com/nearai/nearai-cloud-verifier.
 
 ## Safety contract
 - Deterministic rules remain authoritative.
 - The model cannot authorize, approve or execute payments.
 - The model is instructed not to infer fraud, dishonesty or intent.
 - Output is validated against a fixed JSON shape before display.
-- Malformed responses and provider errors fail closed; no AI-generated action is automatically created.
+- Malformed responses, missing signatures, hash mismatches, signer mismatches, failed TDX verification and attestation-binding failures all fail closed; no AI-generated action is automatically created.
 - AI briefs are stored as advisory history linked to the commitment.
 - Requests are rate-limited per client IP (default five per hour; configurable with OUTCOME_AI_RATE_LIMIT_PER_HOUR) to limit accidental key spend.
 
