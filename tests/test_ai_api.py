@@ -23,7 +23,7 @@ def test_ai_brief_is_optional_and_persisted_as_advisory_output(tmp_path, monkeyp
             'provider': 'NEAR AI Cloud',
             'model': 'Qwen/Qwen3.6-35B-A3B-FP8',
             'privacy_tier': 'TEE model',
-            'attestation_status': 'VERIFIED_BY_OUTCOME',
+            'attestation_status': 'RESPONSE_SIGNATURE_AND_TDX_BINDING_VERIFIED',
             'brief': {
                 'summary': 'Awaiting receiving evidence.',
                 'why_it_matters': 'Delivery is not yet verified.',
@@ -36,7 +36,7 @@ def test_ai_brief_is_optional_and_persisted_as_advisory_output(tmp_path, monkeyp
         response = client.post(f'/api/commitments/{cid}/ai-brief')
         assert response.status_code == 201
         body = response.json()
-        assert body['attestation_status'] == 'VERIFIED_BY_OUTCOME'
+        assert body['attestation_status'] == 'RESPONSE_SIGNATURE_AND_TDX_BINDING_VERIFIED'
         record = client.get(f'/api/commitments/{cid}').json()
         assert len(record['ai_brief_history']) == 1
         assert record['ai_brief_history'][0]['brief']['brief']['summary'] == 'Awaiting receiving evidence.'
@@ -51,7 +51,7 @@ def test_ai_brief_endpoint_enforces_per_client_rate_limit(tmp_path, monkeypatch)
     monkeypatch.setattr(main, 'generate_operational_brief', lambda record: {
         'provider': 'NEAR AI Cloud', 'model': 'test-model',
         'privacy_tier': 'TEE model',
-        'attestation_status': 'NOT_INDEPENDENTLY_VERIFIED_BY_OUTCOME',
+        'attestation_status': 'NOT_INDEPENDENTLY_RESPONSE_SIGNATURE_AND_TDX_BINDING_VERIFIED',
         'brief': {
             'summary': 'Summary', 'why_it_matters': 'Reason',
             'recommended_actions': [], 'uncertainties': [],
