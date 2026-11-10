@@ -75,6 +75,7 @@ def test_ai_brief_rejects_malformed_model_output(monkeypatch):
         200, request=httpx.Request("POST", ai.NEAR_AI_URL),
         json={"id": "chat-123", "choices": [{"message": {"content": "not json"}}]}
     ))
+    monkeypatch.setattr(ai, "verify_near_ai_response", lambda **kwargs: {"verified": True})
     with pytest.raises(ai.AIProviderError):
         ai.generate_operational_brief(sample_record())
 
