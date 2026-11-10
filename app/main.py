@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.engine import assess_commitment
+from app.payments import evaluate_payment_proposal
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv('OUTCOME_DATA_DIR', ROOT / 'data'))
@@ -49,6 +50,16 @@ def init_db():
         db.execute('''CREATE TABLE IF NOT EXISTS assessment_history (
             id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
             status TEXT NOT NULL, assessment_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS payment_policies (
+            commitment_id TEXT PRIMARY KEY REFERENCES commitments(id),
+            enabled INTEGER NOT NULL DEFAULT 0, max_amount REAL NOT NULL,
+            allowed_destination TEXT NOT NULL DEFAULT '',
+            require_full_delivery INTEGER NOT NULL DEFAULT 1,
+            require_invoice_match INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS payment_proposals (
+            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+            status TEXT NOT NULL, proposal_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
 
 
 @asynccontextmanager
@@ -79,6 +90,20 @@ class EvidenceCreate(BaseModel):
     source: str = Field(default='manual', max_length=100)
 
 
+class PaymentPolicyUpdate(BaseModel):
+    enabled: bool = False
+    max_amount: float = Field(gt=0, allow_inf_nan=False)
+    allowed_destination: str = Field(min_length=1, max_length=200)
+    require_full_delivery: bool = True
+    require_invoice_match: bool = True
+
+
+class PaymentProposalCreate(BaseModel):
+    amount: float = Field(gt=0, allow_inf_nan=False)
+    currency: str = Field(min_length=3, max_length=8)
+    destination: str = Field(min_length=1, max_length=200)
+
+
 def get_record(cid: str):
     with connect() as db:
         c = db.execute('SELECT * FROM commitments WHERE id=?', (cid,)).fetchone()
@@ -94,6 +119,10 @@ def get_record(cid: str):
         history = [dict(row) for row in db.execute(
             'SELECT id, status, assessment_json, created_at FROM assessment_history WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
         ).fetchall()]
+        policy_row = db.execute('SELECT * FROM payment_policies WHERE commitment_id=?', (cid,)).fetchone()
+        proposals = [dict(row) for row in db.execute(
+            'SELECT id, status, proposal_json, created_at FROM payment_proposals WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
+        ).fetchall()]
     return {
         'commitment': commitment,
         'evidence': evidence,
@@ -102,6 +131,23 @@ def get_record(cid: str):
         'assessment_history': [
             {'id': row['id'], 'status': row['status'], 'assessment': json.loads(row['assessment_json']), 'created_at': row['created_at']}
             for row in history
+        ],
+        'payment_policy': ({
+            'enabled': bool(policy_row['enabled']),
+            'max_amount': policy_row['max_amount'],
+            'allowed_destination': policy_row['allowed_destination'],
+            'require_full_delivery': bool(policy_row['require_full_delivery']),
+            'require_invoice_match': bool(policy_row['require_invoice_match']),
+            'updated_at': policy_row['updated_at'],
+            'configured': True,
+        } if policy_row else {
+            'enabled': False, 'max_amount': commitment['amount'],
+            'allowed_destination': '', 'require_full_delivery': True,
+            'require_invoice_match': True, 'configured': False,
+        }),
+        'payment_proposals': [
+            {'id': row['id'], 'status': row['status'], 'proposal': json.loads(row['proposal_json']), 'created_at': row['created_at']}
+            for row in proposals
         ],
     }
 
@@ -191,9 +237,59 @@ def add_evidence(cid: str, payload: EvidenceCreate):
     return get_record(cid)
 
 
+@app.get('/api/commitments/{cid}/payment-policy')
+def read_payment_policy(cid: str):
+    return get_record(cid)['payment_policy']
+
+
+@app.put('/api/commitments/{cid}/payment-policy')
+def update_payment_policy(cid: str, payload: PaymentPolicyUpdate):
+    record = get_record(cid)
+    if payload.max_amount > float(record['commitment']['amount']):
+        raise HTTPException(422, 'Policy spending limit cannot exceed the recorded commitment amount')
+    with connect() as db:
+        db.execute('''INSERT INTO payment_policies
+            (commitment_id, enabled, max_amount, allowed_destination,
+             require_full_delivery, require_invoice_match, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(commitment_id) DO UPDATE SET
+            enabled=excluded.enabled, max_amount=excluded.max_amount,
+            allowed_destination=excluded.allowed_destination,
+            require_full_delivery=excluded.require_full_delivery,
+            require_invoice_match=excluded.require_invoice_match,
+            updated_at=excluded.updated_at''',
+            (cid, int(payload.enabled), payload.max_amount, payload.allowed_destination.strip(),
+             int(payload.require_full_delivery), int(payload.require_invoice_match), utc_now()))
+    return get_record(cid)['payment_policy']
+
+
+@app.post('/api/commitments/{cid}/payment-proposals', status_code=201)
+def create_payment_proposal(cid: str, payload: PaymentProposalCreate):
+    record = get_record(cid)
+    assessment = evaluate_payment_proposal(
+        record['commitment'], record['evidence'], record['payment_policy'],
+        payload.amount, payload.currency, payload.destination,
+    )
+    proposal_id = str(uuid.uuid4())
+    created_at = utc_now()
+    with connect() as db:
+        db.execute(
+            'INSERT INTO payment_proposals (id, commitment_id, status, proposal_json, created_at) VALUES (?, ?, ?, ?, ?)',
+            (proposal_id, cid, assessment['status'], json.dumps(assessment, sort_keys=True), created_at)
+        )
+    return {'id': proposal_id, 'commitment_id': cid, 'created_at': created_at, 'proposal': assessment}
+
+
+@app.get('/api/commitments/{cid}/payment-proposals')
+def list_payment_proposals(cid: str):
+    return get_record(cid)['payment_proposals']
+
+
 @app.post('/api/demo/reset')
 def reset_demo():
     with connect() as db:
+        db.execute('DELETE FROM payment_proposals')
+        db.execute('DELETE FROM payment_policies')
         db.execute('DELETE FROM assessment_history')
         db.execute('DELETE FROM commitment_versions')
         db.execute('DELETE FROM evidence')
