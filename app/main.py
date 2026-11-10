@@ -764,25 +764,30 @@ def get_commitment_audit_anchor(cid: str):
     """
     record = get_record(cid)
     commitment = record['commitment']
+    # Public-chain metadata is intentionally opaque and structured. Do not hash
+    # free-text fields (supplier names, descriptions, payment conditions, notes,
+    # evidence sources, issue messages or AI text) into a publicly guessable digest.
     snapshot = {
         'commitment': {
-            key: commitment[key] for key in (
-                'id', 'quantity', 'unit', 'amount', 'currency',
-                'due_date', 'payment_condition',
-            )
+            'quantity': commitment['quantity'],
+            'unit': commitment['unit'],
+            'amount': commitment['amount'],
+            'currency': commitment['currency'],
+            'due_date': commitment['due_date'],
         },
         'evidence': [
             {
-                key: item.get(key) for key in (
-                    'id', 'kind', 'value', 'source', 'created_at', 'review_status',
-                )
+                'kind': item.get('kind'),
+                'review_status': item.get('review_status'),
             }
             for item in record['evidence']
         ],
         'assessment': {
             'status': record['assessment']['status'],
-            'issues': record['assessment']['issues'],
-            'next_actions': record['assessment']['next_actions'],
+            'issue_codes': sorted(
+                str(issue.get('code', 'UNKNOWN'))
+                for issue in record['assessment'].get('issues', [])
+            ),
         },
         'commitment_versions': [
             {'version': item['version'], 'created_at': item['created_at']}
@@ -796,12 +801,11 @@ def get_commitment_audit_anchor(cid: str):
             )
         },
         'payment_proposals': [
-            {'id': item['id'], 'status': item['status'], 'created_at': item['created_at']}
+            {'status': item['status'], 'created_at': item['created_at']}
             for item in record['payment_proposals']
         ],
         'actions': [
             {
-                'id': item['id'],
                 'action_type': item['action_type'],
                 'status': item['status'],
                 'events': [
@@ -813,12 +817,13 @@ def get_commitment_audit_anchor(cid: str):
         ],
     }
     canonical = json.dumps(snapshot, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+    opaque_commitment_ref = 'outcome-' + hashlib.sha256(commitment['id'].encode('utf-8')).hexdigest()
     return {
-        'commitment_id': commitment['id'],
+        'commitment_id': opaque_commitment_ref,
         'event_type': 'COMMITMENT_STATE_ANCHORED',
         'payload_hash': hashlib.sha256(canonical.encode('utf-8')).hexdigest(),
         'canonicalization': 'UTF-8 JSON; sorted keys; compact separators',
-        'privacy': 'Digest only. Supplier names, free-text notes, destinations and AI text are excluded.',
+        'privacy': 'Opaque commitment reference and digest only. Free text, supplier identity, evidence values/sources, destinations and AI text are excluded.',
     }
 
 
