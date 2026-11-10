@@ -19,7 +19,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Open http://127.0.0.1:8000. API docs: /docs. Click **Load synthetic demo case** to create two fictional Acme commitments with verified fixture evidence, a blocked payment proposal, an action to reconcile delivery and a repeated-short-delivery early signal. The seed endpoint refuses to run if commitments already exist. See [the 3-minute demo script](docs/DEMO_SCRIPT.md) for the end-to-end walkthrough.
+Open http://127.0.0.1:8000. API docs: /docs. Click **Load synthetic demo case** to create two fictional Acme commitments with verified fixture evidence, a blocked payment proposal, an action to reconcile delivery and a repeated-short-delivery early signal. The seed endpoint refuses to run if commitments already exist. See [the 3-minute demo script](docs/DEMO_SCRIPT.md) for the end-to-end walkthrough. Optional NEAR AI Cloud reasoning can be enabled by copying `.env.example`, setting `NEARAI_API_KEY` on the server and restarting; generation is user-triggered and pay-as-you-go. See [AI integration and data boundaries](docs/AI_INTEGRATION.md).
 
 ## Product principles
 
