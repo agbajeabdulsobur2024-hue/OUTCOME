@@ -2,7 +2,7 @@
 
 This is an isolated testnet demonstration. It does not move NEAR or supplier funds.
 
-## What it proves
+## What the testnet proof is designed to demonstrate
 
 1. OUTCOME's Rust contract stores a SHA-256 digest, commitment reference, event type, predecessor hash, signer account, block height and block timestamp.
 2. The contract enforces an append-only hash chain: every new event must reference the previous event hash.
@@ -86,6 +86,6 @@ Only hashes and synthetic identifiers are anchored. Do not place supplier names,
 
 ## Important scope boundary
 
-This proves NEAR protocol-level receiver/method restrictions on an actual testnet transaction. It does not yet make OUTCOME a payment executor and does not authorize a real supplier transfer. The function-call key can only call the audit contract's \`record_event\` method; it cannot call other contracts or arbitrary methods. The current OUTCOME web backend does not hold this key. The demo script is the isolated signer for this proof.
+After the script completes successfully, it will demonstrate NEAR protocol-level receiver/method restrictions on actual testnet transactions. Until then, this remains an unexecuted testnet proof. It does not yet make OUTCOME a payment executor and does not authorize a real supplier transfer. The function-call key can only call the audit contract's \`record_event\` method; it cannot call other contracts or arbitrary methods. The current OUTCOME web backend does not hold this key. The demo script is the isolated signer for this proof.
 
 After this proof is run successfully, the next integration step is to export a canonical commitment-state digest from OUTCOME and have a dedicated, authenticated server-side anchoring worker submit only that digest using the same restricted key. Do not expose the restricted private key to the browser.
