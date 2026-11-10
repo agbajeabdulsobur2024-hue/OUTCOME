@@ -61,6 +61,7 @@ def test_ai_brief_uses_near_ai_cloud_and_returns_unverified_attestation_label(mo
     assert result["brief"] == content
     assert captured["url"] == ai.NEAR_AI_URL
     assert captured["kwargs"]["json"]["model"] == ai.NEAR_AI_MODEL
+    assert captured["kwargs"]["json"]["max_tokens"] == 700
     user_context = captured["kwargs"]["json"]["messages"][1]["content"]
     assert "review_history" not in user_context
     assert "secret" not in user_context
