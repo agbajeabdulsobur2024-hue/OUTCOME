@@ -22,6 +22,10 @@ Each commitment can have one policy:
 
 A passing result means only that the proposal is eligible for human review. It is not a payment authorization and is not evidence that a transfer is safe.
 
+## Action and outcome tracking
+
+Action records are linked to the same commitment ID. The lifecycle is `PROPOSED` → `APPROVED` → `EXECUTION_REPORTED` → `OUTCOME_VERIFIED` or `OUTCOME_FAILED`, with `REJECTED` available from `PROPOSED`. Outcome verification requires evidence belonging to the same commitment and already marked `VERIFIED`. The API records human-reported events only; it does not execute the external action.
+
 ## API
 - `GET /api/commitments/{id}/payment-policy`
 - `PUT /api/commitments/{id}/payment-policy`
