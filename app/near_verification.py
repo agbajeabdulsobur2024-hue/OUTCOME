@@ -248,6 +248,7 @@ def verify_near_ai_response(
         "verified_at_nonce": nonce,
         "limitations": [
             "NVIDIA NRAS verdict JWT signature is not independently verified by OUTCOME.",
+            "Model/container measurement provenance, compose-manifest binding and Sigstore provenance are not yet independently verified by OUTCOME.",
             "This verification establishes response integrity and signer-to-TEE binding; it does not prove the model's reasoning is correct.",
         ],
     }
