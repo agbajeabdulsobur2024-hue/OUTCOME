@@ -107,21 +107,51 @@ async function main() {
   });
   const previousHash = parseRpcJson(latestRaw);
 
-  const demoPayload = {
-    commitment_id: "OUTCOME-DEMO-PO-104",
-    event_type: "SUPPLIER_EVIDENCE_REVIEWED",
-    evidence_summary: "Synthetic demo evidence reviewed; no supplier PII or payment details."
-  };
-  const payloadHash = crypto.createHash("sha256")
-    .update(JSON.stringify(demoPayload), "utf8").digest("hex");
+  let anchorPayload;
+  const appUrl = process.env.OUTCOME_API_URL;
+  const commitmentId = process.env.OUTCOME_COMMITMENT_ID;
+  if (appUrl || commitmentId) {
+    if (!appUrl || !commitmentId) {
+      throw new Error("Set both OUTCOME_API_URL and OUTCOME_COMMITMENT_ID, or neither.");
+    }
+    const digestResponse = await fetch(
+      appUrl.replace(/\\/$/, "") + "/api/commitments/" + encodeURIComponent(commitmentId) + "/audit-anchor"
+    );
+    if (!digestResponse.ok) {
+      throw new Error("OUTCOME audit digest endpoint returned HTTP " + digestResponse.status);
+    }
+    const digest = await digestResponse.json();
+    if (!/^[a-f0-9]{64}$/.test(digest.payload_hash || "")) {
+      throw new Error("OUTCOME returned an invalid audit digest.");
+    }
+    anchorPayload = {
+      commitment_id: digest.commitment_id,
+      event_type: digest.event_type,
+      payload_hash: digest.payload_hash
+    };
+    console.log("Anchoring privacy-minimized digest exported by OUTCOME.");
+  } else {
+    const demoPayload = {
+      commitment_id: "OUTCOME-DEMO-PO-104",
+      event_type: "SUPPLIER_EVIDENCE_REVIEWED",
+      evidence_summary: "Synthetic demo evidence reviewed; no supplier PII or payment details."
+    };
+    anchorPayload = {
+      commitment_id: demoPayload.commitment_id,
+      event_type: demoPayload.event_type,
+      payload_hash: crypto.createHash("sha256")
+        .update(JSON.stringify(demoPayload), "utf8").digest("hex")
+    };
+    console.log("Anchoring the built-in synthetic fixture. Set OUTCOME_API_URL and OUTCOME_COMMITMENT_ID to anchor an actual local demo record digest.");
+  }
 
   const accepted = await agent.functionCall({
     contractId,
     methodName: "record_event",
     args: {
-      commitment_id: demoPayload.commitment_id,
-      event_type: demoPayload.event_type,
-      payload_hash: payloadHash,
+      commitment_id: anchorPayload.commitment_id,
+      event_type: anchorPayload.event_type,
+      payload_hash: anchorPayload.payload_hash,
       previous_hash: previousHash
     },
     gas: GAS,
