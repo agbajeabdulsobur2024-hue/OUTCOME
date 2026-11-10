@@ -40,6 +40,10 @@ See [Vercel + Turso deployment instructions](docs/VERCEL_TURSO_DEPLOYMENT.md) fo
 
 This MVP is a hackathon demo, not a production financial service. It has no user authentication or tenant isolation; actor/reviewer names are manually entered labels, not authenticated identities or signatures. Do not enter sensitive live business or payment data. The destructive demo reset endpoint is disabled unless OUTCOME_ALLOW_DEMO_RESET=true is explicitly set in a disposable local environment. OUTCOME does not custody funds, approve invoices or submit blockchain transactions. The NEAR Intents Agent API is currently documented as an experimental, mainnet-only beta; its quickstart warns that real assets are at risk and no testnet is available. We will not connect a live wallet or move real funds in this demo. See the [official overview](https://docs.agentsonintents.com/integration/agent-api/overview) and [quickstart](https://docs.agentsonintents.com/integration/agent-api/quickstart/introduction).
 
+## NEAR testnet audit anchor
+
+The Rust contract and testnet script are under `near/`. See the [deployment and restricted function-call key proof guide](near/README.md). This is a scaffold until the contract is deployed and the testnet acceptance/rejection transactions are captured.
+
 ## NEAR hackathon integration
 
 See [the NEAR integration status and verification boundaries](docs/NEAR_HACKATHON_INTEGRATION.md) for what is implemented, what remains unverified, and which mainnet-only or alpha technologies are intentionally out of scope for this synthetic demo.
