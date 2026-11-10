@@ -566,8 +566,11 @@ def create_ai_brief(cid: str, request: Request):
         limit = max(1, int(os.getenv('OUTCOME_AI_RATE_LIMIT_PER_HOUR', '5')))
     except ValueError:
         limit = 5
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    now_utc = datetime.now(timezone.utc)
+    cutoff = (now_utc - timedelta(hours=1)).isoformat()
+    cleanup_cutoff = (now_utc - timedelta(days=1)).isoformat()
     with connect() as db:
+        db.execute('DELETE FROM ai_request_limits WHERE created_at < ?', (cleanup_cutoff,))
         recent = db.execute(
             'SELECT COUNT(*) FROM ai_request_limits WHERE client_ip=? AND created_at>=?',
             (client_ip, cutoff)
