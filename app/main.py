@@ -84,7 +84,7 @@ async def lifespan(app):
     yield
 
 
-app = FastAPI(title='OUTCOME', description='Supplier commitment intelligence: compare what was agreed with what the evidence shows.', version='0.2.0', lifespan=lifespan)
+app = FastAPI(title='OUTCOME', description='Supplier commitment intelligence: compare what was agreed with what the evidence shows.', version='0.3.0', lifespan=lifespan)
 app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
 
 
@@ -439,6 +439,8 @@ def list_payment_proposals(cid: str):
 @app.post('/api/commitments/{cid}/actions', status_code=201)
 def create_commitment_action(cid: str, payload: CommitmentActionCreate):
     get_record(cid)
+    if not payload.description.strip():
+        raise HTTPException(422, 'Action description cannot be blank')
     action_id = str(uuid.uuid4())
     created_at = utc_now()
     with connect() as db:
