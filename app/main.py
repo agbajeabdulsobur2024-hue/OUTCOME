@@ -709,7 +709,7 @@ def read_ai_status():
         'privacy_tier': 'TEE model',
         'attestation_verification_required': True,
         'attestation_verified_by_outcome': None,
-        'verification_method': 'ECDSA response signature + nonce-bound Intel TDX quote',
+        'verification_method': 'Preflight UpToDate Intel TDX quote (MRCONFIGID, RTMR3, debug bit) plus ECDSA response signature; NVIDIA NRAS boolean verdict for provider-TEE signatures',
     }
 
 

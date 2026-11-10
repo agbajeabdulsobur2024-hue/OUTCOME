@@ -47,21 +47,45 @@ def test_ai_brief_uses_near_ai_cloud_and_returns_verified_attestation(monkeypatc
         "questions_for_owner": ["Has the warehouse confirmed the count?"],
     }
     captured = {}
+    order = []
+
+    def fake_preflight(**kwargs):
+        order.append("preflight")
+        assert kwargs["model"] == ai.NEAR_AI_MODEL
+        return {"nonce": "ab" * 32, "gateway": {}, "models": []}
 
     def fake_post(url, **kwargs):
+        order.append("post")
         captured["url"] = url
         captured["kwargs"] = kwargs
         return httpx.Response(200, request=httpx.Request("POST", url), json={
             "id": "chat-123", "choices": [{"message": {"content": json.dumps(content)}}],
         })
 
+    def fake_verify(**kwargs):
+        order.append("verify")
+        assert kwargs["preflight"]["nonce"] == "ab" * 32
+        assert isinstance(kwargs["response_body"], bytes)
+        assert b"chat-123" in kwargs["response_body"]
+        return {
+            "verified": True,
+            "signature_kind": "provider_tee",
+            "tdx_status": "UpToDate",
+            "tdx_quote_verified": True,
+        }
+
+    monkeypatch.setattr(ai, "preflight_near_ai_evidence", fake_preflight)
     monkeypatch.setattr(ai.httpx, "post", fake_post)
-    monkeypatch.setattr(ai, "verify_near_ai_response", lambda **kwargs: {"verified": True, "tdx_quote_verified": True})
+    monkeypatch.setattr(ai, "verify_near_ai_response", fake_verify)
     result = ai.generate_operational_brief(sample_record())
+    assert order == ["preflight", "post", "verify"]
     assert result["provider"] == "NEAR AI Cloud"
-    assert result["attestation_status"] == "RESPONSE_SIGNATURE_AND_TDX_BINDING_VERIFIED"
+    assert result["attestation_status"] == "PROVIDER_TEE_SIGNATURE_AND_MODEL_TDX_VERIFIED"
     assert result["brief"] == content
     assert captured["url"] == ai.NEAR_AI_URL
+    headers = captured["kwargs"]["headers"]
+    assert headers["x-no-aliasing"] == "true"
+    assert headers["Accept-Encoding"] == "identity"
     assert json.loads(captured["kwargs"]["content"])["model"] == ai.NEAR_AI_MODEL
     assert json.loads(captured["kwargs"]["content"])["max_tokens"] == 700
     user_context = json.loads(captured["kwargs"]["content"])["messages"][1]["content"]
@@ -71,17 +95,20 @@ def test_ai_brief_uses_near_ai_cloud_and_returns_verified_attestation(monkeypatc
 
 def test_ai_brief_rejects_malformed_model_output(monkeypatch):
     monkeypatch.setenv("NEARAI_API_KEY", "test-key")
+    monkeypatch.setattr(ai, "preflight_near_ai_evidence", lambda **kwargs: {"nonce": "ab" * 32})
     monkeypatch.setattr(ai.httpx, "post", lambda *args, **kwargs: httpx.Response(
         200, request=httpx.Request("POST", ai.NEAR_AI_URL),
         json={"id": "chat-123", "choices": [{"message": {"content": "not json"}}]}
     ))
-    monkeypatch.setattr(ai, "verify_near_ai_response", lambda **kwargs: {"verified": True})
-    monkeypatch.setattr(ai, "verify_near_ai_response", lambda **kwargs: {"verified": True})
+    monkeypatch.setattr(ai, "verify_near_ai_response", lambda **kwargs: {
+        "verified": True, "signature_kind": "provider_tee",
+    })
     with pytest.raises(ai.AIProviderError):
         ai.generate_operational_brief(sample_record())
 
 def test_ai_brief_fails_closed_when_cryptographic_verification_fails(monkeypatch):
     monkeypatch.setenv("NEARAI_API_KEY", "test-key")
+    monkeypatch.setattr(ai, "preflight_near_ai_evidence", lambda **kwargs: {"nonce": "ab" * 32})
     monkeypatch.setattr(ai.httpx, "post", lambda *args, **kwargs: httpx.Response(
         200, request=httpx.Request("POST", ai.NEAR_AI_URL),
         json={"id": "chat-123", "choices": [{"message": {"content": "{}"}}]}

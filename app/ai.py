@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from app.near_verification import verify_near_ai_response
+from app.near_verification import preflight_near_ai_evidence, verify_near_ai_response
 
 NEAR_AI_URL = "https://cloud-api.near.ai/v1/chat/completions"
 NEAR_AI_MODEL = "Qwen/Qwen3.6-35B-A3B-FP8"
@@ -84,10 +84,29 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
         "stream": False,
     }
     request_body_text = json.dumps(request_body, separators=(",", ":"), ensure_ascii=False)
+    base_url = NEAR_AI_URL.rsplit("/v1/", 1)[0]
     try:
+        # Quotes are verified before the completion. The signature is checked
+        # against that preflight evidence, not against a quote fetched afterwards.
+        try:
+            preflight = preflight_near_ai_evidence(
+                base_url=base_url,
+                api_key=api_key,
+                model=NEAR_AI_MODEL,
+                timeout=30.0,
+            )
+        except Exception as exc:
+            raise AIProviderError(
+                f"NEAR AI preflight verification failed closed ({type(exc).__name__})."
+            ) from exc
         response = httpx.post(
             NEAR_AI_URL,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "Accept-Encoding": "identity",
+                "x-no-aliasing": "true",
+            },
             content=request_body_text,
             timeout=30.0,
         )
@@ -95,16 +114,17 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
             raise AIProviderError(f"NEAR AI Cloud returned HTTP {response.status_code}.")
         body = response.json()
         chat_id = body["id"]
-        # Fail closed: do not parse or persist model content until its exact
-        # HTTP response and signing TEE have passed cryptographic verification.
+        # Fail closed: do not parse or persist model content until the exact
+        # response bytes match a signer already verified in preflight.
         try:
             verification = verify_near_ai_response(
-                base_url=NEAR_AI_URL.rsplit("/v1/", 1)[0],
+                base_url=base_url,
                 api_key=api_key,
                 chat_id=chat_id,
                 model=NEAR_AI_MODEL,
                 request_body=request_body_text,
-                response_text=response.text,
+                response_body=response.content,
+                preflight=preflight,
                 timeout=30.0,
             )
         except Exception as exc:
@@ -131,12 +151,26 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(brief[key], list) or any(not isinstance(item, str) for item in brief[key]):
             raise AIProviderError(f"NEAR AI Cloud returned an invalid {key} field.")
 
+    kind = verification.get("signature_kind")
+    if kind == "provider_tee":
+        attestation_status = "PROVIDER_TEE_SIGNATURE_AND_MODEL_TDX_VERIFIED"
+    elif kind == "gateway":
+        attestation_status = "GATEWAY_SIGNATURE_AND_GATEWAY_TDX_VERIFIED"
+    else:
+        raise AIProviderError("NEAR AI response verification did not classify the signer.")
+
     return {
         "provider": "NEAR AI Cloud",
         "model": NEAR_AI_MODEL,
         "privacy_tier": "TEE model",
-        "attestation_status": "RESPONSE_SIGNATURE_AND_TDX_BINDING_VERIFIED",
+        "attestation_status": attestation_status,
         "verification": verification,
         "brief": brief,
-        "disclaimer": "Advisory explanation only. Deterministic checks and owner approval remain authoritative. OUTCOME verified response integrity, the ECDSA signer and fresh-nonce Intel TDX binding. This is not full model supply-chain verification.",
+        "disclaimer": (
+            "Advisory explanation only. Deterministic checks and owner approval remain authoritative. "
+            "OUTCOME verified the exact request and response bytes, the ECDSA signer, and a preflight "
+            "UpToDate Intel TDX quote bound to that signer, including MRCONFIGID and RTMR3. "
+            "A gateway signature attests the gateway quote, not the model quote. "
+            "This is not Sigstore provenance verification and not proof that the model's reasoning is correct."
+        ),
     }

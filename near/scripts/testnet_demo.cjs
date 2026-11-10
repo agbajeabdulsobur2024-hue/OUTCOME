@@ -8,6 +8,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const nearAPI = require("near-api-js");
+const { isMethodNameMismatch, allowanceWithinCap, rejectionHash } = require("./access_key_policy.cjs");
 
 const NETWORK = "testnet";
 const RPC = "https://rpc.testnet.near.org";
@@ -23,6 +24,32 @@ function required(name) {
 function parseRpcJson(value) {
   const bytes = Buffer.from(value.result);
   return JSON.parse(bytes.toString("utf8"));
+}
+
+async function confirmMethodNameMismatch(provider, hash, accountId) {
+  // nearcore 2.14 returns MethodNameMismatch from broadcast and often does not
+  // index that rejected transaction. txStatus then times out with NOT_OBSERVED.
+  // An indexed status that is some other failure is still a hard error.
+  let lastError = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const status = await provider.txStatus(hash, accountId);
+      const failure = status && status.status && status.status.Failure;
+      const encoded = JSON.stringify(failure || (status && status.status) || {});
+      if (!encoded.includes("MethodNameMismatch")) {
+        throw new Error("Rejected transaction status is not MethodNameMismatch. " + encoded.slice(0, 500));
+      }
+      return "indexed MethodNameMismatch: " + encoded;
+    } catch (error) {
+      const message = String(error && error.message || error);
+      if (message.includes("not MethodNameMismatch")) throw error;
+      lastError = error;
+      if (/NOT_OBSERVED|TIMEOUT|Timeout/i.test(message)) break;
+      await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+    }
+  }
+  return "broadcast MethodNameMismatch was returned to the signer; txStatus did not index "
+    + hash + " (" + String(lastError && lastError.message || lastError).slice(0, 240) + ")";
 }
 
 async function main() {
@@ -76,12 +103,13 @@ async function main() {
   if (existing) {
     const permission = existing.access_key && existing.access_key.permission;
     const fc = permission && permission.FunctionCall;
+    const methods = (fc && fc.method_names || []).slice().sort();
     if (!fc || fc.receiver_id !== contractId ||
-        JSON.stringify((fc.method_names || []).slice().sort()) !== JSON.stringify(["record_event"]) ||
-        String(fc.allowance) !== ALLOWANCE) {
-      throw new Error("Existing restricted key does not have the exact receiver/method/allowance scope expected.");
+        JSON.stringify(methods) !== JSON.stringify(["record_event"]) ||
+        !allowanceWithinCap(fc.allowance, ALLOWANCE)) {
+      throw new Error("Existing restricted key does not have the receiver, method, and remaining allowance expected.");
     }
-    console.log("Reusing existing function-call key with verified exact scope.");
+    console.log("Reusing existing function-call key. Remaining allowance:", String(fc.allowance));
   } else {
     await owner.addKey(functionKey.getPublicKey(), contractId, ["record_event"], ALLOWANCE);
   }
@@ -175,13 +203,22 @@ async function main() {
     });
   } catch (error) {
     const message = String(error && (error.message || error));
-    if (/FunctionCallAccessKeyMethodNameMismatch|MethodNameMismatch|method name.*not allowed|method.*not.*permitted/i.test(message)) {
-      blocked = true;
-      console.log("PASS: NEAR protocol rejected admin_probe because the key only allows record_event.");
-      console.log("Protocol rejection:", message.slice(0, 500));
-    } else {
-      throw new Error("admin_probe failed, but not with a recognized method-scope rejection. Cannot claim the key restriction was proven. " + message);
+    if (!isMethodNameMismatch(error)) {
+      throw new Error("admin_probe failed, but not with MethodNameMismatch. Cannot claim the key restriction was proven. " + message);
     }
+    const rejectedHash = rejectionHash(error);
+    if (!rejectedHash) {
+      throw new Error("MethodNameMismatch was reported without error.context.transactionHash.");
+    }
+    const failureText = await confirmMethodNameMismatch(
+      agentNear.connection.provider, rejectedHash, ownerId
+    );
+    blocked = true;
+    console.log("PASS: NEAR protocol rejected admin_probe because the key only allows record_event.");
+    console.log("Protocol rejection:", message.slice(0, 500));
+    console.log("Rejected transaction:", rejectedHash);
+    console.log("Explorer:", "https://testnet.nearblocks.io/txns/" + rejectedHash);
+    console.log("RPC failure:", failureText.slice(0, 500));
   }
   if (!blocked) {
     throw new Error("SECURITY FAILURE: restricted function-call key unexpectedly invoked admin_probe.");
