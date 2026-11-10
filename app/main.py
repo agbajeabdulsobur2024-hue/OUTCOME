@@ -56,7 +56,12 @@ def init_db():
             allowed_destination TEXT NOT NULL DEFAULT '',
             require_full_delivery INTEGER NOT NULL DEFAULT 1,
             require_invoice_match INTEGER NOT NULL DEFAULT 1,
+            require_verified_evidence INTEGER NOT NULL DEFAULT 1,
             updated_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS evidence_reviews (
+            id TEXT PRIMARY KEY, evidence_id TEXT NOT NULL REFERENCES evidence(id),
+            status TEXT NOT NULL, reviewer TEXT NOT NULL, note TEXT NOT NULL,
+            created_at TEXT NOT NULL)''')
         db.execute('''CREATE TABLE IF NOT EXISTS payment_proposals (
             id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
             status TEXT NOT NULL, proposal_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
@@ -96,6 +101,7 @@ class PaymentPolicyUpdate(BaseModel):
     allowed_destination: str = Field(min_length=1, max_length=200)
     require_full_delivery: bool = True
     require_invoice_match: bool = True
+    require_verified_evidence: bool = True
 
 
 class PaymentProposalCreate(BaseModel):
@@ -103,6 +109,12 @@ class PaymentProposalCreate(BaseModel):
     currency: str = Field(min_length=3, max_length=8)
     destination: str = Field(min_length=1, max_length=200)
 
+
+
+class EvidenceReviewCreate(BaseModel):
+    status: Literal['VERIFIED', 'REJECTED']
+    reviewer: str = Field(min_length=1, max_length=120)
+    note: str = Field(default='', max_length=1000)
 
 
 class CommitmentAmendment(BaseModel):
@@ -123,7 +135,12 @@ def get_record(cid: str):
             raise HTTPException(404, 'Commitment not found')
         commitment = dict(c)
         evidence = [dict(row) for row in db.execute(
-            'SELECT * FROM evidence WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
+            '''SELECT e.*,
+                COALESCE((SELECT r.status FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1), 'UNREVIEWED') AS review_status,
+                (SELECT r.reviewer FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewer,
+                (SELECT r.note FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS review_note,
+                (SELECT r.created_at FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewed_at
+                FROM evidence e WHERE e.commitment_id=? ORDER BY e.created_at, e.rowid''', (cid,)
         ).fetchall()]
         versions = [dict(row) for row in db.execute(
             'SELECT version, terms_json, reason, created_at FROM commitment_versions WHERE commitment_id=? ORDER BY version', (cid,)
@@ -150,12 +167,13 @@ def get_record(cid: str):
             'allowed_destination': policy_row['allowed_destination'],
             'require_full_delivery': bool(policy_row['require_full_delivery']),
             'require_invoice_match': bool(policy_row['require_invoice_match']),
+            'require_verified_evidence': bool(policy_row['require_verified_evidence']),
             'updated_at': policy_row['updated_at'],
             'configured': True,
         } if policy_row else {
             'enabled': False, 'max_amount': commitment['amount'],
             'allowed_destination': '', 'require_full_delivery': True,
-            'require_invoice_match': True, 'configured': False,
+            'require_invoice_match': True, 'require_verified_evidence': True, 'configured': False,
         }),
         'payment_proposals': [
             {'id': row['id'], 'status': row['status'], 'proposal': json.loads(row['proposal_json']), 'created_at': row['created_at']}
@@ -251,6 +269,28 @@ def add_evidence(cid: str, payload: EvidenceCreate):
 
 
 
+
+
+@app.post('/api/evidence/{evidence_id}/reviews', status_code=201)
+def review_evidence(evidence_id: str, payload: EvidenceReviewCreate):
+    with connect() as db:
+        exists = db.execute('SELECT id FROM evidence WHERE id=?', (evidence_id,)).fetchone()
+        if not exists:
+            raise HTTPException(404, 'Evidence record not found')
+        review_id = str(uuid.uuid4())
+        created_at = utc_now()
+        db.execute('''INSERT INTO evidence_reviews
+            (id, evidence_id, status, reviewer, note, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)''',
+            (review_id, evidence_id, payload.status, payload.reviewer.strip(),
+             payload.note.strip(), created_at))
+        if not payload.reviewer.strip():
+            raise HTTPException(422, 'Reviewer identity is required')
+    return {'id': review_id, 'evidence_id': evidence_id, 'status': payload.status,
+            'reviewer': payload.reviewer.strip(), 'note': payload.note.strip(),
+            'created_at': created_at}
+
+
 @app.post('/api/commitments/{cid}/amendments', status_code=201)
 def amend_commitment(cid: str, payload: CommitmentAmendment):
     current = get_record(cid)
@@ -313,16 +353,18 @@ def update_payment_policy(cid: str, payload: PaymentPolicyUpdate):
     with connect() as db:
         db.execute('''INSERT INTO payment_policies
             (commitment_id, enabled, max_amount, allowed_destination,
-             require_full_delivery, require_invoice_match, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+             require_full_delivery, require_invoice_match, require_verified_evidence, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(commitment_id) DO UPDATE SET
             enabled=excluded.enabled, max_amount=excluded.max_amount,
             allowed_destination=excluded.allowed_destination,
             require_full_delivery=excluded.require_full_delivery,
             require_invoice_match=excluded.require_invoice_match,
+            require_verified_evidence=excluded.require_verified_evidence,
             updated_at=excluded.updated_at''',
             (cid, int(payload.enabled), payload.max_amount, payload.allowed_destination.strip(),
-             int(payload.require_full_delivery), int(payload.require_invoice_match), utc_now()))
+             int(payload.require_full_delivery), int(payload.require_invoice_match),
+             int(payload.require_verified_evidence), utc_now()))
     return get_record(cid)['payment_policy']
 
 
