@@ -45,8 +45,9 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('static/index.html', 'utf8');
-          const scripts = [...html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)];
-          if (!scripts.length) throw new Error('No embedded application script found');
-          for (const match of scripts) new Function(match[1]);
+          const start = html.indexOf('<script>');
+          const end = html.lastIndexOf('</script>');
+          if (start < 0 || end <= start) throw new Error('No embedded application script found');
+          new Function(html.slice(start + 8, end));
           console.log('Embedded frontend JavaScript syntax is valid');
           NODE
