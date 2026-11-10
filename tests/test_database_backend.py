@@ -89,3 +89,13 @@ def test_unknown_database_backend_fails_closed(monkeypatch):
     with pytest.raises(RuntimeError, match="Unsupported OUTCOME_DB_BACKEND"):
         with main.connect():
             pass
+
+def test_vercel_defaults_to_turso_instead_of_ephemeral_sqlite(monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.delenv("OUTCOME_DB_BACKEND", raising=False)
+    monkeypatch.delenv("TURSO_DATABASE_URL", raising=False)
+    monkeypatch.delenv("TURSO_AUTH_TOKEN", raising=False)
+
+    with pytest.raises(RuntimeError, match="OUTCOME_DB_BACKEND=turso requires"):
+        with main.connect():
+            pass
