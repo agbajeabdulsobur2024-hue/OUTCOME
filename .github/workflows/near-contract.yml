@@ -40,3 +40,13 @@ jobs:
         run: node --check near/scripts/testnet_demo.cjs
       - name: Check restricted-key API surface
         run: node -e "const n=require('./near/node_modules/near-api-js'); if (!n.Account || !n.Account.prototype.addKey || !n.Account.prototype.functionCall) process.exit(1); console.log('near-api-js account key and function-call methods are available')"
+      - name: Check embedded frontend JavaScript syntax
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('static/index.html', 'utf8');
+          const scripts = [...html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)];
+          if (!scripts.length) throw new Error('No embedded application script found');
+          for (const match of scripts) new Function(match[1]);
+          console.log('Embedded frontend JavaScript syntax is valid');
+          NODE
