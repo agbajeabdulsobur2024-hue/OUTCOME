@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 import sqlite3
 import uuid
@@ -752,6 +753,70 @@ def create_ai_brief(cid: str, request: Request):
              json.dumps(result, sort_keys=True), created_at)
         )
     return {'id': brief_id, 'commitment_id': cid, 'created_at': created_at, **result}
+
+
+@app.get('/api/commitments/{cid}/audit-anchor')
+def get_commitment_audit_anchor(cid: str):
+    """Return a privacy-minimized digest for an optional NEAR testnet anchor.
+
+    Raw supplier/evidence notes, destination addresses and AI text are excluded.
+    Only the SHA-256 digest is intended for public-chain storage.
+    """
+    record = get_record(cid)
+    commitment = record['commitment']
+    snapshot = {
+        'commitment': {
+            key: commitment[key] for key in (
+                'id', 'quantity', 'unit', 'amount', 'currency',
+                'due_date', 'payment_condition',
+            )
+        },
+        'evidence': [
+            {
+                key: item.get(key) for key in (
+                    'id', 'kind', 'value', 'source', 'created_at', 'review_status',
+                )
+            }
+            for item in record['evidence']
+        ],
+        'assessment': {
+            'status': record['assessment']['status'],
+            'issues': record['assessment']['issues'],
+            'next_actions': record['assessment']['next_actions'],
+        },
+        'commitment_versions': record['commitment_versions'],
+        'payment_policy': {
+            key: record['payment_policy'][key] for key in (
+                'enabled', 'max_amount', 'require_full_delivery',
+                'require_invoice_match', 'require_verified_evidence',
+                'allow_partial_payments', 'configured',
+            )
+        },
+        'payment_proposals': [
+            {'id': item['id'], 'status': item['status'], 'created_at': item['created_at']}
+            for item in record['payment_proposals']
+        ],
+        'actions': [
+            {
+                'id': item['id'],
+                'action_type': item['action_type'],
+                'status': item['status'],
+                'events': [
+                    {'event_type': event['event_type'], 'created_at': event['created_at']}
+                    for event in item['events']
+                ],
+            }
+            for item in record['actions']
+        ],
+    }
+    canonical = json.dumps(snapshot, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+    return {
+        'commitment_id': commitment['id'],
+        'event_type': 'COMMITMENT_STATE_ANCHORED',
+        'payload_hash': hashlib.sha256(canonical.encode('utf-8')).hexdigest(),
+        'canonicalization': 'UTF-8 JSON; sorted keys; compact separators',
+        'privacy': 'Digest only. Supplier names, free-text notes, destinations and AI text are excluded.',
+    }
 
 
 @app.get('/api/patterns')
