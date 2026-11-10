@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 
@@ -9,7 +9,7 @@ def detect_supplier_patterns(
     today: date | None = None,
 ) -> list[dict[str, Any]]:
     """Surface repeated, evidence-backed supplier signals without inferring intent."""
-    today = today or date.today()
+    today = today or datetime.now(timezone.utc).date()
     groups: dict[str, dict[str, Any]] = {}
     for commitment in commitments:
         supplier = str(commitment.get("supplier", "")).strip()
