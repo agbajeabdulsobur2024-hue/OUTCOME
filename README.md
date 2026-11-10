@@ -2,7 +2,7 @@
 
 An operations intelligence agent for commitments, evidence and follow-through.
 
-The first workflow protects supplier payments by comparing what was agreed with what the evidence shows.
+The first workflow protects supplier payments by comparing what was agreed with what the evidence shows. It now includes owner-defined payment policy checks and a simulated proposal workflow: discrepancies or policy violations block a proposal; a passing proposal still requires human approval.
 
 ## First demo
 
@@ -34,9 +34,13 @@ Open http://127.0.0.1:8000. API docs: /docs.
 
 This MVP is decision support. It does not custody funds, approve invoices or submit blockchain transactions. The NEAR Intents Agent API is currently documented as an experimental, mainnet-only beta; its quickstart warns that real assets are at risk and no testnet is available. We will not connect a live wallet or move real funds in this demo. See the [official overview](https://docs.agentsonintents.com/integration/agent-api/overview) and [quickstart](https://docs.agentsonintents.com/integration/agent-api/quickstart/introduction).
 
+## Payment policy simulation
+
+Configure a disabled-by-default policy per commitment with a spending cap, exact approved destination, full-delivery requirement and invoice-match requirement. Submit a proposed payment for evaluation. OUTCOME returns explicit block reasons or `AWAITING_HUMAN_APPROVAL`. It never approves, signs, submits or executes a transfer. See [payment policy simulation](docs/PAYMENT_POLICY_SIMULATION.md).
+
 ## Scope
 
-Supplier commitment state, evidence capture, discrepancy detection, risk explanation and a usable interface. Human review remains required.
+Supplier commitment state, evidence capture, discrepancy detection, risk explanation, policy-bound payment proposal evaluation and a usable interface. Human approval remains required.
 
 ## Tests
 
