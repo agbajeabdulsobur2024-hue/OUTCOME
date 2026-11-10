@@ -593,6 +593,8 @@ def seed_demo():
 
 @app.post('/api/demo/reset')
 def reset_demo():
+    if os.getenv('OUTCOME_ALLOW_DEMO_RESET', 'false').lower() != 'true':
+        raise HTTPException(403, 'Demo reset is disabled. Set OUTCOME_ALLOW_DEMO_RESET=true only in a disposable local environment.')
     with connect() as db:
         db.execute('DELETE FROM action_events')
         db.execute('DELETE FROM commitment_actions')
