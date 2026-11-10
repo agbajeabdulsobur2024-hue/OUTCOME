@@ -22,3 +22,5 @@ jobs:
       - name: Build NEAR audit contract
         working-directory: near/contract
         run: cargo build --target wasm32-unknown-unknown --release
+      - name: Check testnet runner JavaScript syntax
+        run: node --check near/scripts/testnet_demo.cjs
