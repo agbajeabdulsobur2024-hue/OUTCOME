@@ -3,11 +3,11 @@ import os
 import sqlite3
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -79,6 +79,8 @@ def init_db():
             id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
             provider TEXT NOT NULL, model TEXT NOT NULL, brief_json TEXT NOT NULL,
             created_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS ai_request_limits (
+            id TEXT PRIMARY KEY, client_ip TEXT NOT NULL, created_at TEXT NOT NULL)''')
         policy_columns = {row['name'] for row in db.execute('PRAGMA table_info(payment_policies)').fetchall()}
         if 'require_verified_evidence' not in policy_columns:
             db.execute('ALTER TABLE payment_policies ADD COLUMN require_verified_evidence INTEGER NOT NULL DEFAULT 1')
@@ -555,10 +557,27 @@ def read_ai_status():
 
 
 @app.post('/api/commitments/{cid}/ai-brief', status_code=201)
-def create_ai_brief(cid: str):
+def create_ai_brief(cid: str, request: Request):
     if not is_configured():
         raise HTTPException(503, 'Optional NEAR AI Cloud is not configured. Set NEARAI_API_KEY to enable it.')
     record = get_record(cid)
+    client_ip = request.client.host if request.client else 'unknown'
+    try:
+        limit = max(1, int(os.getenv('OUTCOME_AI_RATE_LIMIT_PER_HOUR', '5')))
+    except ValueError:
+        limit = 5
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    with connect() as db:
+        recent = db.execute(
+            'SELECT COUNT(*) FROM ai_request_limits WHERE client_ip=? AND created_at>=?',
+            (client_ip, cutoff)
+        ).fetchone()[0]
+        if recent >= limit:
+            raise HTTPException(429, 'AI brief rate limit reached for this client. Try again later.')
+        db.execute(
+            'INSERT INTO ai_request_limits (id, client_ip, created_at) VALUES (?, ?, ?)',
+            (str(uuid.uuid4()), client_ip, utc_now())
+        )
     try:
         result = generate_operational_brief(record)
     except AIConfigurationError as exc:
@@ -646,6 +665,7 @@ def reset_demo():
         raise HTTPException(403, 'Demo reset is disabled. Set OUTCOME_ALLOW_DEMO_RESET=true only in a disposable local environment.')
     with connect() as db:
         db.execute('DELETE FROM ai_briefs')
+        db.execute('DELETE FROM ai_request_limits')
         db.execute('DELETE FROM action_events')
         db.execute('DELETE FROM commitment_actions')
         db.execute('DELETE FROM payment_proposals')
