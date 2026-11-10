@@ -26,6 +26,7 @@ Do not enter sensitive live business data into this hackathon demo. The applicat
 - Output is validated against a fixed JSON shape before display.
 - Malformed responses and provider errors fail closed; no AI-generated action is automatically created.
 - AI briefs are stored as advisory history linked to the commitment.
+- Requests are rate-limited per client IP (default five per hour; configurable with OUTCOME_AI_RATE_LIMIT_PER_HOUR) to limit accidental key spend.
 
 ## Enable
 Set NEARAI_API_KEY in the server environment and restart OUTCOME. The UI will enable the AI brief button. No API key is sent to the browser.
