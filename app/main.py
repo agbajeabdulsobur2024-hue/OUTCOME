@@ -503,6 +503,18 @@ def update_payment_policy(cid: str, payload: PaymentPolicyUpdate):
         raise HTTPException(422, 'An exact approved destination is required')
     if payload.max_amount > float(record['commitment']['amount']):
         raise HTTPException(422, 'Policy spending limit cannot exceed the recorded commitment amount')
+    now = utc_now()
+    policy_snapshot = {
+        'enabled': payload.enabled,
+        'max_amount': payload.max_amount,
+        'allowed_destination': payload.allowed_destination.strip(),
+        'require_full_delivery': payload.require_full_delivery,
+        'require_invoice_match': payload.require_invoice_match,
+        'require_verified_evidence': payload.require_verified_evidence,
+        'allow_partial_payments': payload.allow_partial_payments,
+        'updated_at': now,
+        'configured': True,
+    }
     with connect() as db:
         db.execute('''INSERT INTO payment_policies
             (commitment_id, enabled, max_amount, allowed_destination,
@@ -518,11 +530,10 @@ def update_payment_policy(cid: str, payload: PaymentPolicyUpdate):
             updated_at=excluded.updated_at''',
             (cid, int(payload.enabled), payload.max_amount, payload.allowed_destination.strip(),
              int(payload.require_full_delivery), int(payload.require_invoice_match),
-             int(payload.require_verified_evidence), int(payload.allow_partial_payments), utc_now()))
-        policy_snapshot = get_record(cid)['payment_policy']
+             int(payload.require_verified_evidence), int(payload.allow_partial_payments), now))
         db.execute(
             'INSERT INTO payment_policy_history (id, commitment_id, policy_json, created_at) VALUES (?, ?, ?, ?)',
-            (str(uuid.uuid4()), cid, json.dumps(policy_snapshot, sort_keys=True), utc_now())
+            (str(uuid.uuid4()), cid, json.dumps(policy_snapshot, sort_keys=True), now)
         )
     return get_record(cid)['payment_policy']
 
