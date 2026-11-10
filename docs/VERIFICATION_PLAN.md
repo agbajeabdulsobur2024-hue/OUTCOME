@@ -14,4 +14,4 @@ Verification coverage in the current build:
 - Human approval remains required even when simulation checks pass.
 - No wallet signing, transaction submission or real asset movement.
 
-Reviewer and actor names are demo inputs, not authenticated identities. The connector did not return a successful CI run for the current branch, so the suite must still be executed in a real Python environment before treating these checks as passed.
+Reviewer and actor names are demo inputs, not authenticated identities. An isolated 10-test run of the payment evaluator and pattern-recognition logic passed in a Python environment. The full repository API/integration suite has not yet run; the GitHub connector returned no CI status for the current branch, so do not treat the full suite as passed.
