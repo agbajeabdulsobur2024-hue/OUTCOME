@@ -69,7 +69,7 @@ def detect_supplier_patterns(
                 "occurrences": len(incidents),
                 "observed_commitments": sample_size,
                 "rate": round(rate, 3),
-                "confidence": "EARLY_SIGNAL" if sample_size < 5 else "RECURRING_PATTERN",
+                "confidence": "RECURRING_PATTERN" if sample_size >= 5 and rate >= 0.3 else "EARLY_SIGNAL",
                 "incidents": incidents,
                 "interpretation": "Repeated evidence-backed signal. Review the underlying records and context; this does not establish intent, misconduct or fraud.",
                 "as_of": today.isoformat(),
