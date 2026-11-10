@@ -89,8 +89,7 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
         body = response.json()
         content = body["choices"][0]["message"]["content"]
         if content.startswith("```"):
-            content = content.split("
-", 1)[-1].rsplit("```", 1)[0].strip()
+            content = content.split(chr(10), 1)[-1].rsplit("```", 1)[0].strip()
         brief = json.loads(content)
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
         raise AIProviderError(f"NEAR AI Cloud brief could not be generated: {exc}") from exc
