@@ -67,6 +67,9 @@ def test_payment_proposal_is_blocked_until_policy_and_evidence_are_valid(tmp_pat
         assert result['human_approval_required'] is True
         assert result['transfer_executed'] is False
         assert result['transaction_hash'] is None
+        assert result['evaluation_basis']['commitment_version'] == 1
+        assert result['evaluation_basis']['policy_snapshot']['allow_partial_payments'] is False
+        assert {e['kind'] for e in result['evaluation_basis']['evidence_snapshot']} == {'quantity_received', 'invoice_amount'}
         # A newer, unreviewed receiving record invalidates reliance on the older verified record.
         client.post(f'/api/commitments/{cid}/evidence', json={
             'kind': 'quantity_received', 'value': 80, 'note': 'New conflicting count',
