@@ -115,7 +115,7 @@ async function main() {
       throw new Error("Set both OUTCOME_API_URL and OUTCOME_COMMITMENT_ID, or neither.");
     }
     const digestResponse = await fetch(
-      appUrl.replace(/\\/$/, "") + "/api/commitments/" + encodeURIComponent(commitmentId) + "/audit-anchor"
+      (appUrl.endsWith("/") ? appUrl.slice(0, -1) : appUrl) + "/api/commitments/" + encodeURIComponent(commitmentId) + "/audit-anchor"
     );
     if (!digestResponse.ok) {
       throw new Error("OUTCOME audit digest endpoint returned HTTP " + digestResponse.status);
