@@ -29,6 +29,8 @@ def evaluate_payment_proposal(
         reasons.append({"code": "SPENDING_LIMIT_EXCEEDED", "message": "Requested amount exceeds the owner-defined spending limit."})
     if requested_amount > float(commitment["amount"]):
         reasons.append({"code": "ABOVE_COMMITMENT_VALUE", "message": "Requested amount exceeds the recorded commitment value."})
+    if not policy.get("allow_partial_payments", False) and round(float(requested_amount), 2) != round(float(commitment["amount"]), 2):
+        reasons.append({"code": "PARTIAL_PAYMENT_NOT_ALLOWED", "message": "The proposal is not for the full committed amount and partial payments are not enabled by the owner policy."})
 
     approved_destination = str(policy.get("allowed_destination", "")).strip()
     if not approved_destination or destination.strip() != approved_destination:
