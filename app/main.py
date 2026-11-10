@@ -316,13 +316,14 @@ def amend_commitment(cid: str, payload: CommitmentAmendment):
         except ValueError:
             raise HTTPException(422, 'due_date must be an ISO date, e.g. 2026-11-14')
     if 'currency' in changes:
-        changes['currency'] = changes['currency'].upper()
-    if 'description' in changes:
-        changes['description'] = changes['description'].strip()
-    if 'unit' in changes:
-        changes['unit'] = changes['unit'].strip()
-    if 'payment_condition' in changes:
-        changes['payment_condition'] = changes['payment_condition'].strip()
+        changes['currency'] = changes['currency'].strip().upper()
+        if not changes['currency']:
+            raise HTTPException(422, 'currency cannot be blank')
+    for field in ('description', 'unit', 'payment_condition'):
+        if field in changes:
+            changes[field] = changes[field].strip()
+            if not changes[field]:
+                raise HTTPException(422, f'{field} cannot be blank')
     old_terms = current['commitment']
     new_terms = {key: old_terms[key] for key in (
         'supplier', 'description', 'quantity', 'unit', 'amount',
@@ -356,6 +357,8 @@ def read_payment_policy(cid: str):
 @app.put('/api/commitments/{cid}/payment-policy')
 def update_payment_policy(cid: str, payload: PaymentPolicyUpdate):
     record = get_record(cid)
+    if not payload.allowed_destination.strip():
+        raise HTTPException(422, 'An exact approved destination is required')
     if payload.max_amount > float(record['commitment']['amount']):
         raise HTTPException(422, 'Policy spending limit cannot exceed the recorded commitment amount')
     with connect() as db:
