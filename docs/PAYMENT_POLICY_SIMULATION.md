@@ -18,8 +18,9 @@ Each commitment can have one policy:
 2. A payment proposal is submitted with amount, currency, and destination.
 3. OUTCOME evaluates the proposal against the policy and latest applicable evidence.
 4. Any failed check produces `BLOCKED` with explicit reason codes.
-5. If every check passes, status is `AWAITING_HUMAN_APPROVAL`.
-6. No endpoint approves, signs, submits, or executes a transfer.
+5. The proposal stores an immutable evaluation basis: commitment version and terms, policy snapshot, and latest evidence IDs/review states used.
+6. If every check passes, status is `AWAITING_HUMAN_APPROVAL`.
+7. No endpoint approves, signs, submits, or executes a transfer.
 
 A passing result means only that the proposal is eligible for human review. It is not a payment authorization and is not evidence that a transfer is safe.
 
