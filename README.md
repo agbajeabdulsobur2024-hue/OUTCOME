@@ -2,7 +2,7 @@
 
 An operations intelligence agent for commitments, evidence and follow-through.
 
-The first workflow protects supplier payments by comparing what was agreed with what the evidence shows. It now includes owner-defined payment policy checks and a simulated proposal workflow: discrepancies or policy violations block a proposal; a passing proposal still requires human approval.
+The first workflow protects supplier payments by comparing what was agreed with what the evidence shows. It now includes versioned amendments, append-only evidence reviews, owner-defined payment policies and a simulated proposal workflow. The latest applicable evidence must be marked verified before a proposal can pass; a passing proposal still requires human approval.
 
 ## First demo
 
@@ -36,7 +36,7 @@ This MVP is decision support. It does not custody funds, approve invoices or sub
 
 ## Payment policy simulation
 
-Configure a disabled-by-default policy per commitment with a spending cap, exact approved destination, full-delivery requirement and invoice-match requirement. Submit a proposed payment for evaluation. OUTCOME returns explicit block reasons or `AWAITING_HUMAN_APPROVAL`. It never approves, signs, submits or executes a transfer. See [payment policy simulation](docs/PAYMENT_POLICY_SIMULATION.md).
+Configure a disabled-by-default policy per commitment with a spending cap, exact approved destination, full-delivery requirement, invoice-match requirement and verified-evidence requirement. Evidence reviews are append-only; a newer unreviewed or rejected record supersedes an older verified record. Submit a proposed payment for evaluation. OUTCOME returns explicit block reasons or `AWAITING_HUMAN_APPROVAL`. It never approves, signs, submits or executes a transfer. See [payment policy simulation](docs/PAYMENT_POLICY_SIMULATION.md).
 
 ## Scope
 
