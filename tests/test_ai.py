@@ -59,7 +59,7 @@ def test_ai_brief_uses_near_ai_cloud_and_returns_verified_attestation(monkeypatc
     monkeypatch.setattr(ai, "verify_near_ai_response", lambda **kwargs: {"verified": True, "tdx_quote_verified": True})
     result = ai.generate_operational_brief(sample_record())
     assert result["provider"] == "NEAR AI Cloud"
-    assert result["attestation_status"] == "VERIFIED_BY_OUTCOME"
+    assert result["attestation_status"] == "RESPONSE_SIGNATURE_AND_TDX_BINDING_VERIFIED"
     assert result["brief"] == content
     assert captured["url"] == ai.NEAR_AI_URL
     assert json.loads(captured["kwargs"]["content"])["model"] == ai.NEAR_AI_MODEL
