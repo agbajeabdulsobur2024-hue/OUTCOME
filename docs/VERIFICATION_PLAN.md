@@ -11,6 +11,8 @@ Verification coverage in the current build:
 - Partial payment proposals blocked unless explicitly enabled by owner policy.
 - Supplier pattern signals require at least two incidents backed by latest verified evidence; recurring-pattern labels additionally require a sample of at least five and an incident rate of at least 30%.
 - Action lifecycle rejects invalid transitions and requires same-commitment verified evidence to verify an outcome.
+- Synthetic demo seeding is non-destructive and refuses to run when existing commitments are present.
+- Destructive demo reset is disabled unless an explicit local-only environment flag is enabled.
 - Human approval remains required even when simulation checks pass.
 - No wallet signing, transaction submission or real asset movement.
 
