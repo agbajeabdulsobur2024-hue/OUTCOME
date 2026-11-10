@@ -104,6 +104,18 @@ class PaymentProposalCreate(BaseModel):
     destination: str = Field(min_length=1, max_length=200)
 
 
+
+class CommitmentAmendment(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+    description: str | None = Field(default=None, min_length=1, max_length=500)
+    quantity: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    unit: str | None = Field(default=None, min_length=1, max_length=40)
+    amount: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    currency: str | None = Field(default=None, min_length=3, max_length=8)
+    due_date: str | None = None
+    payment_condition: str | None = Field(default=None, max_length=300)
+
+
 def get_record(cid: str):
     with connect() as db:
         c = db.execute('SELECT * FROM commitments WHERE id=?', (cid,)).fetchone()
@@ -233,6 +245,57 @@ def add_evidence(cid: str, payload: EvidenceCreate):
             'INSERT INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?)',
             (str(uuid.uuid4()), cid, payload.kind, payload.value, payload.note.strip(), payload.source.strip() or 'manual', utc_now())
         )
+    save_assessment_snapshot(cid)
+    return get_record(cid)
+
+
+
+
+@app.post('/api/commitments/{cid}/amendments', status_code=201)
+def amend_commitment(cid: str, payload: CommitmentAmendment):
+    current = get_record(cid)
+    changes = payload.model_dump(exclude_unset=True)
+    reason = changes.pop('reason').strip()
+    if not reason:
+        raise HTTPException(422, 'An amendment reason is required')
+    if not changes:
+        raise HTTPException(422, 'Provide at least one term to amend')
+    if any(value is None for value in changes.values()):
+        raise HTTPException(422, 'Amended terms cannot be null')
+    if 'due_date' in changes:
+        try:
+            changes['due_date'] = datetime.fromisoformat(changes['due_date']).date().isoformat()
+        except ValueError:
+            raise HTTPException(422, 'due_date must be an ISO date, e.g. 2026-11-14')
+    if 'currency' in changes:
+        changes['currency'] = changes['currency'].upper()
+    if 'description' in changes:
+        changes['description'] = changes['description'].strip()
+    if 'unit' in changes:
+        changes['unit'] = changes['unit'].strip()
+    if 'payment_condition' in changes:
+        changes['payment_condition'] = changes['payment_condition'].strip()
+    old_terms = current['commitment']
+    new_terms = {key: old_terms[key] for key in (
+        'supplier', 'description', 'quantity', 'unit', 'amount',
+        'currency', 'due_date', 'payment_condition'
+    )}
+    new_terms.update(changes)
+    policy = current['payment_policy']
+    if policy.get('configured') and float(policy['max_amount']) > float(new_terms['amount']):
+        raise HTTPException(409, 'Existing payment-policy cap exceeds the amended commitment value. Lower the policy cap before amending the amount.')
+    version = len(current['commitment_versions']) + 1
+    now = utc_now()
+    with connect() as db:
+        db.execute('''UPDATE commitments SET description=?, quantity=?, unit=?,
+            amount=?, currency=?, due_date=?, payment_condition=? WHERE id=?''',
+            (new_terms['description'], new_terms['quantity'], new_terms['unit'],
+             new_terms['amount'], new_terms['currency'], new_terms['due_date'],
+             new_terms['payment_condition'], cid))
+        db.execute('''INSERT INTO commitment_versions
+            (id, commitment_id, version, terms_json, reason, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)''',
+            (str(uuid.uuid4()), cid, version, json.dumps(new_terms, sort_keys=True), reason, now))
     save_assessment_snapshot(cid)
     return get_record(cid)
 
