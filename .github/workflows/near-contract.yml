@@ -33,11 +33,15 @@ jobs:
         run: cargo build --target wasm32-unknown-unknown --release
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
       - name: Install testnet runner dependencies
         run: npm install --prefix near --no-audit --no-fund
       - name: Check testnet runner JavaScript syntax
-        run: node --check near/scripts/testnet_demo.cjs
+        run: node --check near/scripts/testnet_demo.cjs && node near/scripts/access_key_policy.test.cjs
+      - name: Sandbox restricted-key proof
+        env:
+          NEAR_RPC_TIMEOUT_SECS: "300"
+        run: node near/scripts/sandbox_key_test.cjs
       - name: Check restricted-key API surface
         run: node -e "const n=require('./near/node_modules/near-api-js'); if (!n.Account || !n.Account.prototype.addKey || !n.Account.prototype.functionCall) process.exit(1); console.log('near-api-js account key and function-call methods are available')"
       - name: Check embedded frontend JavaScript syntax
