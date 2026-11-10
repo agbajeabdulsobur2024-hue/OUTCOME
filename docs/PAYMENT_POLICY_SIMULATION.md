@@ -47,3 +47,4 @@ Action records are linked to the same commitment ID. The lifecycle is `PROPOSED`
 - Evidence is manually entered; source labels are provenance metadata, not proof of authenticity. Review records are append-only, but reviewer names are not authenticated in this MVP.
 - Latest evidence by type is used; evidence review/verification workflow is not yet implemented.
 - The proposal engine does not submit transactions and must not be described as a live NEAR integration.
+- There is no settlement ledger or cumulative paid-to-date accounting. Multiple proposals are independent simulations, not a record of funds already paid. A real integration must reconcile confirmed on-chain settlement before allowing subsequent payments.
