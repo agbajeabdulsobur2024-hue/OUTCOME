@@ -488,9 +488,11 @@ def record_action_event(action_id: str, payload: ActionEventCreate):
             if not evidence:
                 raise HTTPException(422, 'Evidence must belong to the same commitment as the action')
             if payload.event_type == 'OUTCOME_VERIFIED':
-                record = get_record(action['commitment_id'])
-                evidence_record = next((item for item in record['evidence'] if item['id'] == payload.evidence_id), None)
-                if not evidence_record or evidence_record['review_status'] != 'VERIFIED':
+                review = db.execute(
+                    'SELECT status FROM evidence_reviews WHERE evidence_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1',
+                    (payload.evidence_id,)
+                ).fetchone()
+                if not review or review['status'] != 'VERIFIED':
                     raise HTTPException(422, 'Outcome evidence must be marked VERIFIED before outcome verification')
         event_id = str(uuid.uuid4())
         created_at = utc_now()
