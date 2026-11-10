@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from app.engine import assess_commitment
 from app.payments import evaluate_payment_proposal
 from app.patterns import detect_supplier_patterns
+from app.ai import AIConfigurationError, AIProviderError, generate_operational_brief, is_configured
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv('OUTCOME_DATA_DIR', ROOT / 'data'))
@@ -74,6 +75,10 @@ def init_db():
             id TEXT PRIMARY KEY, action_id TEXT NOT NULL REFERENCES commitment_actions(id),
             event_type TEXT NOT NULL, actor TEXT NOT NULL, note TEXT NOT NULL,
             evidence_id TEXT REFERENCES evidence(id), created_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS ai_briefs (
+            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+            provider TEXT NOT NULL, model TEXT NOT NULL, brief_json TEXT NOT NULL,
+            created_at TEXT NOT NULL)''')
         policy_columns = {row['name'] for row in db.execute('PRAGMA table_info(payment_policies)').fetchall()}
         if 'require_verified_evidence' not in policy_columns:
             db.execute('ALTER TABLE payment_policies ADD COLUMN require_verified_evidence INTEGER NOT NULL DEFAULT 1')
@@ -187,6 +192,10 @@ def get_record(cid: str):
         action_rows = [dict(row) for row in db.execute(
             'SELECT id, action_type, description, created_at FROM commitment_actions WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
         ).fetchall()]
+        ai_briefs = [dict(row) for row in db.execute(
+            'SELECT id, provider, model, brief_json, created_at FROM ai_briefs WHERE commitment_id=? ORDER BY created_at, rowid',
+            (cid,)
+        ).fetchall()]
         actions = []
         for action in action_rows:
             events = [dict(row) for row in db.execute(
@@ -226,6 +235,11 @@ def get_record(cid: str):
             for row in proposals
         ],
         'actions': actions,
+        'ai_brief_history': [
+            {'id': row['id'], 'provider': row['provider'], 'model': row['model'],
+             'brief': json.loads(row['brief_json']), 'created_at': row['created_at']}
+            for row in ai_briefs
+        ],
     }
 
 
@@ -527,6 +541,41 @@ def record_action_event(action_id: str, payload: ActionEventCreate):
             'evidence_id': payload.evidence_id, 'created_at': created_at}
 
 
+
+
+@app.get('/api/ai/status')
+def read_ai_status():
+    return {
+        'configured': is_configured(),
+        'provider': 'NEAR AI Cloud',
+        'model': 'Qwen/Qwen3.6-35B-A3B-FP8',
+        'privacy_tier': 'TEE model',
+        'attestation_verified_by_outcome': False,
+    }
+
+
+@app.post('/api/commitments/{cid}/ai-brief', status_code=201)
+def create_ai_brief(cid: str):
+    if not is_configured():
+        raise HTTPException(503, 'Optional NEAR AI Cloud is not configured. Set NEARAI_API_KEY to enable it.')
+    record = get_record(cid)
+    try:
+        result = generate_operational_brief(record)
+    except AIConfigurationError as exc:
+        raise HTTPException(503, str(exc))
+    except AIProviderError as exc:
+        raise HTTPException(502, str(exc))
+    brief_id = str(uuid.uuid4())
+    created_at = utc_now()
+    with connect() as db:
+        db.execute(
+            'INSERT INTO ai_briefs (id, commitment_id, provider, model, brief_json, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            (brief_id, cid, result['provider'], result['model'],
+             json.dumps(result, sort_keys=True), created_at)
+        )
+    return {'id': brief_id, 'commitment_id': cid, 'created_at': created_at, **result}
+
+
 @app.get('/api/patterns')
 def read_supplier_patterns():
     records = list_commitments()
@@ -596,6 +645,7 @@ def reset_demo():
     if os.getenv('OUTCOME_ALLOW_DEMO_RESET', 'false').lower() != 'true':
         raise HTTPException(403, 'Demo reset is disabled. Set OUTCOME_ALLOW_DEMO_RESET=true only in a disposable local environment.')
     with connect() as db:
+        db.execute('DELETE FROM ai_briefs')
         db.execute('DELETE FROM action_events')
         db.execute('DELETE FROM commitment_actions')
         db.execute('DELETE FROM payment_proposals')
