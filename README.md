@@ -2,7 +2,7 @@
 
 An operations intelligence agent for commitments, evidence and follow-through.
 
-The first workflow protects supplier payments by comparing what was agreed with what the evidence shows. It now includes versioned amendments, append-only evidence reviews, owner-defined payment policies and a simulated proposal workflow. The latest applicable evidence must be marked verified before a proposal can pass; a passing proposal still requires human approval.
+The first workflow protects supplier payments by comparing what was agreed with what the evidence shows. OUTCOME also surfaces repeated supplier patterns only when at least two latest evidence records are verified; it labels small samples as early signals and never infers fraud or intent. It now includes versioned amendments, append-only evidence reviews, owner-defined payment policies and a simulated proposal workflow. The latest applicable evidence must be marked verified before a proposal can pass; a passing proposal still requires human approval.
 
 ## First demo
 
