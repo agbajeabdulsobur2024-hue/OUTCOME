@@ -46,3 +46,24 @@ def test_unreviewed_or_rejected_evidence_never_counts():
         "b": [{"id": "eb", "kind": "invoice_amount", "value": 400, "review_status": "REJECTED"}],
     }
     assert detect_supplier_patterns(commitments, evidence, today=date(2026, 11, 10)) == []
+
+
+
+def test_low_incident_rate_remains_early_signal_even_with_larger_sample():
+    commitments = [
+        {"id": str(i), "supplier": "Acme", "quantity": 100, "amount": 500, "due_date": "2026-12-01"}
+        for i in range(10)
+    ]
+    evidence = {
+        str(i): [{
+            "id": "e" + str(i), "kind": "quantity_received",
+            "value": 80 if i < 2 else 100, "review_status": "VERIFIED",
+        }]
+        for i in range(10)
+    }
+    result = detect_supplier_patterns(commitments, evidence, today=date(2026, 11, 10))
+    short = next(p for p in result if p["pattern_type"] == "REPEATED_SHORT_DELIVERY")
+    assert short["occurrences"] == 2
+    assert short["observed_commitments"] == 10
+    assert short["rate"] == 0.2
+    assert short["confidence"] == "EARLY_SIGNAL"
