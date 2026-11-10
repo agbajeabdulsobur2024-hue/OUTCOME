@@ -67,6 +67,8 @@ npm run testnet:security-demo
 unset NEAR_TESTNET_OWNER_PRIVATE_KEY
 \`\`\`
 
+To anchor an actual local OUTCOME record digest instead of the built-in synthetic fixture, also set `OUTCOME_API_URL` (for example `http://127.0.0.1:8000`) and `OUTCOME_COMMITMENT_ID` to the record ID. The script calls the privacy-minimized `/api/commitments/{id}/audit-anchor` endpoint; only the returned SHA-256 digest and synthetic commitment identifier are written on-chain. The endpoint deliberately omits supplier names, free-text notes and payment destinations.
+
 The owner private key is read from the environment and is never written by the script. The script creates \`near/.function-call-key.json\` with mode 0600 and adds that public key to the account with the exact function-call permission described above. That file is ignored by Git. Keep it private; do not upload it or paste it into ChatGPT.
 
 Expected successful output includes:
