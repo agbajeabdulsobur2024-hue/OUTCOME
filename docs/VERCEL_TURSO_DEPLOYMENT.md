@@ -67,7 +67,7 @@ pytest
 
 Then, against a disposable Turso database and a Vercel Preview deployment, verify:
 
-1. `GET /api/health` succeeds and the application starts.
+1. `GET /api/health` succeeds, returns `database_backend: turso`, and confirms a database query.
 2. Create a commitment and reload it in a separate request.
 3. Record quantity and invoice evidence; confirm the assessment persists.
 4. Review evidence and confirm review history persists.
