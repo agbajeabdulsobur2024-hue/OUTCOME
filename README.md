@@ -1,16 +1,49 @@
 # OUTCOME
 
-An operations intelligence agent for commitments, evidence and follow-through.
+An operations intelligence app for commitments, evidence, and follow-through.
 
-The first workflow protects supplier payments by comparing what was agreed with what the evidence shows. OUTCOME also surfaces repeated supplier patterns only when at least two latest evidence records are verified; it labels small samples as early signals and never infers fraud or intent. Follow-through actions have an approval, execution-report and evidence-backed outcome lifecycle; OUTCOME records these steps but does not perform external actions. It now includes versioned amendments, append-only evidence reviews, owner-defined payment policies and a simulated proposal workflow. The latest applicable evidence must be marked verified before a proposal can pass; a passing proposal still requires human approval.
+The first workflow protects supplier payments by comparing what was agreed with what the evidence shows.
 
-## First demo
+- Repeated supplier patterns are shown only when at least two latest evidence records are verified. Small samples are labelled early signals.
+- OUTCOME does not infer fraud or intent.
+- Follow-through (approval, execution report, and evidence-backed outcome) is recorded. OUTCOME does not perform the external action.
+- The latest applicable evidence must be verified before a proposal can pass. A passing proposal still needs human approval.
 
-A business agrees to receive 100 units for USD 500, payable after delivery. Receiving evidence records 80 units. OUTCOME flags the 20-unit shortfall, estimates USD 100 exposure and recommends holding payment approval until the discrepancy is resolved.
+## Demo
+
+A business agrees to receive 100 units for USD 500, payable after delivery. Receiving evidence shows 80 units.
+
+OUTCOME flags the 20-unit shortfall, estimates USD 100 exposure, and recommends holding payment approval until the discrepancy is resolved.
+
+Live demo: [outcome-puce.vercel.app](https://outcome-puce.vercel.app)
+
+Use synthetic data only. The hosted app has no login.
+
+## NEAR
+
+### Testnet audit anchor
+
+The Rust contract and testnet script are under [`near/`](near/).
+
+The contract stores hash-only events in an append-only hash chain with block metadata. The testnet script is written to add a function-call key that can call only `record_event` on that contract.
+
+- The contract and the testnet proof script are implemented. The WASM build has passed GitHub Actions.
+- A local sandbox script exercises the same method restriction. That chain is not testnet.
+- No testnet contract has been deployed. The testnet script has not been run, so there is no testnet contract address or transaction hash.
+
+The web app does not connect a wallet or hold the key. Setup: [near/README.md](near/README.md). Full status: [NEAR hackathon integration](docs/NEAR_HACKATHON_INTEGRATION.md).
+
+### NEAR AI Cloud
+
+When enabled, a brief explains the deterministic assessment, uncertainty, and questions for the owner. The user triggers it with **Generate AI brief**. The model does not change commitment status, payment eligibility, or approvals, and it does not execute actions.
+
+The adapter runs only when `NEARAI_API_KEY` is set on the server. A live completion and response signature have not been confirmed in this repository. Data boundaries and checks: [AI integration](docs/AI_INTEGRATION.md).
+
+NEAR Intents and Chain Signatures are not connected. See the safety boundary and the [integration status](docs/NEAR_HACKATHON_INTEGRATION.md).
 
 ## Run locally
 
-Requires Python 3.11+.
+Requires Python 3.11+. Local development uses SQLite.
 
 ```bash
 python -m venv .venv
@@ -19,13 +52,28 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Open http://127.0.0.1:8000. API docs: /docs. Click **Load synthetic demo case** to create two fictional Acme commitments with verified fixture evidence, a blocked payment proposal, an action to reconcile delivery and a repeated-short-delivery early signal. The seed endpoint refuses to run if commitments already exist. See [the 3-minute demo script](docs/DEMO_SCRIPT.md) for the end-to-end walkthrough. Optional NEAR AI Cloud reasoning can be enabled by copying `.env.example`, exporting `NEARAI_API_KEY` in the server environment (the app does not auto-load `.env` files) and restarting; generation is user-triggered and pay-as-you-go. See [AI integration and data boundaries](docs/AI_INTEGRATION.md).
+1. Open http://127.0.0.1:8000.
+2. Open API docs at http://127.0.0.1:8000/docs.
+3. Click **Load synthetic demo case**.
 
-## Deployment: Vercel + Turso
+The seed creates two fictional Acme commitments with verified fixture evidence, a blocked payment proposal, an action to reconcile delivery, and a repeated-short-delivery early signal. It refuses to run if commitments already exist.
 
-The application can run on Vercel with its existing FastAPI backend and a persistent Turso database. Local development defaults to SQLite; hosted deployments set `OUTCOME_DB_BACKEND=turso` and provide `TURSO_DATABASE_URL` plus `TURSO_AUTH_TOKEN`. The root `index.py` is the Vercel FastAPI entrypoint, and `.python-version` pins Python 3.12.
+Walkthrough: [3-minute demo script](docs/DEMO_SCRIPT.md).
 
-See [Vercel + Turso deployment instructions](docs/VERCEL_TURSO_DEPLOYMENT.md) for setup and the required live verification checklist. The remote Turso Python driver is currently beta, so a successful deployment alone is not enough: verify persistence across separate function invocations and redeployments before relying on it.
+To enable NEAR AI Cloud briefs, copy `.env.example`, export `NEARAI_API_KEY` in the server environment, and restart. The app does not auto-load `.env` files.
+
+Hosted setup: [Vercel + Turso deployment](docs/VERCEL_TURSO_DEPLOYMENT.md).
+
+## Safety boundary
+
+This is a hackathon demo, not a production financial service.
+
+- No user authentication or tenant isolation. Actor and reviewer names are manually entered labels, not authenticated identities or signatures.
+- Do not enter sensitive live business or payment data.
+- No custody of funds, and no real transfers. Human approval remains required.
+- OUTCOME does not approve invoices or submit blockchain transactions. A simulated payment proposal returns explicit block reasons or `AWAITING_HUMAN_APPROVAL`. [Payment policy simulation](docs/PAYMENT_POLICY_SIMULATION.md).
+- The demo reset endpoint is disabled unless `OUTCOME_ALLOW_DEMO_RESET=true` is set in a disposable local environment.
+- This demo does not connect a live wallet or move real funds. The NEAR Intents Agent API is an experimental, mainnet-only beta. Its quickstart warns that real assets are at risk and that no testnet is available. [Overview](https://docs.agentsonintents.com/integration/agent-api/overview). [Quickstart](https://docs.agentsonintents.com/integration/agent-api/quickstart/introduction).
 
 ## Product principles
 
@@ -36,34 +84,12 @@ See [Vercel + Turso deployment instructions](docs/VERCEL_TURSO_DEPLOYMENT.md) fo
 - Keep consequential actions within explicit human permission.
 - Verify outcomes, not just attempted actions.
 
-## Safety boundary
-
-This MVP is a hackathon demo, not a production financial service. It has no user authentication or tenant isolation; actor/reviewer names are manually entered labels, not authenticated identities or signatures. Do not enter sensitive live business or payment data. The destructive demo reset endpoint is disabled unless OUTCOME_ALLOW_DEMO_RESET=true is explicitly set in a disposable local environment. OUTCOME does not custody funds, approve invoices or submit blockchain transactions. The NEAR Intents Agent API is currently documented as an experimental, mainnet-only beta; its quickstart warns that real assets are at risk and no testnet is available. We will not connect a live wallet or move real funds in this demo. See the [official overview](https://docs.agentsonintents.com/integration/agent-api/overview) and [quickstart](https://docs.agentsonintents.com/integration/agent-api/quickstart/introduction).
-
-## NEAR testnet audit anchor
-
-The Rust contract and testnet script are under `near/`. See the [deployment and restricted function-call key proof guide](near/README.md). This is a scaffold until the contract is deployed and the testnet acceptance/rejection transactions are captured.
-
-## NEAR hackathon integration
-
-See [the NEAR integration status and verification boundaries](docs/NEAR_HACKATHON_INTEGRATION.md) for what is implemented, what remains unverified, and which mainnet-only or alpha technologies are intentionally out of scope for this synthetic demo.
-
-## Action and outcome tracking
-
-Propose an action against a commitment, record owner approval or rejection, report what was done, and verify the result against evidence already marked `VERIFIED`. Invalid state transitions are rejected. This tracks human follow-through; it does not execute email, calls, supplier contact or payments.
-
-## Payment policy simulation
-
-Configure a disabled-by-default policy per commitment with a spending cap, exact approved destination, full-delivery requirement, invoice-match requirement, verified-evidence requirement and an explicit partial-payment permission (off by default). Evidence reviews are append-only; a newer unreviewed or rejected record supersedes an older verified record. Submit a proposed payment for evaluation. OUTCOME returns explicit block reasons or `AWAITING_HUMAN_APPROVAL`. It never approves, signs, submits or executes a transfer. See [payment policy simulation](docs/PAYMENT_POLICY_SIMULATION.md).
-
-## Scope
-
-Supplier commitment state, evidence capture, discrepancy detection, risk explanation, policy-bound payment proposal evaluation and a usable interface. Human approval remains required.
-
 ## Tests
 
 ```bash
 pytest
 ```
+
+## License
 
 MIT License.
