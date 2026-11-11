@@ -34,7 +34,12 @@ Add these environment variables to the Vercel project for Preview and Production
 | `TURSO_DATABASE_URL` | Your Turso database URL |
 | `TURSO_AUTH_TOKEN` | Your Turso auth token |
 | `OUTCOME_ALLOW_DEMO_RESET` | `false` |
-| `NEARAI_API_KEY` | Optional; only if enabling NEAR AI Cloud |
+| `NEARAI_API_KEY` | Optional server-side key; only if enabling NEAR AI Cloud briefs |
+| `OUTCOME_NEAR_NETWORK` | `testnet` |
+| `OUTCOME_NEAR_CONTRACT_ID` | `thewordweaver.testnet` |
+| `OUTCOME_NEAR_RPC_URL` | `https://rpc.testnet.near.org` |
+
+Do not add a NEAR private key, seed phrase, or full-access key. Optional rate-limit and demo-lifetime names are listed in `.env.example`. `OUTCOME_ALLOW_DEMO_RESET` must stay `false` on the hosted app. A reset, even if turned on locally, does not delete personal or guided-demo workspaces.
 
 Redeploy after adding or changing environment variables.
 
@@ -88,6 +93,6 @@ A local unit test of the adapter is not a substitute for this live Turso/Vercel 
 
 ## Security and scope
 
-The current MVP has no user authentication or tenant isolation. Restrict preview access using Vercel deployment protection where available, and use only synthetic hackathon data. Do not enter real supplier, invoice, bank, wallet or customer information. Keep `OUTCOME_ALLOW_DEMO_RESET=false` in hosted environments.
+Personal workspaces require a NEAR testnet wallet signature. A wallet address sent in a request body is not identity. Guided demos are separate short-lived copies. Keep `OUTCOME_ALLOW_DEMO_RESET=false` in hosted environments. Use only synthetic data. Do not enter real supplier, invoice, bank, or customer information. The hosted app blocks anonymous writes to the old shared rows.
 
 OUTCOME does not transfer funds or execute external supplier actions. The optional NEAR AI integration remains advisory and does not alter payment policy or approvals.

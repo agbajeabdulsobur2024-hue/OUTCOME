@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,7 @@ from app.ai import (
     AIConfigurationError, AIProviderError, brief_is_displayable,
     generate_operational_brief, is_configured, public_ai_brief_entry,
 )
+from app import anchors, auth_near, safety, tenancy
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv('OUTCOME_DATA_DIR', ROOT / 'data'))
@@ -130,6 +131,32 @@ def init_db():
             created_at TEXT NOT NULL)''')
         db.execute('''CREATE TABLE IF NOT EXISTS ai_request_limits (
             id TEXT PRIMARY KEY, client_ip TEXT NOT NULL, created_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS workspaces (
+            id TEXT PRIMARY KEY, kind TEXT NOT NULL, owner_user_id TEXT,
+            created_at TEXT NOT NULL, expires_at TEXT, synthetic INTEGER NOT NULL DEFAULT 0)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY, account_id TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS auth_challenges (
+            id TEXT PRIMARY KEY, account_id TEXT NOT NULL, nonce_hex TEXT NOT NULL,
+            message TEXT NOT NULL, recipient TEXT NOT NULL, created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL, used INTEGER NOT NULL DEFAULT 0)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS sessions (
+            token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, account_id TEXT NOT NULL,
+            created_at TEXT NOT NULL, expires_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS audit_receipts (
+            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+            transaction_hash TEXT NOT NULL UNIQUE, signer_account_id TEXT NOT NULL,
+            payload_hash TEXT NOT NULL, execution_status TEXT NOT NULL,
+            explorer_url TEXT NOT NULL, created_at TEXT NOT NULL,
+            UNIQUE(commitment_id, payload_hash))''')
+        db.execute('''CREATE TABLE IF NOT EXISTS request_limits (
+            id TEXT PRIMARY KEY, client_ip TEXT NOT NULL, bucket TEXT NOT NULL,
+            created_at TEXT NOT NULL)''')
+        db.execute('CREATE INDEX IF NOT EXISTS idx_request_limits_lookup ON request_limits(bucket, client_ip, created_at)')
+        commitment_columns = {row['name'] for row in db.execute('PRAGMA table_info(commitments)').fetchall()}
+        if 'workspace_id' not in commitment_columns:
+            db.execute('ALTER TABLE commitments ADD COLUMN workspace_id TEXT')
+        db.execute('CREATE INDEX IF NOT EXISTS idx_commitments_workspace ON commitments(workspace_id)')
         policy_columns = {row['name'] for row in db.execute('PRAGMA table_info(payment_policies)').fetchall()}
         if 'require_verified_evidence' not in policy_columns:
             db.execute('ALTER TABLE payment_policies ADD COLUMN require_verified_evidence INTEGER NOT NULL DEFAULT 1')
@@ -143,8 +170,41 @@ async def lifespan(app):
     yield
 
 
-app = FastAPI(title='OUTCOME', description='Supplier commitment intelligence: compare what was agreed with what the evidence shows.', version='0.3.0', lifespan=lifespan)
+app = FastAPI(
+    title='OUTCOME',
+    description='Supplier commitment intelligence: compare what was agreed with what the evidence shows.',
+    version='0.4.0',
+    lifespan=lifespan,
+)
 app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
+
+
+@app.middleware('http')
+async def guard_public_requests(request: Request, call_next):
+    if not request.url.path.startswith('/api/'):
+        request.state.tenant = {'workspace_id': None, 'user': None, 'kind': 'global'}
+        return await call_next(request)
+    writing = request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}
+    try:
+        if writing:
+            safety.reject_upload(request)
+        with connect() as db:
+            if writing:
+                safety.enforce_write_limits(db, request)
+            scope = tenancy.resolve(db, request)
+        if writing and safety.blocks_shared_write(scope, request.url.path):
+            return JSONResponse(
+                status_code=409,
+                content={'detail': 'Create your own workspace before recording anything. The shared database was not changed.'},
+            )
+        request.state.tenant = scope
+    except HTTPException as exc:
+        return JSONResponse(status_code=exc.status_code, content={'detail': exc.detail})
+    tokens = tenancy.activate(request.state.tenant)
+    try:
+        return await call_next(request)
+    finally:
+        tenancy.deactivate(tokens)
 
 
 class CommitmentCreate(BaseModel):
@@ -214,7 +274,7 @@ class CommitmentAmendment(BaseModel):
 def get_record(cid: str):
     with connect() as db:
         c = db.execute('SELECT * FROM commitments WHERE id=?', (cid,)).fetchone()
-        if not c:
+        if not c or not tenancy.same_workspace(c['workspace_id']):
             raise HTTPException(404, 'Commitment not found')
         commitment = dict(c)
         evidence = [dict(row) for row in db.execute(
@@ -250,6 +310,12 @@ def get_record(cid: str):
         ai_briefs = [dict(row) for row in db.execute(
             'SELECT id, provider, model, brief_json, created_at FROM ai_briefs WHERE commitment_id=? ORDER BY created_at, rowid',
             (cid,)
+        ).fetchall()]
+        audit_receipts = [dict(row) for row in db.execute(
+            '''SELECT id, transaction_hash, signer_account_id, payload_hash, execution_status,
+                      explorer_url, created_at
+               FROM audit_receipts WHERE commitment_id=? ORDER BY created_at, rowid''',
+            (cid,),
         ).fetchall()]
         actions = []
         for action in action_rows:
@@ -347,7 +413,7 @@ def get_record(cid: str):
             ),
         })
     timeline.sort(key=lambda item: item['created_at'])
-    return {
+    record = {
         'commitment': commitment,
         'evidence': evidence,
         'assessment': assess_commitment(commitment, evidence),
@@ -382,8 +448,17 @@ def get_record(cid: str):
         ],
         'actions': actions,
         'ai_brief_history': published_briefs,
+        'audit_receipts': [
+            {**row, 'independently_verified': row['execution_status'] in {'FINAL', 'FINAL_SUCCESS'}}
+            for row in audit_receipts
+        ],
         'timeline': timeline,
     }
+    anchor = audit_anchor_for_record(record)
+    for receipt in record['audit_receipts']:
+        receipt['matches_current_record'] = receipt['payload_hash'] == anchor['payload_hash']
+    record['audit_anchor'] = anchor
+    return record
 
 
 def save_assessment_snapshot(cid: str):
@@ -425,8 +500,18 @@ def health():
 
 @app.get('/api/commitments')
 def list_commitments():
+    workspace_id = tenancy.current_workspace_id()
     with connect() as db:
-        ids = [row['id'] for row in db.execute('SELECT id FROM commitments ORDER BY created_at DESC').fetchall()]
+        if workspace_id is None:
+            rows = db.execute(
+                'SELECT id FROM commitments WHERE workspace_id IS NULL ORDER BY created_at DESC'
+            ).fetchall()
+        else:
+            rows = db.execute(
+                'SELECT id FROM commitments WHERE workspace_id=? ORDER BY created_at DESC',
+                (workspace_id,),
+            ).fetchall()
+        ids = [row['id'] for row in rows]
     return [get_record(cid) for cid in ids]
 
 
@@ -443,9 +528,13 @@ def create_commitment(payload: CommitmentCreate):
     terms['due_date'] = parsed_due.date().isoformat()
     with connect() as db:
         db.execute(
-            'INSERT INTO commitments VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            '''INSERT INTO commitments
+               (id, supplier, description, quantity, unit, amount, currency, due_date,
+                payment_condition, created_at, workspace_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
             (cid, payload.supplier.strip(), payload.description.strip(), payload.quantity, payload.unit,
-             payload.amount, terms['currency'], terms['due_date'], payload.payment_condition, now)
+             payload.amount, terms['currency'], terms['due_date'], payload.payment_condition, now,
+             tenancy.current_workspace_id())
         )
     save_initial_version(cid, terms)
     save_assessment_snapshot(cid)
@@ -487,7 +576,19 @@ def add_evidence(cid: str, payload: EvidenceCreate):
 @app.post('/api/evidence/{evidence_id}/reviews', status_code=201)
 def review_evidence(evidence_id: str, payload: EvidenceReviewCreate):
     with connect() as db:
-        exists = db.execute('SELECT id FROM evidence WHERE id=?', (evidence_id,)).fetchone()
+        workspace_id = tenancy.current_workspace_id()
+        if workspace_id is None:
+            exists = db.execute(
+                '''SELECT e.id FROM evidence e JOIN commitments c ON c.id=e.commitment_id
+                   WHERE e.id=? AND c.workspace_id IS NULL''',
+                (evidence_id,),
+            ).fetchone()
+        else:
+            exists = db.execute(
+                '''SELECT e.id FROM evidence e JOIN commitments c ON c.id=e.commitment_id
+                   WHERE e.id=? AND c.workspace_id=?''',
+                (evidence_id, workspace_id),
+            ).fetchone()
         if not exists:
             raise HTTPException(404, 'Evidence record not found')
         review_id = str(uuid.uuid4())
@@ -664,7 +765,21 @@ def create_commitment_action(cid: str, payload: CommitmentActionCreate):
 @app.post('/api/actions/{action_id}/events', status_code=201)
 def record_action_event(action_id: str, payload: ActionEventCreate):
     with connect() as db:
-        action = db.execute('SELECT * FROM commitment_actions WHERE id=?', (action_id,)).fetchone()
+        workspace_id = tenancy.current_workspace_id()
+        if workspace_id is None:
+            action = db.execute(
+                '''SELECT a.* FROM commitment_actions a
+                   JOIN commitments c ON c.id=a.commitment_id
+                   WHERE a.id=? AND c.workspace_id IS NULL''',
+                (action_id,),
+            ).fetchone()
+        else:
+            action = db.execute(
+                '''SELECT a.* FROM commitment_actions a
+                   JOIN commitments c ON c.id=a.commitment_id
+                   WHERE a.id=? AND c.workspace_id=?''',
+                (action_id, workspace_id),
+            ).fetchone()
         if not action:
             raise HTTPException(404, 'Action not found')
         previous = db.execute(
@@ -768,18 +883,9 @@ def create_ai_brief(cid: str, request: Request):
     return {'id': brief_id, 'commitment_id': cid, 'created_at': created_at, **result}
 
 
-@app.get('/api/commitments/{cid}/audit-anchor')
-def get_commitment_audit_anchor(cid: str):
-    """Return a privacy-minimized digest for an optional NEAR testnet anchor.
-
-    Raw supplier/evidence notes, destination addresses and AI text are excluded.
-    Only the SHA-256 digest is intended for public-chain storage.
-    """
-    record = get_record(cid)
+def audit_anchor_for_record(record: dict) -> dict:
+    """Privacy-minimized digest. Free text never enters the hash."""
     commitment = record['commitment']
-    # Public-chain metadata is intentionally opaque and structured. Do not hash
-    # free-text fields (supplier names, descriptions, payment conditions, notes,
-    # evidence sources, issue messages or AI text) into a publicly guessable digest.
     snapshot = {
         'commitment': {
             'quantity': commitment['quantity'],
@@ -840,6 +946,11 @@ def get_commitment_audit_anchor(cid: str):
     }
 
 
+@app.get('/api/commitments/{cid}/audit-anchor')
+def get_commitment_audit_anchor(cid: str):
+    return audit_anchor_for_record(get_record(cid))
+
+
 @app.get('/api/patterns')
 def read_supplier_patterns():
     records = list_commitments()
@@ -853,10 +964,7 @@ def read_supplier_patterns():
 
 
 
-@app.post('/api/demo/seed', status_code=201)
-def seed_demo():
-    if list_commitments():
-        raise HTTPException(409, 'Demo seed requires an empty workspace. Existing commitments were not changed.')
+def populate_synthetic_demo():
     first = create_commitment(CommitmentCreate(
         supplier='Acme Supplies', description='Packaging boxes — purchase order PO-104',
         quantity=100, unit='boxes', amount=500, currency='USD',
@@ -904,21 +1012,213 @@ def seed_demo():
             'patterns': read_supplier_patterns()}
 
 
+@app.post('/api/demo/seed', status_code=201)
+def seed_demo():
+    if list_commitments():
+        raise HTTPException(409, 'Demo seed requires an empty workspace. Existing commitments were not changed.')
+    return populate_synthetic_demo()
+
+
+def _set_cookie(response, request: Request, name: str, value: str, max_age: int) -> None:
+    response.set_cookie(
+        name, value, max_age=max_age, httponly=True, samesite='lax',
+        secure=tenancy.cookie_secure(request), path='/',
+    )
+
+
+@app.post('/api/demo/trials', status_code=201)
+def create_demo_trial(request: Request, response: Response):
+    expires_at = None
+    with connect() as db:
+        tenancy.purge_expired_demos(db)
+        cookie = request.cookies.get(tenancy.DEMO_COOKIE, '')
+        existing = db.execute(
+            "SELECT id, expires_at FROM workspaces WHERE id=? AND kind='demo'",
+            (cookie,),
+        ).fetchone() if cookie else None
+        if existing and existing['expires_at'] >= utc_now():
+            workspace_id = existing['id']
+            expires_at = existing['expires_at']
+            created = False
+        else:
+            created_row = tenancy.create_demo_workspace(db)
+            workspace_id = created_row['id']
+            expires_at = created_row['expires_at']
+            created = True
+    token = tenancy.use_workspace(workspace_id)
+    try:
+        if created:
+            body = populate_synthetic_demo()
+        else:
+            body = {
+                'status': 'resumed', 'synthetic_data': True,
+                'commitments': list_commitments(), 'patterns': read_supplier_patterns(),
+            }
+    finally:
+        tenancy.reset_workspace(token)
+    _set_cookie(response, request, tenancy.DEMO_COOKIE, workspace_id, int(tenancy.trial_ttl().total_seconds()))
+    body['workspace'] = 'demo'
+    body['expires_at'] = expires_at
+    return body
+
+
+class ChallengeCreate(BaseModel):
+    account_id: str = Field(min_length=2, max_length=64)
+
+
+class SessionCreate(BaseModel):
+    challenge_id: str = Field(min_length=8, max_length=80)
+    account_id: str = Field(min_length=2, max_length=64)
+    public_key: str = Field(min_length=16, max_length=120)
+    signature: str = Field(min_length=16, max_length=200)
+
+
+class AuditReceiptCreate(BaseModel):
+    transaction_hash: str = Field(min_length=32, max_length=88)
+    signer_account_id: str | None = Field(default=None, max_length=64)
+
+
+@app.get('/api/session')
+def read_public_session(request: Request):
+    with connect() as db:
+        return tenancy.session_view(db, request)
+
+
+@app.get('/api/near/contract')
+def read_near_contract():
+    return anchors.public_contract()
+
+
+@app.post('/api/auth/challenge', status_code=201)
+def create_auth_challenge(payload: ChallengeCreate):
+    with connect() as db:
+        return auth_near.create_challenge(db, payload.account_id.strip())
+
+
+@app.post('/api/auth/session', status_code=201)
+def create_auth_session(payload: SessionCreate, request: Request, response: Response):
+    with connect() as db:
+        user = auth_near.consume_challenge(
+            db, payload.challenge_id, payload.account_id.strip(),
+            payload.public_key.strip(), payload.signature.strip(),
+        )
+        token = auth_near.issue_session(db, user)
+    _set_cookie(response, request, tenancy.SESSION_COOKIE, token, 7 * 24 * 3600)
+    return {'authenticated': True, 'account_id': user['account_id'], 'network': 'testnet'}
+
+
+@app.post('/api/auth/logout')
+def logout(response: Response):
+    response.delete_cookie(tenancy.SESSION_COOKIE, path='/')
+    return {'authenticated': False}
+
+
+@app.post('/api/workspaces', status_code=201)
+def create_personal_workspace():
+    user = tenancy.current_user()
+    if not user:
+        raise HTTPException(401, 'Connect your NEAR testnet wallet before creating a workspace.')
+    with connect() as db:
+        created = tenancy.create_personal_workspace(db, user)
+    return {'kind': 'personal', 'created': created['created'], 'synthetic': False}
+
+
+@app.post('/api/commitments/{cid}/audit-receipts', status_code=201)
+def submit_audit_receipt(cid: str, payload: AuditReceiptCreate):
+    user = tenancy.current_user()
+    if not user:
+        raise HTTPException(401, 'Connect and sign in with your NEAR testnet wallet before anchoring.')
+    if payload.signer_account_id and payload.signer_account_id != user['account_id']:
+        raise HTTPException(403, 'A wallet address in the request is not authentication.')
+    record = get_record(cid)
+    if not record['commitment'].get('workspace_id'):
+        raise HTTPException(403, 'The shared workspace cannot be anchored.')
+    anchor = record['audit_anchor']
+    if any(item['payload_hash'] == anchor['payload_hash'] for item in record['audit_receipts']):
+        raise HTTPException(409, 'This commitment state is already anchored.')
+    try:
+        checked = anchors.assess_anchor_transaction(
+            anchors.fetch_transaction(payload.transaction_hash, user['account_id']),
+            expected_signer=user['account_id'],
+            expected_receiver=anchors.contract_id(),
+            expected_payload_hash=anchor['payload_hash'],
+            expected_commitment_ref=anchor['commitment_id'],
+            expected_event_type=anchor['event_type'],
+        )
+    except anchors.AnchorRejected as exc:
+        raise HTTPException(exc.status_code, str(exc))
+    receipt_id = str(uuid.uuid4())
+    created_at = utc_now()
+    url = anchors.explorer_url(payload.transaction_hash)
+    try:
+        with connect() as db:
+            db.execute(
+                '''INSERT INTO audit_receipts
+                   (id, commitment_id, transaction_hash, signer_account_id, payload_hash,
+                    execution_status, explorer_url, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                (receipt_id, cid, payload.transaction_hash, user['account_id'], anchor['payload_hash'],
+                 checked['execution_status'], url, created_at),
+            )
+    except Exception as exc:
+        message = str(exc).lower()
+        if 'unique' in message or 'constraint' in message:
+            raise HTTPException(409, 'This anchor was already recorded.')
+        raise
+    return {
+        'id': receipt_id,
+        'commitment_id': anchor['commitment_id'],
+        'transaction_hash': payload.transaction_hash,
+        'signer_account_id': user['account_id'],
+        'payload_hash': anchor['payload_hash'],
+        'execution_status': checked['execution_status'],
+        'explorer_url': url,
+        'independently_verified': True,
+        'matches_current_record': True,
+        'method': anchors.ALLOWED_METHOD,
+    }
+
+
+@app.get('/api/commitments/{cid}/audit-receipts/{receipt_id}')
+def read_audit_receipt(cid: str, receipt_id: str):
+    record = get_record(cid)
+    receipt = next((item for item in record['audit_receipts'] if item['id'] == receipt_id), None)
+    if not receipt:
+        raise HTTPException(404, 'Anchor not found')
+    user = tenancy.current_user()
+    rechecked = False
+    if user and user['account_id'] == receipt['signer_account_id']:
+        try:
+            checked = anchors.assess_anchor_transaction(
+                anchors.fetch_transaction(receipt['transaction_hash'], receipt['signer_account_id']),
+                expected_signer=receipt['signer_account_id'],
+                expected_receiver=anchors.contract_id(),
+                expected_payload_hash=receipt['payload_hash'],
+                expected_commitment_ref=record['audit_anchor']['commitment_id'],
+                expected_event_type=record['audit_anchor']['event_type'],
+            )
+            rechecked = checked['independently_verified']
+        except anchors.AnchorRejected:
+            rechecked = False
+    return {
+        'id': receipt['id'],
+        'transaction_hash': receipt['transaction_hash'],
+        'signer_account_id': receipt['signer_account_id'],
+        'payload_hash': receipt['payload_hash'],
+        'current_payload_hash': record['audit_anchor']['payload_hash'],
+        'matches_current_record': receipt['payload_hash'] == record['audit_anchor']['payload_hash'],
+        'execution_status': receipt['execution_status'],
+        'explorer_url': receipt['explorer_url'],
+        'independently_verified': receipt['independently_verified'] and rechecked,
+        'rechecked': rechecked,
+        'canonicalization': record['audit_anchor']['canonicalization'],
+    }
+
+
 @app.post('/api/demo/reset')
 def reset_demo():
     if os.getenv('OUTCOME_ALLOW_DEMO_RESET', 'false').lower() != 'true':
         raise HTTPException(403, 'Demo reset is disabled. Set OUTCOME_ALLOW_DEMO_RESET=true only in a disposable local environment.')
     with connect() as db:
-        db.execute('DELETE FROM ai_briefs')
-        db.execute('DELETE FROM ai_request_limits')
-        db.execute('DELETE FROM action_events')
-        db.execute('DELETE FROM commitment_actions')
-        db.execute('DELETE FROM payment_proposals')
-        db.execute('DELETE FROM payment_policy_history')
-        db.execute('DELETE FROM evidence_reviews')
-        db.execute('DELETE FROM payment_policies')
-        db.execute('DELETE FROM assessment_history')
-        db.execute('DELETE FROM commitment_versions')
-        db.execute('DELETE FROM evidence')
-        db.execute('DELETE FROM commitments')
-    return {'status': 'reset'}
+        tenancy.delete_commitment_rows(db, tenancy.global_commitment_ids(db))
+    return {'status': 'reset', 'scope': 'global'}

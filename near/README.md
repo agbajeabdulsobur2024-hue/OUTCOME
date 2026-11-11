@@ -2,6 +2,16 @@
 
 This is an isolated testnet demonstration. It does not move NEAR or supplier funds.
 
+## What is already on testnet
+
+Account `thewordweaver.testnet`:
+
+- Deploy and init, FINAL: https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy
+- `record_event`, FINAL: https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj
+- `admin_probe` rejected with `MethodNameMismatch`: https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk (not indexed, which is expected)
+
+The deployed contract accepts `record_event` only from its owner. The source in this repository now lets any account append a hash-only event and adds `get_anchor_policy`. That upgrade has not been submitted. The account owner must deploy it with their own key. Do not paste that key into the repo, the hosted app, or Vercel. `admin_probe` stays owner-only.
+
 ## What the testnet proof is designed to demonstrate
 
 1. OUTCOME's Rust contract stores a SHA-256 digest, commitment reference, event type, predecessor hash, signer account, block height and block timestamp.

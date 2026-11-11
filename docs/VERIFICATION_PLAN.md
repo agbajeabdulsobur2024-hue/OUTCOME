@@ -16,6 +16,6 @@ Verification coverage in the current build:
 - Destructive demo reset is disabled unless an explicit local-only environment flag is enabled.
 - Optional NEAR AI Cloud brief is disabled without a server-side key, stores advisory history only after cryptographic verification, and cannot override deterministic checks.
 - Human approval remains required even when simulation checks pass.
-- No wallet signing, transaction submission or real asset movement.
+- A tester can sign a hash-only testnet `record_event` with their own wallet. The server checks the final transaction before storing it. OUTCOME does not hold a key, and payment remains a simulation.
 
 Reviewer and actor names are demo inputs, not authenticated identities. A local `PYTHONPATH=. pytest -q` run on 11 Nov 2026 reported 72 passed and 2 skipped. The skipped tests are the live Turso checks, which need database credentials that are not in this tree.

@@ -272,6 +272,20 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
   .btn-danger-solid:hover{background:#833f32}
   .nav a:hover{background:#233b30;color:#fff}
 }
+.landing{min-height:100vh;background:var(--canvas)}
+.landing-wrap{max-width:920px;margin:0 auto;padding:42px 20px 80px}
+.landing-kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#176d4c;background:#e7f3ec;border:1px solid #d5e7dc;border-radius:999px;padding:6px 10px}
+.landing h1{font-family:var(--display);font-size:clamp(32px,5vw,50px);line-height:1.08;letter-spacing:-.04em;margin:16px 0 12px}
+.landing-lead{font-size:18px;line-height:1.5;max-width:64ch;color:#24352d}
+.landing-actions{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 8px}
+.landing-status{min-height:1.4em;font-weight:700;color:#174b34}
+.landing-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.landing-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px}
+.landing-card h2{font-family:var(--display);font-size:16px;margin:0 0 8px}
+.landing-card p,.landing-card li{color:var(--muted);font-size:14.5px}
+.landing-card ol{margin:8px 0 0;padding-left:18px}
+.wallet-line{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+@media(max-width:700px){.landing-grid{grid-template-columns:1fr}.landing-wrap{padding-top:28px}}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important}
 }
@@ -295,10 +309,49 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
   <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v3.2M12 17.8V21M3 12h3.2M17.8 12H21M6.1 6.1l2.2 2.2M15.7 15.7l2.2 2.2M17.9 6.1l-2.2 2.2M8.3 15.7l-2.2 2.2" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></symbol>
 </svg>
-<div class="app-shell">
+<script type="importmap">
+{ "imports": { "@hot-labs/near-connect": "https://esm.sh/@hot-labs/near-connect@0.12.0" } }
+</script>
+<script type="module" src="/static/near-wallet.js"></script>
+<section class="landing" id="landing">
+  <div class="landing-wrap">
+    <div class="landing-kicker">NEAR testnet</div>
+    <h1>Before you pay a supplier, know whether they delivered what you agreed to pay for.</h1>
+    <p class="landing-lead">OUTCOME compares the order you agreed with the evidence of what arrived. In a few minutes you can see a short delivery, a blocked payment, and the human decision that has to come next. The records are synthetic. Nothing is paid.</p>
+    <div class="landing-actions">
+      <button id="exploreDemo" class="btn" type="button">Explore Demo</button>
+      <button id="connectWallet" class="btn btn-ghost" type="button">Connect NEAR Wallet</button>
+      <button id="createWorkspace" class="btn btn-ghost" type="button">Create Personal Workspace</button>
+    </div>
+    <p class="landing-status" id="landingStatus" role="status"></p>
+    <div class="wallet-line">
+      <span class="env-pill" id="landingNetwork">NEAR testnet</span>
+      <span id="landingAccount">No wallet connected. You can explore the demo without one.</span>
+      <button id="disconnectWallet" class="btn btn-ghost btn-sm" type="button" hidden>Disconnect</button>
+    </div>
+    <div class="landing-grid">
+      <article class="landing-card">
+        <h2>What you can try</h2>
+        <ol>
+          <li>Open the guided demo. No wallet and no login.</li>
+          <li>See the 100-box order, the 20-box gap, and the blocked payment.</li>
+          <li>Approve the follow-up, record the rest of the delivery, and watch the proposal wait for a person.</li>
+          <li>Connect a testnet wallet if you want to write a hash-only audit record yourself.</li>
+        </ol>
+      </article>
+      <article class="landing-card">
+        <h2>What this does not do</h2>
+        <p>Payments stay a simulation. NEAR settlement here is testnet only. Supplier money does not move. An AI brief stays off unless the server already has a key, and a brief never approves a payment.</p>
+        <p>Earlier testnet transactions, for reference only: <a href="https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy">deploy and init</a> and <a href="https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj">record_event</a> on thewordweaver.testnet. Those are not a substitute for an anchor you sign.</p>
+        <p>No testnet account yet? Create one in <a href="https://testnet.mynearwallet.com">MyNearWallet on testnet</a>. OUTCOME does not create wallets or hand out keys.</p>
+      </article>
+    </div>
+  </div>
+</section>
+<div class="app-shell" hidden>
 <aside class="sidebar">
   <div class="brand"><span class="brand-mark">O</span> OUTCOME</div>
-  <div class="sidebar-tools"><span class="env-pill">DEMO WORKSPACE</span></div>
+  <div class="sidebar-tools"><span class="env-pill" id="scopePillSide">NEAR testnet</span></div>
   <div class="nav-label">Workspace</div>
   <nav class="nav" aria-label="Workspace">
     <a class="active" data-view="overview" href="#overview" aria-current="page"><span class="nav-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-home"/></svg></span>Overview</a>
@@ -311,7 +364,7 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
 <div class="main">
   <header class="topbar">
     <div class="crumb">Workspace <span aria-hidden="true">/</span> <b id="crumb-current">Overview</b></div>
-    <div class="top-right"><span class="env-pill">DEMO WORKSPACE</span><span class="avatar" aria-hidden="true">O</span></div>
+    <div class="top-right"><span class="env-pill" id="scopePill">NEAR testnet</span><button id="topDisconnect" class="btn btn-ghost btn-sm" type="button" hidden>Disconnect</button><span class="avatar" id="accountAvatar" aria-hidden="true">O</span></div>
   </header>
   <div id="toasts" class="toasts" aria-live="polite"></div>
   <main class="content" id="content">
@@ -319,12 +372,12 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
       <section class="hero is-welcome" id="hero">
         <div class="hero-copy">
           <div class="eyebrow">Business operations intelligence</div>
-          <h1>See the gap between<br>what was promised and what happened.</h1>
-          <p>OUTCOME connects supplier commitments to real-world evidence, catches discrepancies early, and helps you decide what should happen next — before money or trust is lost.</p>
+          <h1>Before you pay a supplier, know whether they delivered what you agreed to pay for.</h1>
+          <p>This workspace is synthetic. A short delivery blocks the payment until a person decides what happens next. Connecting a testnet wallet is optional, and nothing is paid.</p>
         </div>
         <div class="hero-actions">
           <button id="demoSeed" class="btn btn-hero" type="button" data-demo-seed>Explore the live demo</button>
-          <span class="hero-note">Loads two fictional supplier cases. Existing records are never overwritten.</span>
+          <span class="hero-note">Opens your own synthetic copy. It does not change anyone else’s records.</span>
         </div>
       </section>
       <section class="metrics-grid" id="overviewMetrics" aria-label="Live workspace summary">
@@ -436,7 +489,7 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
 </div>
 <script>
 const $ = selector => document.querySelector(selector);
-const state = { commitments: [], patterns: [], record: null, ai: { configured: false } };
+const state = { commitments: [], patterns: [], record: null, ai: { configured: false }, scope: null, session: null, anchorStatus: '' };
 let selected = null;
 let view = 'overview';
 let detailTab = 'decision';
@@ -522,8 +575,10 @@ function errorMessage(data){
   return 'Request failed';
 }
 async function api(path, options={}){
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (state.scope) headers['X-Outcome-Scope'] = state.scope;
   let response;
-  try { response = await fetch(path, { headers:{'Content-Type':'application/json'}, ...options }); }
+  try { response = await fetch(path, { ...options, headers }); }
   catch { throw Error('The workspace could not be reached.'); }
   let data = null;
   try { data = await response.json(); } catch { data = null; }
@@ -792,17 +847,20 @@ function verificationNote(){
 }
 function renderAi(record){
   const history = record.ai_brief_history || [];
+  const verified = history.filter(item => item.displayable);
+  const rejected = history.filter(item => !item.displayable);
   if (!state.ai.configured){
     const title = state.ai.unknown ? 'Brief status unavailable' : 'Brief unavailable';
     const body = state.ai.unknown
       ? 'OUTCOME could not check whether operational briefs are enabled. The assessment on this page still comes from deterministic checks.'
-      : 'An operational brief is not enabled in this workspace. The assessment on this page comes from OUTCOME’s own checks.';
-    return `<section class="rail-card quiet"><h3>Operational brief</h3>${emptyBlock('spark', title, body)}${verificationNote()}</section>`;
+      : 'An operational brief is unavailable. The assessment on this page comes from OUTCOME’s own checks, and no brief is marked verified.';
+    return `<section class="rail-card quiet"><h3>Operational brief</h3><p class="meta">Status: unavailable.</p>${emptyBlock('spark', title, body)}${verificationNote()}</section>`;
   }
-  const historyHtml = history.length
-    ? `<div class="stack" style="margin-top:12px">${history.map(renderBrief).join('')}</div>`
-    : emptyBlock('spark', 'No brief yet', 'Generate an explanation of this commitment. The brief is advisory. Payment rules and a person’s approval stay in charge.');
-  return `<section class="rail-card"><h3>Operational brief</h3><p class="meta">NEAR AI Cloud can explain the evidence and list questions. It does not change the assessment or approve payment.</p><button id="aiBriefButton" class="btn" type="button">Generate AI brief</button>${historyHtml}${verificationNote()}</section>`;
+  const rejectedHtml = rejected.length ? `<p class="meta">Status: rejected. A brief that failed verification is withheld and is not shown as verified.</p>` : '';
+  const historyHtml = verified.length
+    ? `<p class="meta">Status: verified. The checks passed for the brief below. That does not prove which machine served it, that the connection was bound to the quote, or that the brief cannot be replayed.</p><div class="stack" style="margin-top:12px">${verified.map(renderBrief).join('')}</div>`
+    : emptyBlock('spark', 'No verified brief yet', 'Generate an explanation of this commitment. If verification fails, nothing is shown as verified. Payment rules and a person’s approval stay in charge.');
+  return `<section class="rail-card"><h3>Operational brief</h3><p class="meta">NEAR AI Cloud can explain the evidence and list questions. It does not change the assessment or approve payment.</p><button id="aiBriefButton" class="btn" type="button">Generate AI brief</button>${rejectedHtml}${historyHtml}${verificationNote()}</section>`;
 }
 function renderEvidence(record){
   const items = record.evidence || [];
@@ -851,6 +909,13 @@ function renderAmendments(record){
   }).join('');
   return `<h3 class="card-title">Amendments</h3><p class="meta">Changes create a new version. Original terms and previous evidence remain preserved.</p><form id="amendmentForm" autocomplete="off"><div class="field"><label for="amend_reason">Reason for amendment</label><input id="amend_reason" name="reason" required minlength="3" maxlength="500" placeholder="Reason agreed by both parties"></div><div class="row"><div class="field"><label for="amend_quantity">New quantity</label><input id="amend_quantity" name="quantity" type="number" min=".01" step="any" placeholder="${esc(commitment.quantity)}"></div><div class="field"><label for="amend_amount">New amount</label><input id="amend_amount" name="amount" type="number" min=".01" step="any" placeholder="${esc(commitment.amount)}"></div></div><div class="row"><div class="field"><label for="amend_due">New due date</label><input id="amend_due" name="due_date" type="date"></div><div class="field"><label for="amend_unit">New unit</label><input id="amend_unit" name="unit" maxlength="40" placeholder="${esc(commitment.unit)}"></div></div><div class="field"><label for="amend_description">New description</label><input id="amend_description" name="description" maxlength="500" placeholder="${esc(commitment.description)}"></div><div class="field"><label for="amend_condition">New payment condition</label><input id="amend_condition" name="payment_condition" maxlength="300" placeholder="${esc(commitment.payment_condition)}"></div><div class="field"><label for="amend_currency">New currency</label><input id="amend_currency" name="currency" minlength="3" maxlength="8" placeholder="${esc(commitment.currency)}"></div><button class="btn" type="submit">Record amendment</button></form><h3 class="subhead">Version history</h3>${versions || '<p class="meta">No versions recorded.</p>'}`;
 }
+function renderAnchor(record){
+  const anchor = record.audit_anchor || {};
+  const receipts = record.audit_receipts || [];
+  const links = receipts.map(item => `<li><a href="${esc(item.explorer_url)}" target="_blank" rel="noopener">${esc(item.execution_status)} · ${esc(item.transaction_hash)}</a> · ${item.matches_current_record ? 'matches this record' : 'record has changed since this anchor'}</li>`).join('');
+  const signedIn = Boolean(state.session && state.session.authenticated);
+  return `<h3 class="subhead">Testnet audit record</h3><p class="meta">Write a hash of this order to thewordweaver.testnet with your own wallet. The chain stores the digest, not supplier names, notes, or bank details. This does not pay anyone.</p><p class="meta">Digest ${esc(anchor.payload_hash || '')}</p>${state.anchorStatus ? `<p class="meta" id="anchorStatus">${esc(state.anchorStatus)}</p>` : ''}${links ? `<ul class="log">${links}</ul>` : ''}<div class="btn-row"><button id="anchorRecord" class="btn" type="button">${signedIn ? 'Sign audit record' : 'Connect a wallet to sign'}</button></div><p class="meta">The contract already on testnet still accepts a new record only from thewordweaver.testnet until its owner upgrades it. After that upgrade, any testnet account can append a hash. OUTCOME never holds a key.</p>`;
+}
 function renderPayments(record){
   const commitment = record.commitment;
   const policy = record.payment_policy;
@@ -858,7 +923,7 @@ function renderPayments(record){
   const history = proposals.length
     ? `<div class="stack">${proposals.map(item => `<article class="record"><div class="record-top"><h3>${esc(cash(item.proposal.requested_amount, item.proposal.currency))}</h3>${badge(item.status)}</div><p>${esc(item.proposal.message || '')}</p><p class="meta">${esc(item.proposal.destination || '')} · ${when(item.created_at)}</p>${(item.proposal.reasons || []).length ? `<ul class="log">${item.proposal.reasons.map(reason => `<li><b>${esc(pretty(reason.code))}</b> — ${esc(reason.message)}</li>`).join('')}</ul>` : ''}</article>`).join('')}</div>`
     : emptyBlock('shield', 'No proposals yet', 'Evaluate a payment against the owner policy. A passing result still needs a person. Nothing is transferred.');
-  return `<h3 class="card-title">Payment protection</h3><p class="meta">Simulation only. The policy starts disabled. Set an exact approved destination and a spending cap. OUTCOME never approves, signs or submits a transfer.</p><form id="policyForm" autocomplete="off"><label class="check"><input name="enabled" type="checkbox" ${checked(policy.enabled)}> Enable policy checks</label><div class="field"><label for="max_amount">Maximum permitted amount</label><input id="max_amount" name="max_amount" type="number" min=".01" step="any" value="${esc(policy.max_amount)}" required></div><div class="field"><label for="allowed_destination">Exact approved destination</label><input id="allowed_destination" name="allowed_destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><label class="check"><input name="require_full_delivery" type="checkbox" ${checked(policy.require_full_delivery)}> Require full delivery evidence</label><label class="check"><input name="require_invoice_match" type="checkbox" ${checked(policy.require_invoice_match)}> Require exact invoice match</label><label class="check"><input name="require_verified_evidence" type="checkbox" ${checked(policy.require_verified_evidence)}> Require latest evidence to be reviewed and verified</label><label class="check"><input name="allow_partial_payments" type="checkbox" ${checked(policy.allow_partial_payments)}> Allow partial payment proposals</label><button class="btn" type="submit">Save payment policy</button></form><h3 class="subhead">Evaluate a proposal</h3><form id="proposalForm" autocomplete="off"><div class="row"><div class="field"><label for="proposal_amount">Proposed amount</label><input id="proposal_amount" name="amount" type="number" min=".01" step="any" value="${esc(commitment.amount)}" required></div><div class="field"><label for="proposal_currency">Currency</label><input id="proposal_currency" name="currency" value="${esc(commitment.currency)}" required minlength="3" maxlength="8"></div></div><div class="field"><label for="proposal_destination">Destination</label><input id="proposal_destination" name="destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><button class="btn" type="submit">Evaluate proposal — no transfer</button></form><details id="security-test" class="disclosure"${securityOpen ? ' open' : ''}><summary>Adversarial payment test</summary><p>Simulate a prompt-injected agent trying to exceed the owner cap and pay an unapproved destination. The policy gate should block it before any signing or transfer.</p><button id="redTeamPaymentButton" class="btn btn-danger-solid" type="button">Run adversarial payment test</button></details><h3 class="subhead">Proposal history</h3>${history}<p class="meta check-note">A passing proposal is not approval. No funds move. No wallet or blockchain transaction is connected.</p>`;
+  return `<h3 class="card-title">Payment protection</h3><p class="meta">Simulation only. The policy starts disabled. Set an exact approved destination and a spending cap. OUTCOME never approves, signs or submits a transfer.</p><form id="policyForm" autocomplete="off"><label class="check"><input name="enabled" type="checkbox" ${checked(policy.enabled)}> Enable policy checks</label><div class="field"><label for="max_amount">Maximum permitted amount</label><input id="max_amount" name="max_amount" type="number" min=".01" step="any" value="${esc(policy.max_amount)}" required></div><div class="field"><label for="allowed_destination">Exact approved destination</label><input id="allowed_destination" name="allowed_destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><label class="check"><input name="require_full_delivery" type="checkbox" ${checked(policy.require_full_delivery)}> Require full delivery evidence</label><label class="check"><input name="require_invoice_match" type="checkbox" ${checked(policy.require_invoice_match)}> Require exact invoice match</label><label class="check"><input name="require_verified_evidence" type="checkbox" ${checked(policy.require_verified_evidence)}> Require latest evidence to be reviewed and verified</label><label class="check"><input name="allow_partial_payments" type="checkbox" ${checked(policy.allow_partial_payments)}> Allow partial payment proposals</label><button class="btn" type="submit">Save payment policy</button></form><h3 class="subhead">Evaluate a proposal</h3><form id="proposalForm" autocomplete="off"><div class="row"><div class="field"><label for="proposal_amount">Proposed amount</label><input id="proposal_amount" name="amount" type="number" min=".01" step="any" value="${esc(commitment.amount)}" required></div><div class="field"><label for="proposal_currency">Currency</label><input id="proposal_currency" name="currency" value="${esc(commitment.currency)}" required minlength="3" maxlength="8"></div></div><div class="field"><label for="proposal_destination">Destination</label><input id="proposal_destination" name="destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><button class="btn" type="submit">Evaluate proposal — no transfer</button></form><details id="security-test" class="disclosure"${securityOpen ? ' open' : ''}><summary>Adversarial payment test</summary><p>Simulate a prompt-injected agent trying to exceed the owner cap and pay an unapproved destination. The policy gate should block it before any signing or transfer.</p><button id="redTeamPaymentButton" class="btn btn-danger-solid" type="button">Run adversarial payment test</button></details><h3 class="subhead">Proposal history</h3>${history}<p class="meta check-note">A passing proposal is not approval. No funds move. A wallet signature, if you add one, is only for the audit record.</p>${renderAnchor(record)}`;
 }
 function renderDetail(){
   const record = state.record;
@@ -922,7 +987,20 @@ async function openCommitment(id){
 }
 async function load(){
   loadError = '';
-  const [commitments, patterns] = await Promise.all([api('/api/commitments'), api('/api/patterns')]);
+  let commitments;
+  let patterns;
+  try {
+    [commitments, patterns] = await Promise.all([api('/api/commitments'), api('/api/patterns')]);
+  } catch (error) {
+    if (/expired/i.test(error.message)) {
+      state.scope = null;
+      sessionStorage.removeItem('outcome-open');
+      showLanding();
+      setLandingStatus(error.message);
+      return;
+    }
+    throw error;
+  }
   state.commitments = commitments;
   state.patterns = patterns;
   updateMetrics(commitments);
@@ -937,18 +1015,54 @@ async function load(){
   }
   paint();
 }
+function showLanding(){
+  $('#landing').hidden = false;
+  $('.app-shell').hidden = true;
+}
+function showApp(){
+  $('#landing').hidden = true;
+  $('.app-shell').hidden = false;
+}
+function setLandingStatus(message){
+  const slot = $('#landingStatus');
+  if (slot) slot.textContent = message || '';
+}
+function paintAccount(){
+  const account = state.session && state.session.account_id;
+  const label = account ? account : 'No wallet connected. You can explore the demo without one.';
+  const landingAccount = $('#landingAccount');
+  if (landingAccount) landingAccount.textContent = label;
+  const avatar = $('#accountAvatar');
+  if (avatar) avatar.textContent = account ? account.slice(0, 1).toUpperCase() : 'O';
+  const connected = Boolean(account);
+  $('#disconnectWallet')?.toggleAttribute('hidden', !connected);
+  $('#topDisconnect')?.toggleAttribute('hidden', !connected);
+  const scopeLabel = state.scope === 'personal' ? 'Personal workspace · NEAR testnet' : state.scope === 'demo' ? 'Guided demo · NEAR testnet' : 'NEAR testnet';
+  if ($('#scopePill')) $('#scopePill').textContent = scopeLabel;
+  if ($('#scopePillSide')) $('#scopePillSide').textContent = scopeLabel;
+}
+async function enterWorkspace(scope){
+  state.scope = scope;
+  sessionStorage.setItem('outcome-open', scope);
+  showApp();
+  paintAccount();
+  selected = null;
+  state.record = null;
+  await load();
+}
 async function seedDemo(button){
   await withBusy(button, async () => {
     try {
-      await api('/api/demo/seed', { method:'POST' });
-      selected = null;
-      state.record = null;
-      detailTab = 'decision';
-      await load();
+      state.scope = null;
+      await api('/api/demo/trials', { method:'POST' });
+      await enterWorkspace('demo');
       if (view !== 'overview') goTo('overview', 'top');
-      else scrollPage(0);
-      toast('Demo loaded. Two fictional supplier commitments are ready.', 'ok');
-    } catch (error) { toast(error.message, 'error'); }
+      toast('Guided demo ready. These records are synthetic.', 'ok');
+      setLandingStatus('');
+    } catch (error) {
+      setLandingStatus(error.message);
+      toast(error.message, 'error');
+    }
   });
 }
 async function createCommitment(form){
@@ -1096,6 +1210,146 @@ async function recordActionEvent(button){
     } catch (error) { toast(error.message, 'error'); }
   });
 }
+function whenWallet(work){
+  if (window.OutcomeWallet) return work(window.OutcomeWallet);
+  return new Promise((resolve, reject) => {
+    const started = Date.now();
+    const timer = setInterval(() => {
+      if (window.OutcomeWallet) {
+        clearInterval(timer);
+        resolve(work(window.OutcomeWallet));
+      } else if (Date.now() - started > 8000) {
+        clearInterval(timer);
+        reject(Error('The wallet connector did not load. Check your connection and try again.'));
+      }
+    }, 50);
+  });
+}
+async function refreshSession(){
+  state.session = await api('/api/session');
+  state.ai = Object.assign({ configured: false }, state.session.ai || {});
+  paintAccount();
+}
+async function connectWallet(button){
+  await withBusy(button, async () => {
+    try {
+      const wallet = await whenWallet(item => item);
+      const accountId = await wallet.connect();
+      const challenge = await api('/api/auth/challenge', { method:'POST', body: JSON.stringify({ account_id: accountId }) });
+      const nonce = Uint8Array.from(atob(challenge.nonce), char => char.charCodeAt(0));
+      const signed = await wallet.signMessage({ message: challenge.message, recipient: challenge.recipient, nonce });
+      if (signed.accountId && signed.accountId !== accountId) throw Error('The wallet signed in with a different account. Connect again.');
+      await api('/api/auth/session', { method:'POST', body: JSON.stringify({
+        challenge_id: challenge.challenge_id,
+        account_id: accountId,
+        public_key: signed.publicKey,
+        signature: signed.signature,
+      }) });
+      await refreshSession();
+      setLandingStatus('Wallet confirmed on NEAR testnet. Nothing was paid.');
+      toast('Testnet wallet confirmed. Nothing was paid.', 'ok');
+    } catch (error) {
+      setLandingStatus(error.message);
+      toast(error.message, 'error');
+    }
+  });
+}
+async function disconnectWallet(button){
+  await withBusy(button, async () => {
+    try {
+      if (window.OutcomeWallet) await window.OutcomeWallet.disconnect();
+      await api('/api/auth/logout', { method:'POST' });
+      state.scope = state.scope === 'personal' ? null : state.scope;
+      await refreshSession();
+      if (!state.session.personal.active && state.scope === null) {
+        sessionStorage.removeItem('outcome-open');
+        showLanding();
+      }
+      toast('Wallet disconnected. Your records stay in place.', 'ok');
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function createPersonalWorkspace(button){
+  await withBusy(button, async () => {
+    try {
+      if (!state.session || !state.session.authenticated) {
+        setLandingStatus('Connect your NEAR testnet wallet first. The demo still works without one.');
+        toast('Connect your NEAR testnet wallet first.', 'warn');
+        return;
+      }
+      await api('/api/workspaces', { method:'POST' });
+      await enterWorkspace('personal');
+      toast('Personal workspace ready. It is separate from the guided demo.', 'ok');
+    } catch (error) {
+      setLandingStatus(error.message);
+      toast(error.message, 'error');
+    }
+  });
+}
+async function nearView(contractId, method){
+  const response = await fetch('https://rpc.testnet.near.org', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0', id: 'outcome', method: 'query',
+      params: { request_type: 'call_function', account_id: contractId, method_name: method, args_base64: btoa('{}'), finality: 'final' },
+    }),
+  });
+  const body = await response.json();
+  if (!response.ok || body.error) {
+    const detail = body.error && (body.error.data || body.error.message);
+    throw Error(typeof detail === 'string' ? detail : 'Testnet view failed');
+  }
+  const bytes = (body.result && body.result.result) || [];
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(bytes)));
+}
+async function signAnchor(button){
+  const record = state.record;
+  if (!record) return;
+  if (!state.session || !state.session.authenticated) {
+    toast('Connect your NEAR testnet wallet before signing an audit record.', 'warn');
+    showLanding();
+    return;
+  }
+  await withBusy(button, async () => {
+    try {
+      const contractId = (state.session.near && state.session.near.contract_id) || 'thewordweaver.testnet';
+      state.anchorStatus = 'Asking the testnet contract for the latest audit hash.';
+      renderDetail();
+      let previous = '';
+      try { previous = await nearView(contractId, 'get_latest_hash'); } catch (error) { throw Error('Could not read the testnet contract. ' + error.message); }
+      let policy = 'owner_only_until_upgrade';
+      try { policy = await nearView(contractId, 'get_anchor_policy'); } catch { policy = 'owner_only_until_upgrade'; }
+      if (policy !== 'any_account' && state.session.account_id !== 'thewordweaver.testnet') {
+        state.anchorStatus = 'The contract on testnet still accepts new records only from thewordweaver.testnet. You can still sign; another account is rejected until the contract owner upgrades it.';
+      } else {
+        state.anchorStatus = 'Waiting for your wallet to sign the audit record.';
+      }
+      renderDetail();
+      const anchor = record.audit_anchor;
+      const wallet = await whenWallet(item => item);
+      const result = await wallet.signAndSendRecordEvent(contractId, {
+        commitment_id: anchor.commitment_id,
+        event_type: anchor.event_type,
+        payload_hash: anchor.payload_hash,
+        previous_hash: previous,
+      });
+      const txHash = result && result.transaction && result.transaction.hash;
+      if (!txHash) throw Error('The wallet did not return a transaction hash.');
+      state.anchorStatus = 'Submitted. Checking the testnet transaction.';
+      const saved = await api('/api/commitments/' + encodeURIComponent(record.commitment.id) + '/audit-receipts', {
+        method: 'POST', body: JSON.stringify({ transaction_hash: txHash }),
+      });
+      state.anchorStatus = 'Verified on testnet. ' + saved.explorer_url;
+      toast('Audit record verified. Nothing was paid.', 'ok');
+      await showDetail(record.commitment.id);
+    } catch (error) {
+      state.anchorStatus = error.message;
+      toast(error.message, 'error');
+      renderDetail();
+    }
+  });
+}
 function hit(event, selector){
   const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
   for (const node of path){
@@ -1113,8 +1367,14 @@ document.addEventListener('click', event => {
   }
   const opener = hit(event, '[data-open]');
   if (opener){ openCommitment(opener.dataset.open); return; }
-  const demo = hit(event, '[data-demo-seed]');
+  const demo = hit(event, '[data-demo-seed], #exploreDemo');
   if (demo){ seedDemo(demo); return; }
+  const connect = hit(event, '#connectWallet');
+  if (connect){ connectWallet(connect); return; }
+  const personal = hit(event, '#createWorkspace');
+  if (personal){ createPersonalWorkspace(personal); return; }
+  const disconnect = hit(event, '#disconnectWallet, #topDisconnect');
+  if (disconnect){ disconnectWallet(disconnect); return; }
   if (!hit(event, '#detail')) return;
   if (hit(event, '#backToList')){ closeDetail(); return; }
   const tab = hit(event, '[role="tab"]');
@@ -1136,7 +1396,9 @@ document.addEventListener('click', event => {
     return;
   }
   const redTeam = hit(event, '#redTeamPaymentButton');
-  if (redTeam) runSecurityTest(redTeam);
+  if (redTeam){ runSecurityTest(redTeam); return; }
+  const anchor = hit(event, '#anchorRecord');
+  if (anchor) signAnchor(anchor);
 });
 document.addEventListener('submit', event => {
   const form = event.target;
@@ -1191,14 +1453,25 @@ view = viewFromHash();
 if (location.hash !== '#' + HASH_FOR[view]) history.replaceState({ view }, '', '#' + HASH_FOR[view]);
 paint();
 $('#attention').innerHTML = emptyBlock('clock', 'Loading the workspace', 'Fetching commitments, evidence and signals.');
-$('#list').innerHTML = emptyBlock('clock', 'Loading commitments', 'Fetching the shared records.');
-load().catch(error => {
-  loadError = error.message || 'Could not load the workspace.';
-  toast(loadError, 'error');
-  renderAttention();
-  renderList();
-  renderPatterns();
-});
+$('#list').innerHTML = emptyBlock('clock', 'Loading commitments', 'Fetching the records in this workspace.');
+async function boot(){
+  try { await refreshSession(); }
+  catch (error) { setLandingStatus(error.message); }
+  whenWallet(wallet => wallet.subscribe(snapshot => {
+    const signedIn = state.session && state.session.account_id;
+    if (signedIn && snapshot.accountId && snapshot.accountId !== signedIn) {
+      api('/api/auth/logout', { method:'POST' }).then(refreshSession).then(() => {
+        setLandingStatus('The wallet account changed. Sign in again before opening a personal workspace.');
+        if (state.scope === 'personal') { state.scope = null; sessionStorage.removeItem('outcome-open'); showLanding(); }
+      }).catch(error => setLandingStatus(error.message));
+    }
+  })).catch(() => {});
+  const open = sessionStorage.getItem('outcome-open');
+  if (open === 'demo' && state.session && state.session.demo && state.session.demo.active) await enterWorkspace('demo');
+  else if (open === 'personal' && state.session && state.session.personal && state.session.personal.active) await enterWorkspace('personal');
+  else showLanding();
+}
+boot().catch(error => setLandingStatus(error.message));
 </script>
 </body>
 </html>

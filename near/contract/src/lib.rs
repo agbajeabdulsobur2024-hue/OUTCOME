@@ -45,9 +45,14 @@ impl Contract {
         }
     }
 
-    /// Append a hash-only commitment event. The caller must be the configured
-    /// owner account. A restricted function-call key can be scoped by NEAR to
-    /// this method alone; protocol-level key permissions are checked first.
+    /// Append a hash-only commitment event.
+    ///
+    /// Any predecessor may append. The stored actor is that account, so a
+    /// tester can sign `record_event` with their own testnet wallet. This is
+    /// not yet the code deployed at `thewordweaver.testnet`; that deployment
+    /// still accepts the call only from its owner until the account owner
+    /// upgrades it. `admin_probe` stays owner-only. A function-call key can
+    /// still be scoped to this method alone.
     pub fn record_event(
         &mut self,
         commitment_id: String,
@@ -55,11 +60,6 @@ impl Contract {
         payload_hash: String,
         previous_hash: String,
     ) -> u64 {
-        assert_eq!(
-            env::predecessor_account_id(),
-            self.owner_id,
-            "Only the configured owner account may append audit events"
-        );
         assert!(!commitment_id.trim().is_empty(), "commitment_id is required");
         assert!(commitment_id.len() <= 128, "commitment_id is too long");
         assert!(!event_type.trim().is_empty(), "event_type is required");
@@ -140,6 +140,12 @@ impl Contract {
 
     pub fn get_admin_probe_count(&self) -> u64 {
         self.admin_probe_count
+    }
+
+    /// `any_account` means a tester wallet may call `record_event`.
+    /// The currently deployed contract does not expose this method.
+    pub fn get_anchor_policy(&self) -> String {
+        "any_account".to_string()
     }
 }
 

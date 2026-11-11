@@ -1,6 +1,8 @@
 # OUTCOME
 
-An operations intelligence app for commitments, evidence, and follow-through.
+Before you pay a supplier, know whether they delivered what you agreed to pay for.
+
+OUTCOME is an operations app for commitments, evidence, and follow-through.
 
 The first workflow protects supplier payments by comparing what was agreed with what the evidence shows.
 
@@ -15,29 +17,27 @@ A business agrees to receive 100 units for USD 500, payable after delivery. Rece
 
 OUTCOME flags the 20-unit shortfall, estimates USD 100 exposure, and recommends holding payment approval until the discrepancy is resolved.
 
-Live demo: [outcome-puce.vercel.app](https://outcome-puce.vercel.app)
-
-Use synthetic data only. The hosted app has no login.
+The hosted app at [outcome-puce.vercel.app](https://outcome-puce.vercel.app) does not yet include isolated workspaces or wallet sign-in. Those land when this work is deployed. Use synthetic data only.
 
 ## NEAR
 
 ### Testnet audit anchor
 
-The Rust contract and testnet script are under [`near/`](near/).
+The contract is deployed on `thewordweaver.testnet`. It stores hash-only events. A restricted function-call key demo has already run.
 
-The contract stores hash-only events in an append-only hash chain with block metadata. The testnet script is written to add a function-call key that can call only `record_event` on that contract.
+- Deploy and init, FINAL: [`8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy`](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy)
+- `record_event`, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj)
+- `admin_probe` rejected with `MethodNameMismatch`: [`7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk`](https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk) (not indexed, which is expected)
 
-- The contract and the testnet proof script are implemented. The WASM build has passed GitHub Actions.
-- A local sandbox script exercises the same method restriction. That chain is not testnet.
-- No testnet contract has been deployed. The testnet script has not been run, so there is no testnet contract address or transaction hash.
+The deployed contract still accepts `record_event` only from its owner. The source here lets any testnet account append a hash-only event. That upgrade is not on chain. The app never holds the owner key.
 
-The web app does not connect a wallet or hold the key. Setup: [near/README.md](near/README.md). Full status: [NEAR hackathon integration](docs/NEAR_HACKATHON_INTEGRATION.md).
+A visitor can connect their own testnet wallet with HOT Connect and sign an anchor. Payment does not move funds. Setup: [near/README.md](near/README.md). Full status: [NEAR hackathon integration](docs/NEAR_HACKATHON_INTEGRATION.md).
 
 ### NEAR AI Cloud
 
-When enabled, a brief explains the deterministic assessment, uncertainty, and questions for the owner. The user triggers it with **Generate AI brief**. The model does not change commitment status, payment eligibility, or approvals, and it does not execute actions.
+When a server-side `NEARAI_API_KEY` is set, a person can ask for a brief. The model does not change commitment status, payment eligibility, or approvals. A brief is stored only after the cryptographic checks pass. If those checks fail, nothing is shown as verified.
 
-The adapter runs only when `NEARAI_API_KEY` is set on the server. A live completion and response signature have not been confirmed in this repository. Data boundaries and checks: [AI integration](docs/AI_INTEGRATION.md).
+A live completion on 11 November 2026 succeeded outside this repository. Pull request 6, merged as `fa6eb02`, returns that brief when verification passes. The hosted app does not serve briefs: no API key is configured there. The checks do not prove which machine served the model, that the connection was bound to the quote, or that a brief cannot be replayed. Details: [AI integration](docs/AI_INTEGRATION.md).
 
 NEAR Intents and Chain Signatures are not connected. See the safety boundary and the [integration status](docs/NEAR_HACKATHON_INTEGRATION.md).
 
@@ -54,9 +54,9 @@ uvicorn app.main:app --reload
 
 1. Open http://127.0.0.1:8000.
 2. Open API docs at http://127.0.0.1:8000/docs.
-3. Click **Load synthetic demo case**.
+3. Click **Explore Demo**. No wallet is required.
 
-The seed creates two fictional Acme commitments with verified fixture evidence, a blocked payment proposal, an action to reconcile delivery, and a repeated-short-delivery early signal. It refuses to run if commitments already exist.
+The guided demo gives that visitor a private synthetic copy: two Acme orders, verified short deliveries, a configured payment policy, a blocked proposal, a follow-up action, and a repeated short-delivery signal. It does not overwrite another visitor’s data. The older shared seed still refuses to run when that shared area already has commitments.
 
 Walkthrough: [3-minute demo script](docs/DEMO_SCRIPT.md).
 
@@ -68,12 +68,13 @@ Hosted setup: [Vercel + Turso deployment](docs/VERCEL_TURSO_DEPLOYMENT.md).
 
 This is a hackathon demo, not a production financial service.
 
-- No user authentication or tenant isolation. Actor and reviewer names are manually entered labels, not authenticated identities or signatures.
+- A personal workspace requires a signed NEAR testnet login. A wallet address in a request body is not identity. Actor and reviewer names inside a record are still labels.
+- Guided demos are separate short-lived copies. One visitor cannot read or change another visitor’s records by guessing an id.
 - Do not enter sensitive live business or payment data.
 - No custody of funds, and no real transfers. Human approval remains required.
-- OUTCOME does not approve invoices or submit blockchain transactions. A simulated payment proposal returns explicit block reasons or `AWAITING_HUMAN_APPROVAL`. [Payment policy simulation](docs/PAYMENT_POLICY_SIMULATION.md).
-- The demo reset endpoint is disabled unless `OUTCOME_ALLOW_DEMO_RESET=true` is set in a disposable local environment.
-- This demo does not connect a live wallet or move real funds. The NEAR Intents Agent API is an experimental, mainnet-only beta. Its quickstart warns that real assets are at risk and that no testnet is available. [Overview](https://docs.agentsonintents.com/integration/agent-api/overview). [Quickstart](https://docs.agentsonintents.com/integration/agent-api/quickstart/introduction).
+- A simulated payment proposal returns explicit block reasons or `AWAITING_HUMAN_APPROVAL`. [Payment policy simulation](docs/PAYMENT_POLICY_SIMULATION.md).
+- `OUTCOME_ALLOW_DEMO_RESET` stays false on the hosted app. Even if it is turned on locally, reset deletes only the old shared rows, not personal or guided-demo workspaces.
+- Wallet connect is testnet only. The app does not hold a private key. NEAR Intents is not connected. It is an experimental, mainnet-only beta with no testnet and real-asset risk. [Overview](https://docs.agentsonintents.com/integration/agent-api/overview). [Quickstart](https://docs.agentsonintents.com/integration/agent-api/quickstart/introduction).
 
 ## Product principles
 
