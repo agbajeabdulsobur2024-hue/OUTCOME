@@ -2,15 +2,15 @@
 
 This is an isolated testnet demonstration. It does not move NEAR or supplier funds.
 
-## What is already on testnet
+## Completed testnet run
 
 Account `thewordweaver.testnet`:
 
-- Deploy and init, FINAL: https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy
-- `record_event`, FINAL: https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj
-- `admin_probe` rejected with `MethodNameMismatch`: https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk (not indexed, which is expected)
+- Deploy and init, FINAL: [`8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy`](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy). On-chain `code_hash` `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`.
+- `record_event` accepted and stored, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj).
+- `admin_probe` rejected with `MethodNameMismatch`: [`7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk`](https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk). That rejection is not indexed, which is expected on this nearcore version.
 
-The deployed contract accepts `record_event` only from its owner. The source in this repository now lets any account append a hash-only event and adds `get_anchor_policy`. That upgrade has not been submitted. The account owner must deploy it with their own key. Do not paste that key into the repo, the hosted app, or Vercel. `admin_probe` stays owner-only.
+The deployed contract accepts `record_event` only from its owner. The source in this repository now lets any account append a hash-only event and adds `get_anchor_policy`. That upgrade has not been submitted. The account owner must deploy it with their own key. Do not paste that key into the repo, the hosted app, or Vercel. `admin_probe` stays owner-only. The web app can ask a visitor to sign with their own testnet wallet. It does not hold a full-access key, and a full-access key was not put in Vercel. The steps below are how the restricted-key proof is repeated.
 
 ## What the testnet proof is designed to demonstrate
 
@@ -106,6 +106,6 @@ Only hashes and synthetic identifiers are anchored. Do not place supplier names,
 
 ## Important scope boundary
 
-After the script completes successfully on testnet, it demonstrates NEAR protocol-level receiver and method restrictions on actual testnet transactions. A green sandbox run is not that demonstration. The integration does not make OUTCOME a payment executor and does not authorize a real supplier transfer. The function-call key can only call the audit contract's `record_event` method; it cannot call other contracts or arbitrary methods. The current OUTCOME web backend does not hold this key. The demo script is the isolated signer for this proof.
+The 11 November 2026 run on `thewordweaver.testnet` demonstrated NEAR protocol-level receiver and method restrictions on testnet transactions. A green sandbox run is not that demonstration. The integration does not make OUTCOME a payment executor and does not authorize a real supplier transfer. The function-call key can only call the audit contract's `record_event` method; it cannot call other contracts or arbitrary methods. The current OUTCOME web backend does not hold this key. The demo script is the isolated signer for this proof.
 
-After this proof is run successfully, the next integration step is to export a canonical commitment-state digest from OUTCOME and have a dedicated, authenticated server-side anchoring worker submit only that digest using the same restricted key. Do not expose the restricted private key to the browser.
+The next integration step is to export a canonical commitment-state digest from OUTCOME and have a dedicated, authenticated server-side anchoring worker submit only that digest using the same restricted key. Do not expose the restricted private key to the browser.

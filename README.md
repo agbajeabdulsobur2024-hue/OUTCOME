@@ -21,21 +21,19 @@ The hosted app at [outcome-puce.vercel.app](https://outcome-puce.vercel.app) doe
 
 ### Testnet audit anchor
 
-The contract is deployed on `thewordweaver.testnet`. It stores hash-only events. A restricted function-call key demo has already run.
+Completed on testnet account `thewordweaver.testnet`. The contract stores hash-only events in an append-only hash chain. The app does not hold a full-access key, and a full-access key was not put in Vercel.
 
-- Deploy and init, FINAL: [`8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy`](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy)
-- `record_event`, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj)
-- `admin_probe` rejected with `MethodNameMismatch`: [`7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk`](https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk) (not indexed, which is expected)
+- Deploy and init, FINAL: [`8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy`](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy). On-chain `code_hash` `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`.
+- `record_event` accepted and stored, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj).
+- Restricted key limited to `record_event`. `admin_probe` rejected with `MethodNameMismatch`: [`7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk`](https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk). That rejection is not indexed, which is expected on this nearcore version.
 
-The deployed contract still accepts `record_event` only from its owner. The source here lets any testnet account append a hash-only event. That upgrade is not on chain. The app never holds the owner key.
-
-A visitor can connect their own testnet wallet with HOT Connect and sign an anchor. Payment does not move funds. Setup: [near/README.md](near/README.md). Full status: [NEAR hackathon integration](docs/NEAR_HACKATHON_INTEGRATION.md).
+The deployed contract still accepts `record_event` only from its owner. The source here lets any testnet account append a hash-only event. That upgrade is not on chain. A visitor can connect their own testnet wallet with HOT Connect and sign an anchor. Payment does not move funds. Setup: [near/README.md](near/README.md). Full status: [NEAR hackathon integration](docs/NEAR_HACKATHON_INTEGRATION.md).
 
 ### NEAR AI Cloud
 
 When a server-side `NEARAI_API_KEY` is set, a person can ask for a brief. The model does not change commitment status, payment eligibility, or approvals. A brief is stored only after the cryptographic checks pass. If those checks fail, nothing is shown as verified.
 
-A live completion on 11 November 2026 succeeded outside this repository. Pull request 6, merged as `fa6eb02`, returns that brief when verification passes. The hosted app does not serve briefs: no API key is configured there. The checks do not prove which machine served the model, that the connection was bound to the quote, or that a brief cannot be replayed. Details: [AI integration](docs/AI_INTEGRATION.md).
+A live call on 11 November 2026 to [`cloud-api.near.ai/v1`](https://cloud-api.near.ai/v1) for `Qwen/Qwen3.6-35B-A3B-FP8` succeeded. Provider signature (`signature_kind` `provider_tee`, ECDSA/EIP-191) and Intel TDX attestation verified. Fail-closed held when evidence was tampered or missing. Pull request 6, merged as `fa6eb02`, returns that brief when verification passes. The hosted app does not serve briefs: no API key is configured there. NVIDIA JWT signatures, Sigstore, and TLS binding of the completion connection are not in OUTCOME. The checks do not prove which machine served the model, that the connection was bound to the quote, or that a brief cannot be replayed. Details: [AI integration](docs/AI_INTEGRATION.md).
 
 NEAR Intents and Chain Signatures are not connected. See the safety boundary and the [integration status](docs/NEAR_HACKATHON_INTEGRATION.md).
 
