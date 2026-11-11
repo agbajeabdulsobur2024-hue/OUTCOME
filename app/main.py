@@ -18,8 +18,9 @@ from app.payments import evaluate_payment_proposal
 from app.patterns import detect_supplier_patterns
 from app.ai import (
     AIConfigurationError, AIProviderError, brief_is_displayable,
-    generate_operational_brief, is_configured, public_ai_brief_entry,
+    extract_business_event, generate_operational_brief, is_configured, public_ai_brief_entry,
 )
+from app.intake import IntakeRejection, accept_confirmation, model_catalogue, prepare_intake
 from app import anchors, auth_near, finance, safety, tenancy
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -178,7 +179,7 @@ async def lifespan(app):
 app = FastAPI(
     title='OUTCOME',
     description='General-purpose financial accountability: compare what was agreed with what the evidence shows, for any commitment a person records.',
-    version='0.4.0',
+    version='0.5.0',
     lifespan=lifespan,
 )
 app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
@@ -290,6 +291,16 @@ class ActionEventCreate(BaseModel):
     actor: str = Field(min_length=1, max_length=120)
     note: str = Field(default='', max_length=1000)
     evidence_id: str | None = None
+
+
+class IntakeText(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+
+
+class IntakeConfirm(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+    confirmed: bool
+    proposal: dict
 
 
 class CommitmentAmendment(BaseModel):
@@ -965,11 +976,8 @@ def read_ai_status():
     }
 
 
-@app.post('/api/commitments/{cid}/ai-brief', status_code=201)
-def create_ai_brief(cid: str, request: Request):
-    if not is_configured():
-        raise HTTPException(503, 'Optional NEAR AI Cloud is not configured. Set NEARAI_API_KEY to enable it.')
-    record = get_record(cid)
+def reserve_ai_call(request: Request) -> None:
+    """Count one NEAR AI Cloud call against the existing per-client limit."""
     client_ip = request.client.host if request.client else 'unknown'
     try:
         limit = max(1, int(os.getenv('OUTCOME_AI_RATE_LIMIT_PER_HOUR', '5')))
@@ -990,14 +998,25 @@ def create_ai_brief(cid: str, request: Request):
             'INSERT INTO ai_request_limits (id, client_ip, created_at) VALUES (?, ?, ?)',
             (str(uuid.uuid4()), client_ip, utc_now())
         )
-    try:
-        result = generate_operational_brief(record)
-        if not brief_is_displayable(result):
-            raise AIProviderError('NEAR AI response did not pass cryptographic verification.')
-    except AIConfigurationError as exc:
-        raise HTTPException(503, str(exc))
-    except AIProviderError as exc:
-        raise HTTPException(502, str(exc))
+
+
+def workspace_records() -> list[dict]:
+    workspace_id = tenancy.current_workspace_id()
+    with connect() as db:
+        if workspace_id is None:
+            rows = db.execute(
+                'SELECT id FROM commitments WHERE workspace_id IS NULL ORDER BY created_at DESC'
+            ).fetchall()
+        else:
+            rows = db.execute(
+                'SELECT id FROM commitments WHERE workspace_id=? ORDER BY created_at DESC',
+                (workspace_id,),
+            ).fetchall()
+        ids = [row['id'] for row in rows]
+    return [get_record(cid) for cid in ids[:40]]
+
+
+def store_ai_brief(cid: str, result: dict) -> dict:
     brief_id = str(uuid.uuid4())
     created_at = utc_now()
     with connect() as db:
@@ -1007,6 +1026,158 @@ def create_ai_brief(cid: str, request: Request):
              json.dumps(result, sort_keys=True), created_at)
         )
     return {'id': brief_id, 'commitment_id': cid, 'created_at': created_at, **result}
+
+
+@app.post('/api/commitments/{cid}/ai-brief', status_code=201)
+def create_ai_brief(cid: str, request: Request):
+    if not is_configured():
+        raise HTTPException(503, 'Optional NEAR AI Cloud is not configured. Set NEARAI_API_KEY to enable it.')
+    record = get_record(cid)
+    reserve_ai_call(request)
+    try:
+        result = generate_operational_brief(record)
+        if not brief_is_displayable(result):
+            raise AIProviderError('NEAR AI response did not pass cryptographic verification.')
+    except AIConfigurationError as exc:
+        raise HTTPException(503, str(exc))
+    except AIProviderError as exc:
+        raise HTTPException(502, str(exc))
+    return store_ai_brief(cid, result)
+
+
+def _commitment_from_proposal(fields: dict) -> CommitmentCreate:
+    return CommitmentCreate(
+        counterparty=fields['counterparty'],
+        commitment_kind=fields.get('commitment_kind') or 'general',
+        description=fields['description'],
+        quantity=fields['quantity'],
+        unit=fields['unit'],
+        amount=fields['amount'],
+        currency=fields['currency'],
+        due_date=fields['due_date'],
+        payment_condition=fields.get('payment_condition') or 'Release only after the agreed obligation is verified',
+    )
+
+
+def _evidence_from_proposal(item: dict) -> EvidenceCreate:
+    return EvidenceCreate(
+        kind=item['kind'],
+        value=item.get('value'),
+        note=item.get('note') or '',
+        source=item.get('source') or 'intake',
+    )
+
+
+@app.post('/api/intake')
+def review_intake(payload: IntakeText, request: Request):
+    """Extract a proposal. This does not save a commitment, evidence, or payment."""
+    if not is_configured():
+        raise HTTPException(
+            503,
+            'Optional NEAR AI Cloud is not configured. Set NEARAI_API_KEY to enable intake. The manual forms still work.',
+        )
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(422, 'Describe the event in words.')
+    reserve_ai_call(request)
+    records = workspace_records()
+    try:
+        extracted = extract_business_event(text, model_catalogue(records))
+    except AIConfigurationError as exc:
+        raise HTTPException(503, str(exc))
+    except AIProviderError as exc:
+        raise HTTPException(502, str(exc))
+    prepared = prepare_intake(text, extracted['extraction'], records)
+    return {
+        'text': text,
+        'status': prepared['status'],
+        'clarifications': prepared['clarifications'],
+        'proposal': prepared['proposal'],
+        'confirmation_required': prepared['status'] == 'ready_for_confirmation',
+        'writes_performed': False,
+        'payment_status': prepared['payment_status'],
+        'payment_wording': prepared['payment_wording'],
+        'extraction_attestation': {
+            'provider': extracted['provider'],
+            'model': extracted['model'],
+            'attestation_status': extracted['attestation_status'],
+            'verification': extracted['verification'],
+        },
+    }
+
+
+@app.post('/api/intake/confirm')
+def confirm_intake(payload: IntakeConfirm, request: Request):
+    """Save a confirmed proposal, then assess it. A brief is advisory and fail-closed."""
+    if payload.confirmed is not True:
+        raise HTTPException(422, 'Explicit confirmation is required before records are saved.')
+    text = payload.text.strip()
+    records = workspace_records()
+    try:
+        decision = accept_confirmation(text, payload.proposal, records)
+    except IntakeRejection as exc:
+        raise HTTPException(422, ' '.join(exc.clarifications))
+    prepared = decision['prepared']
+    proposal = prepared['proposal']
+    wrote = False
+    record = None
+    if decision['write']:
+        if proposal['action'] in {'create_commitment', 'create_commitment_and_evidence'}:
+            record = create_commitment(_commitment_from_proposal(proposal['commitment']))
+            wrote = True
+        cid = record['commitment']['id'] if record else proposal['matched_commitment_id']
+        for item in proposal['evidence']:
+            record = add_evidence(cid, _evidence_from_proposal(item))
+            wrote = True
+        if record is None:
+            record = get_record(cid)
+    else:
+        cid = proposal.get('matched_commitment_id')
+        record = get_record(cid) if cid else None
+    insights = None
+    withheld = None
+    if wrote and record and is_configured():
+        try:
+            reserve_ai_call(request)
+        except HTTPException as exc:
+            if exc.status_code != 429:
+                raise
+            withheld = (
+                'AI request rate limit reached for this client. The assessment is authoritative. '
+                'No brief was marked verified.'
+            )
+        else:
+            try:
+                result = generate_operational_brief(record)
+                if not brief_is_displayable(result):
+                    raise AIProviderError('NEAR AI response did not pass cryptographic verification.')
+                insights = store_ai_brief(record['commitment']['id'], result)
+                record = get_record(record['commitment']['id'])
+            except AIProviderError:
+                withheld = (
+                    'The operational brief was withheld because cryptographic verification failed. '
+                    'The assessment is authoritative. Nothing was marked verified.'
+                )
+            except AIConfigurationError:
+                withheld = 'NEAR AI Cloud is not configured, so no brief was generated. The assessment is authoritative.'
+    elif wrote and record:
+        withheld = 'NEAR AI Cloud is not configured, so no brief was generated. The assessment is authoritative.'
+    body = {
+        'wrote': wrote,
+        'status': prepared['status'],
+        'clarifications': prepared['clarifications'],
+        'commitment_id': None if record is None else record['commitment']['id'],
+        'record': record,
+        'assessment': None if record is None else record['assessment'],
+        'insights': insights,
+        'insights_withheld_reason': withheld,
+        'payment_status': 'NOT_SUBMITTED',
+        'payment_wording': (
+            'NOT SUBMITTED. No payment was approved, submitted, or completed. '
+            'Connecting a wallet is not payment authorisation.'
+        ),
+    }
+    return JSONResponse(status_code=201 if wrote else 200, content=body)
 
 
 def audit_anchor_for_record(record: dict) -> dict:

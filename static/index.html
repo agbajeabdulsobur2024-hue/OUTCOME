@@ -116,7 +116,11 @@ label{display:block;font-size:13.5px;color:#3e5148;font-weight:700;margin:14px 0
 label.check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14.5px;font-weight:600;color:var(--ink);margin:8px 0}
 label.check input{width:20px;height:20px;margin:0;accent-color:#24764e;flex:0 0 auto}
 input:not([type=checkbox]),select,textarea{width:100%;max-width:100%;padding:12px 13px;border:1px solid #d5e2db;border-radius:10px;background:#fbfcfb;color:#24352d;font-size:16px;min-height:48px;scroll-margin-top:calc(var(--header-offset, 72px) + 12px);scroll-margin-bottom:calc(var(--toast-space, 0px) + 20px)}
-input:not([type=checkbox]):focus,select:focus{border-color:#6eaa84;box-shadow:0 0 0 4px #6eaa8422}
+input:not([type=checkbox]):focus,select:focus,textarea:focus{border-color:#6eaa84;box-shadow:0 0 0 4px #6eaa8422}
+textarea:disabled{background:#f3f6f4;color:#5d6e66}
+.intake-result{margin-top:16px}
+.intake-result ul{margin:8px 0 0;padding-left:18px}
+.intake-result li{margin:4px 0}
 input::placeholder{color:#8b9a93}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field-error{color:#9a3f28;font-size:13.5px;font-weight:600;margin:6px 0 0}
@@ -479,10 +483,21 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
         <div>
           <div class="section-kicker">Operations workspace</div>
           <h1 class="page-title">Record a commitment</h1>
-          <p>Name the other party and what was agreed. A supplier order, a service, a repayment, a milestone, an expense, or another obligation uses this same form.</p>
+          <p>Describe what happened in ordinary language, or enter the fields yourself. A supplier order, a service, a repayment, a milestone, an expense, or another obligation uses the same record.</p>
         </div>
       </div>
       <div class="panel form-card">
+        <h2 class="card-title">Describe it in your own words</h2>
+        <p class="meta" id="intake-availability">Checking whether ordinary-language extraction is available.</p>
+        <form id="intake" autocomplete="off">
+          <label for="intake_text">What happened?</label>
+          <textarea id="intake_text" name="text" maxlength="4000" rows="5" required placeholder="Example: We agreed with Northwind to deliver 10 boxes for USD 80, due 2026-12-20. They delivered 8."></textarea>
+          <button class="btn" id="intake-submit" type="submit">Review extraction</button>
+        </form>
+        <div id="intake-result" class="intake-result"></div>
+      </div>
+      <div class="panel form-card">
+        <h2 class="card-title">Or enter the fields yourself</h2>
         <form id="create" autocomplete="off">
           <label for="counterparty">Other party</label>
           <input id="counterparty" name="counterparty" placeholder="A person or organisation" required maxlength="120">
@@ -796,6 +811,7 @@ function paint(options = {}){
     const top = mode === 'top' ? 0 : (scrollMemory[view] || 0);
     requestAnimationFrame(() => scrollPage(top));
   }
+  syncIntake();
   requestAnimationFrame(syncChrome);
 }
 function goTo(next, scroll = 'restore'){
@@ -1280,6 +1296,95 @@ async function seedDemo(button){
     }
   });
 }
+let intakeDraft = null;
+const INTAKE_LABELS = {
+  counterparty:'Other party', commitment_kind:'Type', description:'What was agreed', quantity:'Quantity',
+  unit:'Unit', amount:'Amount', currency:'Currency', due_date:'Due date', payment_condition:'Payment condition'
+};
+function syncIntake(){
+  const text = $('#intake_text');
+  const button = $('#intake-submit');
+  const note = $('#intake-availability');
+  if (!text || !button || !note) return;
+  const ready = Boolean(state.ai && state.ai.configured);
+  text.disabled = !ready;
+  button.disabled = !ready;
+  note.textContent = ready
+    ? 'Extraction uses NEAR AI Cloud. A response is shown only after the cryptographic checks pass. Nothing is saved until you confirm. This does not approve or submit a payment.'
+    : 'Ordinary-language extraction needs NEARAI_API_KEY on the server. It is not available in this session. The form below still records a commitment directly.';
+}
+function intakeFieldList(commitment, defaults){
+  if (!commitment) return '';
+  const assumed = new Set(defaults || []);
+  const rows = Object.entries(INTAKE_LABELS).filter(([key]) => commitment[key] != null && commitment[key] !== '')
+    .map(([key, label]) => {
+      const suffix = assumed.has(key) ? ' (default, not stated in the text)' : '';
+      return `<div><dt>${esc(label)}</dt><dd>${esc(commitment[key])}${esc(suffix)}</dd></div>`;
+    }).join('');
+  return rows ? `<dl class="facts">${rows}</dl>` : '';
+}
+function renderIntakeResult(){
+  const host = $('#intake-result');
+  if (!host) return;
+  const draft = intakeDraft;
+  if (!draft){ host.replaceChildren(); return; }
+  const proposal = draft.proposal || {};
+  const attestation = draft.extraction_attestation || {};
+  const questions = (draft.clarifications || []).map(item => `<li>${esc(item)}</li>`).join('');
+  const evidence = (proposal.evidence || []).map(item => `<li>${esc(pretty(item.kind))}: ${item.value == null ? esc(item.note || '') : esc(item.value)}</li>`).join('');
+  const check = attestation.attestation_status
+    ? `<p class="meta">Model response check: ${esc(attestation.attestation_status)}. This checks the model response. It does not verify the business evidence.</p>`
+    : '';
+  let action = '';
+  if (draft.status === 'ready_for_confirmation'){
+    action = `<p class="meta">${esc(draft.payment_wording || 'NOT SUBMITTED. No payment was approved or submitted.')}</p><button id="intakeConfirm" class="btn" type="button">Confirm and record</button>`;
+  } else if (draft.status === 'already_recorded' && proposal.matched_commitment_id){
+    action = `<button class="btn btn-ghost" type="button" data-open="${esc(proposal.matched_commitment_id)}">Open the existing commitment</button>`;
+  }
+  host.innerHTML = `${check}${questions ? `<ul>${questions}</ul>` : ''}${intakeFieldList(proposal.commitment, proposal.defaults)}${evidence ? `<ul>${evidence}</ul>` : ''}${proposal.matched_commitment_id && draft.status === 'ready_for_confirmation' ? `<p class="meta">This will be added to an existing commitment. A second copy will not be created.</p>` : ''}${action}`;
+}
+async function reviewIntake(form){
+  const button = form.querySelector('[type="submit"]');
+  await withBusy(button, async () => {
+    const text = String(new FormData(form).get('text') || '').trim();
+    try {
+      intakeDraft = await api('/api/intake', { method:'POST', body: JSON.stringify({ text }) });
+      renderIntakeResult();
+    } catch (error) {
+      intakeDraft = null;
+      renderIntakeResult();
+      toast(error.message, 'error');
+    }
+  });
+}
+async function confirmIntake(button){
+  if (!intakeDraft || intakeDraft.status !== 'ready_for_confirmation') return;
+  await withBusy(button, async () => {
+    try {
+      const saved = await api('/api/intake/confirm', {
+        method:'POST',
+        body: JSON.stringify({ text: intakeDraft.text, confirmed: true, proposal: intakeDraft.proposal }),
+      });
+      intakeDraft = null;
+      renderIntakeResult();
+      const form = $('#intake');
+      if (form) form.reset();
+      if (!saved.commitment_id){
+        toast(saved.payment_wording || 'Nothing was saved.', 'warn');
+        return;
+      }
+      detailTab = 'decision';
+      selected = saved.commitment_id;
+      await load();
+      if (view !== 'commitments') goTo('commitments', 'top');
+      const note = saved.insights_withheld_reason
+        ? 'Recorded. ' + saved.insights_withheld_reason
+        : 'Recorded. The assessment has run. No payment was submitted.';
+      toast(note, saved.insights_withheld_reason ? 'warn' : 'ok');
+      $('#detail-title')?.focus();
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
 async function createCommitment(form){
   const button = form.querySelector('[type="submit"]');
   await withBusy(button, async () => {
@@ -1458,6 +1563,7 @@ function whenWallet(work){
 async function refreshSession(){
   state.session = await api('/api/session');
   state.ai = Object.assign({ configured: false }, state.session.ai || {});
+  syncIntake();
   paintAccount();
 }
 async function connectWallet(button){
@@ -1626,6 +1732,8 @@ document.addEventListener('click', event => {
   if (connect){ connectWallet(connect); return; }
   const personal = hit(event, '#createWorkspace');
   if (personal){ createPersonalWorkspace(personal); return; }
+  const intakeConfirm = hit(event, '#intakeConfirm');
+  if (intakeConfirm){ confirmIntake(intakeConfirm); return; }
   const disconnect = hit(event, '#disconnectWallet, #topDisconnect');
   if (disconnect){ disconnectWallet(disconnect); return; }
   if (!hit(event, '#detail')) return;
@@ -1658,9 +1766,10 @@ document.addEventListener('click', event => {
 document.addEventListener('submit', event => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
-  if (!['create','evidenceForm','amendmentForm','policyForm','proposalForm','actionForm'].includes(form.id)) return;
+  if (!['create','evidenceForm','amendmentForm','policyForm','proposalForm','actionForm','intake'].includes(form.id)) return;
   event.preventDefault();
   if (form.id === 'create') createCommitment(form);
+  else if (form.id === 'intake') reviewIntake(form);
   else if (form.id === 'evidenceForm') saveEvidence(form);
   else if (form.id === 'amendmentForm') saveAmendment(form);
   else if (form.id === 'policyForm') savePolicy(form);
@@ -1683,6 +1792,11 @@ document.addEventListener('keydown', event => {
 });
 document.addEventListener('input', event => {
   if (event.target.matches?.('input, select, textarea')) setFieldError(event.target, '');
+  if (event.target.id === 'intake_text'){
+    intakeDraft = null;
+    const host = $('#intake-result');
+    if (host) host.replaceChildren();
+  }
 });
 document.addEventListener('change', event => {
   if (event.target?.form?.id === 'evidenceForm' && event.target.name === 'kind') syncEvidenceValue();

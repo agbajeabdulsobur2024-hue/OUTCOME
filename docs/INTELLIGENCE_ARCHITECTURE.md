@@ -32,6 +32,7 @@ Minimum state: identity; parties; agreed deliverables; quantities/units; agreed 
 **Purpose:** convert an agreement into explicit, monitorable expectations.
 **Inputs:** order, contract, message or owner-entered terms.
 **Outputs:** canonical commitment, conditions, milestones, dates, quantities, value and responsible parties.
+**Current implementation:** a person can type an ordinary-language description on the commitment page. NEAR AI Cloud extraction fills only existing commitment and evidence fields that the text supports. Missing or ambiguous terms stay unresolved until the person answers. After an explicit confirmation, the same assessment used everywhere else runs. Intake does not amend terms on its own and does not approve a payment.
 **Contract:** preserve original terms and provenance; ambiguous or conflicting terms remain unresolved until confirmed; amendments are versioned, never silently overwritten.
 
 ### 3. Evidence Intelligence
