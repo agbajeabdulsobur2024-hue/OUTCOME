@@ -14,8 +14,8 @@ Verification coverage in the current build:
 - Action lifecycle rejects invalid transitions and requires same-commitment verified evidence to verify an outcome.
 - Synthetic demo seeding is non-destructive and refuses to run when existing commitments are present.
 - Destructive demo reset is disabled unless an explicit local-only environment flag is enabled.
-- Optional NEAR AI Cloud brief is disabled without a server-side key, stores advisory history, and cannot override deterministic checks.
+- Optional NEAR AI Cloud brief is disabled without a server-side key, stores advisory history only after cryptographic verification, and cannot override deterministic checks.
 - Human approval remains required even when simulation checks pass.
 - No wallet signing, transaction submission or real asset movement.
 
-Reviewer and actor names are demo inputs, not authenticated identities. An isolated 13-test run of the payment evaluator, pattern-recognition logic and NEAR AI adapter passed in a Python environment. The full repository API/integration suite has not yet run; the GitHub connector returned no CI status for the current branch, so do not treat the full suite as passed.
+Reviewer and actor names are demo inputs, not authenticated identities. A local `PYTHONPATH=. pytest -q` run on 11 Nov 2026 reported 72 passed and 2 skipped. The skipped tests are the live Turso checks, which need database credentials that are not in this tree.
