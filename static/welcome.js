@@ -106,7 +106,7 @@
 
   function sketch(name) {
     if (name === "promise") {
-      return '<div class="mini-app" aria-hidden="true"><p class="mini-kicker">One record</p><p class="mini-title">Know what was agreed.</p><p class="mini-title">Verify what happened.</p><p class="mini-title">Control what happens next.</p></div>';
+      return '<div class="mini-app" aria-hidden="true"><p class="mini-kicker">One record</p><p class="mini-title">Know what was agreed.</p><p class="mini-title">Verify what happened.</p><p class="mini-title">Control what happens&nbsp;next.</p></div>';
     }
     if (name === "agreement") {
       return '<div class="mini-app" aria-hidden="true"><p class="mini-kicker">Commitment</p><p class="mini-title">Northwind</p><p class="mini-line">10 boxes · USD 80 · due 20 Dec 2026</p><p class="mini-line">Release only after the obligation is verified.</p></div>';

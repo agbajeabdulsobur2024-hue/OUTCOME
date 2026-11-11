@@ -44,7 +44,7 @@
   </header>
   <div class="landing-wrap">
     <section class="landing-hero">
-      <div>
+      <div class="landing-intro">
         <p class="eyebrow">Financial accountability</p>
         <h1>Know what was agreed. Verify what happened. Control what happens next.</h1>
         <p class="landing-lead">OUTCOME helps businesses track commitments, verify evidence, identify discrepancies and make better-informed financial decisions.</p>
@@ -54,12 +54,6 @@
           <button id="exploreDemo" class="text-btn" type="button">Revisit the sample</button>
         </div>
         <p class="landing-status" id="landingStatus" role="status"></p>
-        <p class="landing-quiet">No account is required to explore the product. Signing in names a personal workspace. It does not authorise a payment.</p>
-        <div class="wallet-line">
-          <span id="landingAccount">No wallet connected. You can explore the product without one.</span>
-          <button id="disconnectWallet" class="btn btn-ghost btn-sm" type="button" hidden>Disconnect</button>
-          <button id="createWorkspace" class="btn btn-ghost btn-sm" type="button">Open a personal workspace</button>
-        </div>
       </div>
       <aside class="product-preview" aria-label="Illustrative example of an OUTCOME record">
         <div class="preview-top">
@@ -79,6 +73,14 @@
           <p>Hold the release until the 8 outstanding cartons are delivered or the amount is corrected. This is not an invoice and not a transfer.</p>
         </div>
       </aside>
+      <div class="landing-follow">
+        <p class="landing-quiet">No account is required to explore the product. Signing in names a personal workspace. It does not authorise a payment.</p>
+        <div class="wallet-line">
+          <span id="landingAccount">No wallet connected. You can explore the product without one.</span>
+          <button id="disconnectWallet" class="btn btn-ghost btn-sm" type="button" hidden>Disconnect</button>
+          <button id="createWorkspace" class="btn btn-ghost btn-sm" type="button">Open a personal workspace</button>
+        </div>
+      </div>
     </section>
 
     <section class="story" id="problem">
@@ -515,8 +517,10 @@ async function api(path, options={}){
   if (!response.ok) throw Error(errorMessage(data));
   return data;
 }
-function toast(message, tone='ok'){
+function presentToast(message, tone, life, done){
   const region = $('#toasts');
+  const narrow = window.matchMedia('(max-width: 759px)').matches;
+  if (narrow) region.replaceChildren();
   const item = document.createElement('div');
   item.className = `toast ${tone}`;
   const text = document.createElement('p');
@@ -526,13 +530,40 @@ function toast(message, tone='ok'){
   close.className = 'toast-x';
   close.setAttribute('aria-label', 'Dismiss notification');
   close.innerHTML = ico('x', 16);
-  const remove = () => item.remove();
+  let closed = false;
+  const remove = () => {
+    if (closed) return;
+    closed = true;
+    item.remove();
+    if (done) done();
+  };
   close.onclick = remove;
   item.append(text, close);
   region.append(item);
-  while (region.children.length > 3) region.firstElementChild.remove();
-  setTimeout(remove, tone === 'error' || tone === 'warn' ? 6400 : 3800);
-  if (tone === 'error' || tone === 'warn') item.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+  if (!narrow) while (region.children.length > 3) region.firstElementChild.remove();
+  setTimeout(remove, life);
+  if (!narrow && (tone === 'error' || tone === 'warn')) item.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+}
+const toastQueue = [];
+let toastBusy = false;
+function drainToasts(){
+  if (toastBusy || !toastQueue.length) return;
+  const next = toastQueue.shift();
+  toastBusy = true;
+  const life = next.tone === 'error' || next.tone === 'warn' ? 4200 : 2400;
+  presentToast(next.message, next.tone, life, () => {
+    toastBusy = false;
+    drainToasts();
+  });
+}
+function toast(message, tone='ok'){
+  const narrow = window.matchMedia('(max-width: 759px)').matches;
+  if (narrow) {
+    toastQueue.push({ message, tone });
+    drainToasts();
+    return;
+  }
+  presentToast(message, tone, tone === 'error' || tone === 'warn' ? 6400 : 3800);
 }
 function setFieldError(input, message){
   if (!input) return;
