@@ -1,6 +1,6 @@
 # NEAR hackathon integration status
 
-Last reviewed: 10 November 2026
+Last reviewed: 11 November 2026
 
 This document separates working integrations from planned work and ecosystem technologies that are intentionally not being used. Track starter prompts are guidance, not a requirement to integrate every named NEAR technology.
 
@@ -8,8 +8,8 @@ This document separates working integrations from planned work and ecosystem tec
 
 | Capability | Status | What is true today |
 |---|---|---|
-| NEAR AI Cloud inference | Implemented in code; live completion unverified | The backend can call the OpenAI-compatible chat-completions endpoint when `NEARAI_API_KEY` is configured. The user explicitly triggers a brief. No API key is in this environment, so no live completion or signature has been confirmed. |
-| Response signature + TDX binding | Preflight measurement checks implemented; live signature unverified | Before the completion, OUTCOME verifies UpToDate TDX quotes (debug bit, report-data binding, MRCONFIGID, RTMR3) for the gateway and every model candidate. After the completion it requires `signature_kind`, EIP-191 ECDSA recovery, and exactly one matching preflight signer. Provider-TEE signatures require an NRAS verdict of boolean `true` plus `eat_nonce`. NRAS JWT signatures, Sigstore, and the live TLS peer certificate are still not verified locally. |
+| NEAR AI Cloud inference | Live completion confirmed outside this tree on 11 Nov 2026 | The backend calls `https://cloud-api.near.ai/v1/chat/completions` for `Qwen/Qwen3.6-35B-A3B-FP8` when `NEARAI_API_KEY` is configured. The user explicitly triggers a brief. A live run that day returned HTTP 200 for preflight and completion, and, with `chat_template_kwargs.enable_thinking` false, a displayable brief. This repository still has no API key. |
+| Response signature + TDX binding | Live provider-TEE path confirmed; three gaps remain | The same run verified `signature_kind=provider_tee`, EIP-191 ECDSA, TCB `UpToDate` only, a clear debug bit, MRCONFIGID, RTMR3, and an NRAS verdict of boolean `true` plus `eat_nonce`. Tampered and missing evidence failed closed. OUTCOME still does not verify NVIDIA JWT signatures or Sigstore image provenance, and it does not bind the completion TLS connection to the quote. Collateral comes from Phala's default PCCS. The official sample verifier also accepts `OutOfDate`; OUTCOME does not. |
 | NEAR account / wallet connection | Isolated testnet demo scaffold | A dedicated testnet script uses an owner key locally to create a scoped function-call key. The OUTCOME web app itself does not connect a wallet or hold the key. |
 | Function-call access-key enforcement | Sandbox proof on protocol 88; live testnet proof pending | The contract is pinned to near-sdk 5.17.2. `near/scripts/sandbox_key_test.cjs` deploys it to a local neard 2.14.0 sandbox, appends `record_event` with a key scoped to that method, and requires `MethodNameMismatch` for `admin_probe` without changing `get_admin_probe_count`. That sandbox chain is not testnet. No testnet transaction has been sent. The demo script treats near-api-js error type `MethodNameMismatch` (message `isn't allowed by the access key`) as the protocol rejection and re-queries `error.context.transactionHash`. |
 | NEAR Intents Agent API | Intentionally not connected | The Agent API is an experimental, mainnet-only beta with real-asset risk and no testnet. It requires owner signatures and a funded agent. OUTCOME will not connect or fund it for a synthetic hackathon demo. |
@@ -25,8 +25,8 @@ The contract build and a local protocol-88 sandbox exercise the restricted key. 
 
 ## Recommended NEAR scope for this submission
 
-1. Keep NEAR AI Cloud as the live ecosystem integration, once an API key is configured and an actual request can be demonstrated.
-2. Run a live NEAR AI request with an API key and confirm the ECDSA + TDX verification path against the selected Qwen model. Do not label any brief verified until this succeeds.
+1. Keep NEAR AI Cloud as the live ecosystem integration. A 11 Nov 2026 run against the configured Qwen model returned a brief only after signature and TDX checks passed.
+2. Do not label a brief verified unless those cryptographic checks succeed. NVIDIA JWT signatures, Sigstore provenance, and same-connection TLS binding are still outstanding.
 3. Keep payment authorization fail-closed and demonstrate the hostile-request block.
 4. Do not add NEAR Intents Agent API or real-fund movement to the demo. The official quickstart states that it is mainnet-only beta, with no testnet and real asset risk.
 5. Build and deploy `near/contract`, then run `near/scripts/testnet_demo.cjs`. Record the testnet contract address, accepted transaction hash and explicit protocol rejection evidence in the submission README. Do not call the testnet integration complete before these are captured.
