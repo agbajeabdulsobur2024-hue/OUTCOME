@@ -1091,53 +1091,133 @@ def read_supplier_patterns():
 
 
 def populate_synthetic_demo():
-    first = create_commitment(CommitmentCreate(
-        supplier='Acme Supplies', description='Printer paper — purchase order PO-104',
-        quantity=50, unit='cartons', amount=250, currency='USD',
-        due_date='2026-12-01', payment_condition='Pay after verified full delivery',
-        commitment_kind='supplier_delivery',
-    ))
-    second = create_commitment(CommitmentCreate(
-        supplier='Acme Supplies', description='Printer paper — purchase order PO-109',
-        quantity=20, unit='cartons', amount=100, currency='USD',
-        due_date='2026-12-05', payment_condition='Pay after verified full delivery',
-        commitment_kind='supplier_delivery',
-    ))
-    for record, received, invoice in ((first, 42, 250), (second, 16, 100)):
-        cid = record['commitment']['id']
-        receiving = add_evidence(cid, EvidenceCreate(
-            kind='quantity_received', value=received,
-            note='Synthetic demo receiving record; not a real supplier document.',
-            source='demo_fixture',
-        ))['evidence'][-1]
-        invoicing = add_evidence(cid, EvidenceCreate(
-            kind='invoice_amount', value=invoice,
-            note='Synthetic demo invoice record; not a real supplier document.',
-            source='demo_fixture',
-        ))['evidence'][-1]
-        review_evidence(receiving['id'], EvidenceReviewCreate(
-            status='VERIFIED', reviewer='DEMO_FIXTURE',
-            note='Synthetic fixture pre-reviewed for demonstration only.',
-        ))
-        review_evidence(invoicing['id'], EvidenceReviewCreate(
-            status='VERIFIED', reviewer='DEMO_FIXTURE',
-            note='Synthetic fixture pre-reviewed for demonstration only.',
-        ))
-    first_id = first['commitment']['id']
-    update_payment_policy(first_id, PaymentPolicyUpdate(
-        enabled=True, max_amount=250, allowed_destination='acme-demo-wallet.near',
-        require_full_delivery=True, require_invoice_match=True,
-        require_verified_evidence=True, allow_partial_payments=False,
-    ))
-    create_payment_proposal(first_id, PaymentProposalCreate(
-        amount=250, currency='USD', destination='acme-demo-wallet.near',
-    ))
-    create_commitment_action(first_id, CommitmentActionCreate(
-        action_type='RECONCILE_DELIVERY',
-        description='Ask the supplier to deliver the missing 8 cartons or issue a credit note.',
-    ))
-    return {'status': 'seeded', 'synthetic_data': True, 'commitments': list_commitments(),
-            'patterns': read_supplier_patterns()}
+    """Write the Acme sample in one database transaction.
+
+    The hosted function limit is 60 seconds. Opening a new Turso connection
+    for every evidence row and review does not finish in that window.
+    """
+    samples = (
+        {
+            'description': 'Printer paper — purchase order PO-104',
+            'quantity': 50, 'amount': 250, 'due_date': '2026-12-01',
+            'received': 42, 'invoice': 250, 'policy': True,
+        },
+        {
+            'description': 'Printer paper — purchase order PO-109',
+            'quantity': 20, 'amount': 100, 'due_date': '2026-12-05',
+            'received': 16, 'invoice': 100, 'policy': False,
+        },
+    )
+    workspace_id = tenancy.current_workspace_id()
+    ids = []
+    with connect() as db:
+        for sample in samples:
+            payload = CommitmentCreate(
+                supplier='Acme Supplies', description=sample['description'],
+                quantity=sample['quantity'], unit='cartons', amount=sample['amount'],
+                currency='USD', due_date=sample['due_date'],
+                payment_condition='Pay after verified full delivery',
+                commitment_kind='supplier_delivery',
+            )
+            cid = str(uuid.uuid4())
+            ids.append(cid)
+            now = utc_now()
+            terms = payload.model_dump()
+            terms['currency'] = payload.currency.upper()
+            terms['due_date'] = datetime.fromisoformat(payload.due_date).date().isoformat()
+            db.execute(
+                '''INSERT INTO commitments
+                   (id, supplier, description, quantity, unit, amount, currency, due_date,
+                    payment_condition, created_at, workspace_id, commitment_kind)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                (cid, payload.supplier, payload.description.strip(), payload.quantity, payload.unit,
+                 payload.amount, terms['currency'], terms['due_date'], payload.payment_condition,
+                 now, workspace_id, payload.commitment_kind),
+            )
+            db.execute(
+                '''INSERT INTO commitment_versions
+                   (id, commitment_id, version, terms_json, reason, created_at)
+                   VALUES (?, ?, 1, ?, ?, ?)''',
+                (str(uuid.uuid4()), cid, json.dumps(terms, sort_keys=True), 'Original agreement', now),
+            )
+            evidence = []
+            for kind, value, note in (
+                ('quantity_received', sample['received'], 'Synthetic demo receiving record; not a real supplier document.'),
+                ('invoice_amount', sample['invoice'], 'Synthetic demo invoice record; not a real supplier document.'),
+            ):
+                evidence_id = str(uuid.uuid4())
+                db.execute(
+                    'INSERT INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    (evidence_id, cid, kind, value, note, 'demo_fixture', now),
+                )
+                db.execute(
+                    '''INSERT INTO evidence_reviews
+                       (id, evidence_id, status, reviewer, note, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?)''',
+                    (str(uuid.uuid4()), evidence_id, 'VERIFIED', 'DEMO_FIXTURE',
+                     'Synthetic fixture pre-reviewed for demonstration only.', now),
+                )
+                evidence.append({
+                    'id': evidence_id, 'kind': kind, 'value': value,
+                    'review_status': 'VERIFIED', 'reviewed_at': now,
+                })
+            commitment = {
+                'supplier': payload.supplier, 'description': payload.description,
+                'quantity': payload.quantity, 'unit': payload.unit, 'amount': payload.amount,
+                'currency': terms['currency'], 'due_date': terms['due_date'],
+                'payment_condition': payload.payment_condition,
+            }
+            assessment = assess_commitment(commitment, evidence)
+            db.execute(
+                '''INSERT INTO assessment_history
+                   (id, commitment_id, status, assessment_json, created_at)
+                   VALUES (?, ?, ?, ?, ?)''',
+                (str(uuid.uuid4()), cid, assessment['status'], json.dumps(assessment, sort_keys=True), now),
+            )
+            if not sample['policy']:
+                continue
+            destination = 'acme-demo-wallet.near'
+            policy = {
+                'enabled': True, 'max_amount': sample['amount'],
+                'allowed_destination': destination,
+                'require_full_delivery': True, 'require_invoice_match': True,
+                'require_verified_evidence': True, 'allow_partial_payments': False,
+                'updated_at': now, 'configured': True,
+            }
+            db.execute(
+                '''INSERT INTO payment_policies
+                   (commitment_id, enabled, max_amount, allowed_destination,
+                    require_full_delivery, require_invoice_match, require_verified_evidence,
+                    allow_partial_payments, updated_at)
+                   VALUES (?, 1, ?, ?, 1, 1, 1, 0, ?)''',
+                (cid, sample['amount'], destination, now),
+            )
+            db.execute(
+                'INSERT INTO payment_policy_history (id, commitment_id, policy_json, created_at) VALUES (?, ?, ?, ?)',
+                (str(uuid.uuid4()), cid, json.dumps(policy, sort_keys=True), now),
+            )
+            proposal = evaluate_payment_proposal(
+                commitment, evidence, policy, sample['amount'], 'USD', destination,
+            )
+            db.execute(
+                'INSERT INTO payment_proposals (id, commitment_id, status, proposal_json, created_at) VALUES (?, ?, ?, ?, ?)',
+                (str(uuid.uuid4()), cid, proposal['status'], json.dumps(proposal, sort_keys=True), now),
+            )
+            db.execute(
+                '''INSERT INTO commitment_actions
+                   (id, commitment_id, action_type, description, created_at)
+                   VALUES (?, ?, ?, ?, ?)''',
+                (str(uuid.uuid4()), cid, 'RECONCILE_DELIVERY',
+                 'Ask the supplier to deliver the missing 8 cartons or issue a credit note.', now),
+            )
+    records = [get_record(cid) for cid in ids]
+    return {
+        'status': 'seeded', 'synthetic_data': True, 'commitments': records,
+        'patterns': detect_supplier_patterns(
+            [record['commitment'] for record in records],
+            {record['commitment']['id']: record['evidence'] for record in records},
+        ),
+    }
 
 
 @app.post('/api/demo/seed', status_code=201)
