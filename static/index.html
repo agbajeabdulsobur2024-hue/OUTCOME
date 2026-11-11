@@ -1251,13 +1251,17 @@ async function recordActionEvent(button){
   });
 }
 function whenWallet(work){
-  if (window.OutcomeWallet) return work(window.OutcomeWallet);
+  // Always a Promise. The connector module can already be loaded when boot
+  // resumes, and subscribe() returns an unsubscribe function, not a Promise.
+  // Callers attach .catch; a bare return would throw and abort boot.
+  const ready = () => new Promise((resolve) => resolve(work(window.OutcomeWallet)));
+  if (window.OutcomeWallet) return ready();
   return new Promise((resolve, reject) => {
     const started = Date.now();
     const timer = setInterval(() => {
       if (window.OutcomeWallet) {
         clearInterval(timer);
-        resolve(work(window.OutcomeWallet));
+        resolve(ready());
       } else if (Date.now() - started > 8000) {
         clearInterval(timer);
         reject(Error('The wallet connector did not load. Check your connection and try again.'));

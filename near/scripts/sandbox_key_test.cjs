@@ -7,8 +7,8 @@
 const fs = require("fs");
 const path = require("path");
 const { Sandbox, DEFAULT_ACCOUNT_ID, DEFAULT_PRIVATE_KEY } = require("near-sandbox");
-const nearAPI = require("near-api-js");
 const { isMethodNameMismatch, rejectionHash } = require("./access_key_policy.cjs");
+const { logSandboxFailure } = require("./sandbox_ready.cjs");
 
 const GAS = "100000000000000";
 const ALLOWANCE = "250000000000000000000000";
@@ -38,7 +38,13 @@ async function main() {
   }
   process.env.NEAR_RPC_TIMEOUT_SECS = process.env.NEAR_RPC_TIMEOUT_SECS || "300";
   const externalRpc = process.env.SANDBOX_RPC || "";
+  // near-api-js replaces global.fetch with node-fetch. near-sandbox 0.3.5
+  // calls response.body.cancel() while polling /status. A node-fetch body is a
+  // Node stream and has no cancel, so every probe throws and the ready loop
+  // burns the whole NEAR_RPC_TIMEOUT_SECS while the process is already up.
+  // Load near-api-js only after that poll has succeeded.
   const sandbox = externalRpc ? null : await Sandbox.start({ version: "2.14.0" });
+  const nearAPI = require("near-api-js");
   const rpcUrl = externalRpc || sandbox.rpcUrl;
   const ownerId = DEFAULT_ACCOUNT_ID;
   const summary = {
@@ -144,5 +150,6 @@ async function main() {
 main().catch((error) => {
   console.error("SANDBOX_KEY_TEST_FAILED");
   console.error(error && error.stack ? error.stack : error);
+  logSandboxFailure(error);
   process.exit(1);
 });

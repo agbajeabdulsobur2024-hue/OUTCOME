@@ -12,7 +12,7 @@ The contract at `thewordweaver.testnet` is still the owner-gated deploy.
 - Deploy and init [8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy) is FINAL. Code hash `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`.
 - `get_anchor_policy` is not on that code. A view returns method-not-found. That absence is the live policy: only the owner can append.
 
-The source of that owner gate is commit `299bed3` (`Only the configured owner account may append audit events`). Rebuilding that source with today’s compiler does not reproduce code hash `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`. The sandbox below starts from that source. It does not start from the wasm bytes that are on chain.
+The source of that owner gate is commit `299bed3` (`Only the configured owner account may append audit events`). Rebuilding that source with today’s compiler does not reproduce code hash `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`. The replay in section 3 downloads the wasm that is on chain and checks that its sha256, base58-encoded, equals that hash before any sandbox deploy. A rebuild of `299bed3` is a different artifact. `near/scripts/storage_anchor_test.cjs` still builds that older source; it is not the live-byte proof.
 
 `main` already contains an undeployed intermediate (`get_anchor_policy` returns `any_account`, and any account can append with no deposit). Do not deploy that intermediate. It would let other accounts write storage at the contract’s expense. This branch is the storage-bounded proposal.
 
@@ -251,6 +251,8 @@ Worked sizes, same formula, checked in `tests/test_public_hackathon.py`:
 
 ## 3. Test results
 
+The first command rebuilds commit `299bed3` and is the earlier rehearsal. The live-byte proof is the second command, `live_wasm_upgrade_test.cjs`.
+
 Command, from `near/`, after `cargo +1.93.0 build --target wasm32-unknown-unknown --release` of this branch:
 
 ```bash
@@ -283,13 +285,50 @@ Result of that run:
 
 `PYTHONPATH=. python3 -m pytest -q` after those byte vectors: 89 passed, 2 skipped. The skipped tests are the live Turso checks. They need credentials this workspace does not have.
 
+### Live wasm replay
+
+Command, from the repo root, after `cargo +1.93.0 build --target wasm32-unknown-unknown --release` in `near/contract`:
+
+```bash
+NEAR_RPC_TIMEOUT_SECS=120 node near/scripts/live_wasm_upgrade_test.cjs
+```
+
+Read-only queries against `https://rpc.testnet.near.org` for `thewordweaver.testnet`, reconfirmed before the sandbox started:
+
+- `view_account` code hash and `view_code` hash were both `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`.
+- The downloaded wasm was 217998 bytes. Its sha256, base58-encoded with the same encoder NEAR uses for code hashes, was that same string.
+- `get_anchor_policy` returned `MethodResolveError(MethodNotFound)`.
+- `get_latest` returned sequence 1, id `OUTCOME-DEMO-PO-104`, type `SUPPLIER_EVIDENCE_REVIEWED`, payload hash `a94a6d3d62164f394847cf484cf32ba3caef8390ac0d88fba15e4c3efb60312f`, empty previous hash, event hash `6a48dfa966dfa1bec36e76331b1c77180a907d41e05228188ee2da94fea85380`, actor `thewordweaver.testnet`, block height 277135747, timestamp `1794353651196541376`.
+
+The script then deployed those exact bytes in a local neard 2.14.0 sandbox, called `new` once for that fresh account, and stored one event with the same id, type, payload hash, and empty previous hash. The actor in the sandbox is `sandbox`, because this replay has no key for `thewordweaver.testnet` and sends no transaction there. The sandbox event hash is therefore a different value from `6a48dfa966dfa1bec36e76331b1c77180a907d41e05228188ee2da94fea85380`. The second account is `auditor.sandbox`.
+
+| Check | Result |
+|---|---|
+| Live bytes deployed first | Code hash matched `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS` before `Sandbox.start` continued into the upgrade. |
+| Comparable event on the live wasm | Sequence 1 stored `OUTCOME-DEMO-PO-104` / `SUPPLIER_EVIDENCE_REVIEWED` with the live payload hash and an empty previous hash. |
+| Non-owner rejected before the upgrade | `auditor.sandbox` panicked with the owner assertion. |
+| Policy before the upgrade | `get_anchor_policy` was `MethodNotFound`. |
+| Upgrade without `new` | This branch’s wasm was deployed onto the same account. Sequence 1 kept the same id, type, payload hash, previous hash, actor, and event hash. |
+| Policy after the upgrade | `get_anchor_policy` returned `any_account`. Owner stayed `sandbox`. |
+| Owner zero-deposit append | Sequence 2, type `decision-recorded`, succeeded with deposit 0. |
+| Measured deposits | Quotes were `2800000000000000000000` and `3240000000000000000000`. |
+| Rejected writes | Deposit 0, one byte under the quote, a non-hex payload, and a wrong previous hash each panicked. `get_next_sequence` stayed 3. |
+| Second account, exact deposit | `auditor.sandbox` stored `human-decision`. The log byte count was 280, and 280 × `10^19` equalled the quote. |
+| Surplus refund | The next call attached the 324-byte quote plus `1000000000000000000000000` yoctoNEAR. The receipt set contained a transfer of exactly that surplus. It did not transfer the full attached amount back. |
+| `admin_probe` | `auditor.sandbox` panicked and the count stayed 0. The owner’s call moved the count to 1. A second non-owner call panicked and the count stayed 1. |
+| Rollback of the same live bytes | The downloaded wasm was deployed again. `new` was not called and the account was not deleted. Sequences 1, 3, and 4 stayed readable. `get_anchor_policy` was `MethodNotFound` again. The second account’s next append panicked on the owner gate and the sequence did not move. |
+
+Exit code 0.
+
+`PYTHONPATH=. python3 -m pytest -q` on this branch: 90 passed, 2 skipped. The extra pass is the landing-page check that `whenWallet` returns a Promise when the connector is already loaded. The skipped tests are still the live Turso checks.
+
 ## 4. Upgrade compatibility
 
 `Contract` is still `owner_id`, `events`, `next_sequence`, `last_hash`, `admin_probe_count`. `AuditEvent` is still the same eight fields in the same order. The upgrade adds methods and a deposit check. It does not add state.
 
-The sandbox upgrade was a code deploy of this wasm onto an account initialised by the owner-gated wasm. `new` was not called. Event 1 remained readable, and later events from both accounts remained readable after the old wasm was deployed again.
+The sandbox upgrade was a code deploy of this wasm onto an account initialised by the downloaded live wasm. `new` was not called. The comparable event remained readable, and later events from both accounts remained readable after those same live bytes were deployed again.
 
-That does not prove the bytes at code hash `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS` will deserialise under this wasm. Only a deploy to `thewordweaver.testnet`, which this package does not do, can prove that the real `OUTCOME-DEMO-PO-104` event survives.
+That shows this wasm can load state created by code hash `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`, and that putting those bytes back restores the owner gate. The live account’s trie was not copied into the sandbox. The on-chain record `OUTCOME-DEMO-PO-104` at `thewordweaver.testnet` stays unread by this upgrade until a later deploy, which this package does not do.
 
 ## 5. Later verification, and rollback
 
@@ -314,9 +353,9 @@ Rollback, if step 1 fails or a later view cannot read state:
 3. Read `OUTCOME-DEMO-PO-104` again.
 4. `get_anchor_policy` should be method-not-found again, and a non-owner `record_event` should fail the owner check.
 
-The sandbox rehearsal did those rollback reads against the owner-gated source, not against the live wasm. If the new code panics while loading state, the code is already replaced and the recovery is this redeploy. There is no automatic rollback.
+The sandbox rehearsal did those rollback reads by redeploying the downloaded live wasm, the bytes whose hash is `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`. If the new code panics while loading the live account’s state, the code is already replaced and the recovery is this redeploy. There is no automatic rollback. The rehearsal used state created under that wasm in the sandbox, so it still leaves the real `OUTCOME-DEMO-PO-104` record for the approved deploy to confirm.
 
-Events written by the new code stayed readable under the old code in the sandbox, because the state layout did not change. That is the expected recovery shape. It is not yet shown for the live account.
+Events written by the new code stayed readable under the downloaded live wasm in the sandbox, because the state layout did not change. That is the expected recovery shape. It is shown for state created under the live wasm, and it remains to be shown on the live account itself.
 
 ## What this package does not decide
 

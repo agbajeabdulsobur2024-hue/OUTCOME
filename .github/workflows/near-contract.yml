@@ -28,6 +28,8 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: near/contract
       - name: Build NEAR audit contract
         working-directory: near/contract
         run: cargo build --target wasm32-unknown-unknown --release
@@ -55,3 +57,4 @@ jobs:
           new Function(html.slice(start + 8, end));
           console.log('Embedded frontend JavaScript syntax is valid');
           NODE
+          node tests/when_wallet.test.cjs
