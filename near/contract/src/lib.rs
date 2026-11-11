@@ -45,12 +45,20 @@ impl Contract {
         }
     }
 
-    /// Append a hash-only commitment event.
+    /// Append one hash-only audit event for any financial commitment.
     ///
-    /// The owner may attach zero deposit; storage stays on the contract account.
-    /// Every other account must attach at least the storage this write adds.
-    /// Any surplus is refunded. This payable method is not the code currently
-    /// deployed at `thewordweaver.testnet`. `admin_probe` stays owner-only.
+    /// `commitment_id` and `event_type` are opaque caller strings. This
+    /// contract has no supplier, carton, milestone, or other workflow, and it
+    /// does not allow or reject names from a fixed list. Length limits and the
+    /// SHA-256 check are the only content rules. The predecessor account is
+    /// the actor.
+    ///
+    /// The owner may attach zero deposit; that storage stays on the contract
+    /// account. Every other account must attach at least the storage this
+    /// call measures with Borsh for these exact arguments. That amount is not
+    /// a fixed constant. Surplus is refunded. A short deposit panics and does
+    /// not write. This payable method is not deployed at
+    /// `thewordweaver.testnet`. `admin_probe` stays owner-only.
     #[payable]
     pub fn record_event(
         &mut self,
@@ -200,8 +208,13 @@ impl Contract {
         self.admin_probe_count
     }
 
-    /// `any_account` means a tester wallet may call `record_event`.
-    /// The currently deployed contract does not expose this method.
+    /// Policy implemented by this wasm.
+    ///
+    /// `any_account` means any predecessor may call `record_event`. A
+    /// non-owner must still attach the deposit from
+    /// `get_required_storage_deposit` for that call. This string is the rule
+    /// in this code, not a reading of `thewordweaver.testnet`. That account
+    /// does not expose this method until this wasm is deployed there.
     pub fn get_anchor_policy(&self) -> String {
         "any_account".to_string()
     }

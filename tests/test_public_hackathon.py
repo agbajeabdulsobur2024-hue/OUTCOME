@@ -414,6 +414,25 @@ def test_storage_deposit_matches_the_sandbox_measurement():
     )
     assert tester == 290
     assert owner == 281
+    short = anchors.storage_bytes_for_event(
+        commitment_id='m1',
+        event_type='human-decision',
+        payload_hash='cd' * 32,
+        previous_hash='ab' * 32,
+        actor_account_id='auditor.sandbox',
+        last_hash_len=64,
+    )
+    longer = anchors.storage_bytes_for_event(
+        commitment_id='milestone-acceptance-' + ('a' * 24),
+        event_type='obligation-note',
+        payload_hash='12' * 32,
+        previous_hash='ab' * 32,
+        actor_account_id='auditor.sandbox',
+        last_hash_len=64,
+    )
+    assert short == 280
+    assert longer == 324
+    assert short != longer
     assert anchors.required_storage_deposit_yocto(
         commitment_id='tester-event-2',
         event_type='TESTER_RECORD',
