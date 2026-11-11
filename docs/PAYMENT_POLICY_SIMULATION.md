@@ -47,7 +47,7 @@ Action records are linked to the same commitment ID. The lifecycle is `PROPOSED`
 These are boundaries, not integrations:
 
 1. The in-app proposal and human decision above. This is implemented. It does not move funds.
-2. A tester-signed hash-only audit record on NEAR testnet. The contract source for a storage-backed upgrade is in this repository and is not deployed. The live contract is still owner-only.
+2. A tester-signed hash-only audit record on NEAR testnet. The storage-backed upgrade is live and `get_anchor_policy` returns `any_account`. The app offers that signature only when a live view confirms it. No tester signature has been written on chain yet. The signature is not a payment.
 3. NEAR Intents. The official Agent API is mainnet-only and is not connected. There is no Intents testnet sandbox in this app.
 
 ## Known limitations

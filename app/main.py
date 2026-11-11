@@ -316,68 +316,71 @@ class CommitmentAmendment(BaseModel):
     counterparty: str | None = Field(default=None, min_length=1, max_length=120)
 
 
-def get_record(cid: str):
-    with connect() as db:
-        c = db.execute('SELECT * FROM commitments WHERE id=?', (cid,)).fetchone()
-        if not c or not tenancy.same_workspace(c['workspace_id']):
-            raise HTTPException(404, 'Commitment not found')
-        commitment = dict(c)
-        commitment['counterparty'] = commitment.get('supplier')
-        commitment['commitment_kind'] = commitment.get('commitment_kind') or 'general'
-        evidence = [dict(row) for row in db.execute(
-            '''SELECT e.*,
-                COALESCE((SELECT r.status FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1), 'UNREVIEWED') AS review_status,
-                (SELECT r.reviewer FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewer,
-                (SELECT r.note FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS review_note,
-                (SELECT r.created_at FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewed_at
-                FROM evidence e WHERE e.commitment_id=? ORDER BY e.created_at, e.rowid''', (cid,)
+def get_record(cid: str, db=None):
+    """Read one commitment. Pass db to reuse the caller's connection."""
+    if db is None:
+        with connect() as owned:
+            return get_record(cid, owned)
+    c = db.execute('SELECT * FROM commitments WHERE id=?', (cid,)).fetchone()
+    if not c or not tenancy.same_workspace(c['workspace_id']):
+        raise HTTPException(404, 'Commitment not found')
+    commitment = dict(c)
+    commitment['counterparty'] = commitment.get('supplier')
+    commitment['commitment_kind'] = commitment.get('commitment_kind') or 'general'
+    evidence = [dict(row) for row in db.execute(
+        '''SELECT e.*,
+            COALESCE((SELECT r.status FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1), 'UNREVIEWED') AS review_status,
+            (SELECT r.reviewer FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewer,
+            (SELECT r.note FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS review_note,
+            (SELECT r.created_at FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewed_at
+            FROM evidence e WHERE e.commitment_id=? ORDER BY e.created_at, e.rowid''', (cid,)
+    ).fetchall()]
+    for evidence_record in evidence:
+        evidence_record['review_history'] = [dict(row) for row in db.execute(
+            'SELECT status, reviewer, note, created_at FROM evidence_reviews WHERE evidence_id=? ORDER BY created_at, rowid',
+            (evidence_record['id'],)
         ).fetchall()]
-        for evidence_record in evidence:
-            evidence_record['review_history'] = [dict(row) for row in db.execute(
-                'SELECT status, reviewer, note, created_at FROM evidence_reviews WHERE evidence_id=? ORDER BY created_at, rowid',
-                (evidence_record['id'],)
-            ).fetchall()]
-        versions = [dict(row) for row in db.execute(
-            'SELECT version, terms_json, reason, created_at FROM commitment_versions WHERE commitment_id=? ORDER BY version', (cid,)
+    versions = [dict(row) for row in db.execute(
+        'SELECT version, terms_json, reason, created_at FROM commitment_versions WHERE commitment_id=? ORDER BY version', (cid,)
+    ).fetchall()]
+    history = [dict(row) for row in db.execute(
+        'SELECT id, status, assessment_json, created_at FROM assessment_history WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
+    ).fetchall()]
+    policy_row = db.execute('SELECT * FROM payment_policies WHERE commitment_id=?', (cid,)).fetchone()
+    policy_history = [dict(row) for row in db.execute(
+        'SELECT id, policy_json, created_at FROM payment_policy_history WHERE commitment_id=? ORDER BY created_at, rowid',
+        (cid,)
+    ).fetchall()]
+    proposals = [dict(row) for row in db.execute(
+        'SELECT id, status, proposal_json, created_at FROM payment_proposals WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
+    ).fetchall()]
+    payment_decisions = [dict(row) for row in db.execute(
+        '''SELECT id, proposal_id, decision, actor, outcome_json, created_at
+           FROM payment_decisions WHERE commitment_id=? ORDER BY created_at, rowid''',
+        (cid,),
+    ).fetchall()]
+    action_rows = [dict(row) for row in db.execute(
+        'SELECT id, action_type, description, created_at FROM commitment_actions WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
+    ).fetchall()]
+    ai_briefs = [dict(row) for row in db.execute(
+        'SELECT id, provider, model, brief_json, created_at FROM ai_briefs WHERE commitment_id=? ORDER BY created_at, rowid',
+        (cid,)
+    ).fetchall()]
+    audit_receipts = [dict(row) for row in db.execute(
+        '''SELECT id, transaction_hash, signer_account_id, payload_hash, execution_status,
+                  explorer_url, created_at
+           FROM audit_receipts WHERE commitment_id=? ORDER BY created_at, rowid''',
+        (cid,),
+    ).fetchall()]
+    actions = []
+    for action in action_rows:
+        events = [dict(row) for row in db.execute(
+            'SELECT id, event_type, actor, note, evidence_id, created_at FROM action_events WHERE action_id=? ORDER BY created_at, rowid',
+            (action['id'],)
         ).fetchall()]
-        history = [dict(row) for row in db.execute(
-            'SELECT id, status, assessment_json, created_at FROM assessment_history WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
-        ).fetchall()]
-        policy_row = db.execute('SELECT * FROM payment_policies WHERE commitment_id=?', (cid,)).fetchone()
-        policy_history = [dict(row) for row in db.execute(
-            'SELECT id, policy_json, created_at FROM payment_policy_history WHERE commitment_id=? ORDER BY created_at, rowid',
-            (cid,)
-        ).fetchall()]
-        proposals = [dict(row) for row in db.execute(
-            'SELECT id, status, proposal_json, created_at FROM payment_proposals WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
-        ).fetchall()]
-        payment_decisions = [dict(row) for row in db.execute(
-            '''SELECT id, proposal_id, decision, actor, outcome_json, created_at
-               FROM payment_decisions WHERE commitment_id=? ORDER BY created_at, rowid''',
-            (cid,),
-        ).fetchall()]
-        action_rows = [dict(row) for row in db.execute(
-            'SELECT id, action_type, description, created_at FROM commitment_actions WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
-        ).fetchall()]
-        ai_briefs = [dict(row) for row in db.execute(
-            'SELECT id, provider, model, brief_json, created_at FROM ai_briefs WHERE commitment_id=? ORDER BY created_at, rowid',
-            (cid,)
-        ).fetchall()]
-        audit_receipts = [dict(row) for row in db.execute(
-            '''SELECT id, transaction_hash, signer_account_id, payload_hash, execution_status,
-                      explorer_url, created_at
-               FROM audit_receipts WHERE commitment_id=? ORDER BY created_at, rowid''',
-            (cid,),
-        ).fetchall()]
-        actions = []
-        for action in action_rows:
-            events = [dict(row) for row in db.execute(
-                'SELECT id, event_type, actor, note, evidence_id, created_at FROM action_events WHERE action_id=? ORDER BY created_at, rowid',
-                (action['id'],)
-            ).fetchall()]
-            action['events'] = events
-            action['status'] = events[-1]['event_type'] if events else 'PROPOSED'
-            actions.append(action)
+        action['events'] = events
+        action['status'] = events[-1]['event_type'] if events else 'PROPOSED'
+        actions.append(action)
     timeline = [{
         'event_type': 'COMMITMENT_CREATED',
         'title': 'Original commitment recorded',
@@ -563,21 +566,35 @@ def health():
     }
 
 
+def patterns_for_records(records):
+    return detect_supplier_patterns(
+        [record['commitment'] for record in records],
+        {record['commitment']['id']: record['evidence'] for record in records},
+    )
+
+
+def records_for_current_workspace(db, limit=None):
+    """Load commitments in the current workspace on the connection already open."""
+    workspace_id = tenancy.current_workspace_id()
+    if workspace_id is None:
+        rows = db.execute(
+            'SELECT id FROM commitments WHERE workspace_id IS NULL ORDER BY created_at DESC'
+        ).fetchall()
+    else:
+        rows = db.execute(
+            'SELECT id FROM commitments WHERE workspace_id=? ORDER BY created_at DESC',
+            (workspace_id,),
+        ).fetchall()
+    ids = [row['id'] for row in rows]
+    if limit is not None:
+        ids = ids[:limit]
+    return [get_record(item, db) for item in ids]
+
+
 @app.get('/api/commitments')
 def list_commitments():
-    workspace_id = tenancy.current_workspace_id()
     with connect() as db:
-        if workspace_id is None:
-            rows = db.execute(
-                'SELECT id FROM commitments WHERE workspace_id IS NULL ORDER BY created_at DESC'
-            ).fetchall()
-        else:
-            rows = db.execute(
-                'SELECT id FROM commitments WHERE workspace_id=? ORDER BY created_at DESC',
-                (workspace_id,),
-            ).fetchall()
-        ids = [row['id'] for row in rows]
-    return [get_record(cid) for cid in ids]
+        return records_for_current_workspace(db)
 
 
 @app.post('/api/commitments', status_code=201)
@@ -1001,19 +1018,8 @@ def reserve_ai_call(request: Request) -> None:
 
 
 def workspace_records() -> list[dict]:
-    workspace_id = tenancy.current_workspace_id()
     with connect() as db:
-        if workspace_id is None:
-            rows = db.execute(
-                'SELECT id FROM commitments WHERE workspace_id IS NULL ORDER BY created_at DESC'
-            ).fetchall()
-        else:
-            rows = db.execute(
-                'SELECT id FROM commitments WHERE workspace_id=? ORDER BY created_at DESC',
-                (workspace_id,),
-            ).fetchall()
-        ids = [row['id'] for row in rows]
-    return [get_record(cid) for cid in ids[:40]]
+        return records_for_current_workspace(db, limit=40)
 
 
 def store_ai_brief(cid: str, result: dict) -> dict:
@@ -1250,23 +1256,21 @@ def get_commitment_audit_anchor(cid: str):
 
 @app.get('/api/patterns')
 def read_supplier_patterns():
-    records = list_commitments()
-    commitments = [record['commitment'] for record in records]
-    evidence_by_commitment = {
-        record['commitment']['id']: record['evidence']
-        for record in records
-    }
-    return detect_supplier_patterns(commitments, evidence_by_commitment)
+    return patterns_for_records(list_commitments())
 
 
 
 
-def populate_synthetic_demo():
-    """Write the Acme sample in one database transaction.
+def populate_synthetic_demo(db=None):
+    """Write the Acme sample and read it back on the same connection.
 
-    The hosted function limit is 60 seconds. Opening a new Turso connection
-    for every evidence row and review does not finish in that window.
+    The hosted function limit is 60 seconds. A fresh Turso connection per
+    row, or another connection for each commitment read, does not finish
+    in that window.
     """
+    if db is None:
+        with connect() as owned:
+            return populate_synthetic_demo(owned)
     samples = (
         {
             'description': 'Printer paper — purchase order PO-104',
@@ -1280,114 +1284,108 @@ def populate_synthetic_demo():
         },
     )
     workspace_id = tenancy.current_workspace_id()
-    ids = []
-    with connect() as db:
-        for sample in samples:
-            payload = CommitmentCreate(
-                supplier='Acme Supplies', description=sample['description'],
-                quantity=sample['quantity'], unit='cartons', amount=sample['amount'],
-                currency='USD', due_date=sample['due_date'],
-                payment_condition='Pay after verified full delivery',
-                commitment_kind='supplier_delivery',
-            )
-            cid = str(uuid.uuid4())
-            ids.append(cid)
-            now = utc_now()
-            terms = payload.model_dump()
-            terms['currency'] = payload.currency.upper()
-            terms['due_date'] = datetime.fromisoformat(payload.due_date).date().isoformat()
+    for sample in samples:
+        payload = CommitmentCreate(
+            supplier='Acme Supplies', description=sample['description'],
+            quantity=sample['quantity'], unit='cartons', amount=sample['amount'],
+            currency='USD', due_date=sample['due_date'],
+            payment_condition='Pay after verified full delivery',
+            commitment_kind='supplier_delivery',
+        )
+        cid = str(uuid.uuid4())
+        now = utc_now()
+        terms = payload.model_dump()
+        terms['currency'] = payload.currency.upper()
+        terms['due_date'] = datetime.fromisoformat(payload.due_date).date().isoformat()
+        db.execute(
+            '''INSERT INTO commitments
+               (id, supplier, description, quantity, unit, amount, currency, due_date,
+                payment_condition, created_at, workspace_id, commitment_kind)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+            (cid, payload.supplier, payload.description.strip(), payload.quantity, payload.unit,
+             payload.amount, terms['currency'], terms['due_date'], payload.payment_condition,
+             now, workspace_id, payload.commitment_kind),
+        )
+        db.execute(
+            '''INSERT INTO commitment_versions
+               (id, commitment_id, version, terms_json, reason, created_at)
+               VALUES (?, ?, 1, ?, ?, ?)''',
+            (str(uuid.uuid4()), cid, json.dumps(terms, sort_keys=True), 'Original agreement', now),
+        )
+        evidence = []
+        for kind, value, note in (
+            ('quantity_received', sample['received'], 'Synthetic demo receiving record; not a real supplier document.'),
+            ('invoice_amount', sample['invoice'], 'Synthetic demo invoice record; not a real supplier document.'),
+        ):
+            evidence_id = str(uuid.uuid4())
             db.execute(
-                '''INSERT INTO commitments
-                   (id, supplier, description, quantity, unit, amount, currency, due_date,
-                    payment_condition, created_at, workspace_id, commitment_kind)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                (cid, payload.supplier, payload.description.strip(), payload.quantity, payload.unit,
-                 payload.amount, terms['currency'], terms['due_date'], payload.payment_condition,
-                 now, workspace_id, payload.commitment_kind),
-            )
-            db.execute(
-                '''INSERT INTO commitment_versions
-                   (id, commitment_id, version, terms_json, reason, created_at)
-                   VALUES (?, ?, 1, ?, ?, ?)''',
-                (str(uuid.uuid4()), cid, json.dumps(terms, sort_keys=True), 'Original agreement', now),
-            )
-            evidence = []
-            for kind, value, note in (
-                ('quantity_received', sample['received'], 'Synthetic demo receiving record; not a real supplier document.'),
-                ('invoice_amount', sample['invoice'], 'Synthetic demo invoice record; not a real supplier document.'),
-            ):
-                evidence_id = str(uuid.uuid4())
-                db.execute(
-                    'INSERT INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    (evidence_id, cid, kind, value, note, 'demo_fixture', now),
-                )
-                db.execute(
-                    '''INSERT INTO evidence_reviews
-                       (id, evidence_id, status, reviewer, note, created_at)
-                       VALUES (?, ?, ?, ?, ?, ?)''',
-                    (str(uuid.uuid4()), evidence_id, 'VERIFIED', 'DEMO_FIXTURE',
-                     'Synthetic fixture pre-reviewed for demonstration only.', now),
-                )
-                evidence.append({
-                    'id': evidence_id, 'kind': kind, 'value': value,
-                    'review_status': 'VERIFIED', 'reviewed_at': now,
-                })
-            commitment = {
-                'supplier': payload.supplier, 'description': payload.description,
-                'quantity': payload.quantity, 'unit': payload.unit, 'amount': payload.amount,
-                'currency': terms['currency'], 'due_date': terms['due_date'],
-                'payment_condition': payload.payment_condition,
-            }
-            assessment = assess_commitment(commitment, evidence)
-            db.execute(
-                '''INSERT INTO assessment_history
-                   (id, commitment_id, status, assessment_json, created_at)
-                   VALUES (?, ?, ?, ?, ?)''',
-                (str(uuid.uuid4()), cid, assessment['status'], json.dumps(assessment, sort_keys=True), now),
-            )
-            if not sample['policy']:
-                continue
-            destination = 'acme-demo-wallet.near'
-            policy = {
-                'enabled': True, 'max_amount': sample['amount'],
-                'allowed_destination': destination,
-                'require_full_delivery': True, 'require_invoice_match': True,
-                'require_verified_evidence': True, 'allow_partial_payments': False,
-                'updated_at': now, 'configured': True,
-            }
-            db.execute(
-                '''INSERT INTO payment_policies
-                   (commitment_id, enabled, max_amount, allowed_destination,
-                    require_full_delivery, require_invoice_match, require_verified_evidence,
-                    allow_partial_payments, updated_at)
-                   VALUES (?, 1, ?, ?, 1, 1, 1, 0, ?)''',
-                (cid, sample['amount'], destination, now),
+                'INSERT INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (evidence_id, cid, kind, value, note, 'demo_fixture', now),
             )
             db.execute(
-                'INSERT INTO payment_policy_history (id, commitment_id, policy_json, created_at) VALUES (?, ?, ?, ?)',
-                (str(uuid.uuid4()), cid, json.dumps(policy, sort_keys=True), now),
+                '''INSERT INTO evidence_reviews
+                   (id, evidence_id, status, reviewer, note, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)''',
+                (str(uuid.uuid4()), evidence_id, 'VERIFIED', 'DEMO_FIXTURE',
+                 'Synthetic fixture pre-reviewed for demonstration only.', now),
             )
-            proposal = evaluate_payment_proposal(
-                commitment, evidence, policy, sample['amount'], 'USD', destination,
-            )
-            db.execute(
-                'INSERT INTO payment_proposals (id, commitment_id, status, proposal_json, created_at) VALUES (?, ?, ?, ?, ?)',
-                (str(uuid.uuid4()), cid, proposal['status'], json.dumps(proposal, sort_keys=True), now),
-            )
-            db.execute(
-                '''INSERT INTO commitment_actions
-                   (id, commitment_id, action_type, description, created_at)
-                   VALUES (?, ?, ?, ?, ?)''',
-                (str(uuid.uuid4()), cid, 'RECONCILE_DELIVERY',
-                 'Ask the supplier to deliver the missing 8 cartons or issue a credit note.', now),
-            )
-    records = [get_record(cid) for cid in ids]
+            evidence.append({
+                'id': evidence_id, 'kind': kind, 'value': value,
+                'review_status': 'VERIFIED', 'reviewed_at': now,
+            })
+        commitment = {
+            'supplier': payload.supplier, 'description': payload.description,
+            'quantity': payload.quantity, 'unit': payload.unit, 'amount': payload.amount,
+            'currency': terms['currency'], 'due_date': terms['due_date'],
+            'payment_condition': payload.payment_condition,
+        }
+        assessment = assess_commitment(commitment, evidence)
+        db.execute(
+            '''INSERT INTO assessment_history
+               (id, commitment_id, status, assessment_json, created_at)
+               VALUES (?, ?, ?, ?, ?)''',
+            (str(uuid.uuid4()), cid, assessment['status'], json.dumps(assessment, sort_keys=True), now),
+        )
+        if not sample['policy']:
+            continue
+        destination = 'acme-demo-wallet.near'
+        policy = {
+            'enabled': True, 'max_amount': sample['amount'],
+            'allowed_destination': destination,
+            'require_full_delivery': True, 'require_invoice_match': True,
+            'require_verified_evidence': True, 'allow_partial_payments': False,
+            'updated_at': now, 'configured': True,
+        }
+        db.execute(
+            '''INSERT INTO payment_policies
+               (commitment_id, enabled, max_amount, allowed_destination,
+                require_full_delivery, require_invoice_match, require_verified_evidence,
+                allow_partial_payments, updated_at)
+               VALUES (?, 1, ?, ?, 1, 1, 1, 0, ?)''',
+            (cid, sample['amount'], destination, now),
+        )
+        db.execute(
+            'INSERT INTO payment_policy_history (id, commitment_id, policy_json, created_at) VALUES (?, ?, ?, ?)',
+            (str(uuid.uuid4()), cid, json.dumps(policy, sort_keys=True), now),
+        )
+        proposal = evaluate_payment_proposal(
+            commitment, evidence, policy, sample['amount'], 'USD', destination,
+        )
+        db.execute(
+            'INSERT INTO payment_proposals (id, commitment_id, status, proposal_json, created_at) VALUES (?, ?, ?, ?, ?)',
+            (str(uuid.uuid4()), cid, proposal['status'], json.dumps(proposal, sort_keys=True), now),
+        )
+        db.execute(
+            '''INSERT INTO commitment_actions
+               (id, commitment_id, action_type, description, created_at)
+               VALUES (?, ?, ?, ?, ?)''',
+            (str(uuid.uuid4()), cid, 'RECONCILE_DELIVERY',
+             'Ask the supplier to deliver the missing 8 cartons or issue a credit note.', now),
+        )
+    records = records_for_current_workspace(db)
     return {
         'status': 'seeded', 'synthetic_data': True, 'commitments': records,
-        'patterns': detect_supplier_patterns(
-            [record['commitment'] for record in records],
-            {record['commitment']['id']: record['evidence'] for record in records},
-        ),
+        'patterns': patterns_for_records(records),
     }
 
 
@@ -1424,17 +1422,19 @@ def create_demo_trial(request: Request, response: Response):
             workspace_id = created_row['id']
             expires_at = created_row['expires_at']
             created = True
-    token = tenancy.use_workspace(workspace_id)
-    try:
-        if created:
-            body = populate_synthetic_demo()
-        else:
-            body = {
-                'status': 'resumed', 'synthetic_data': True,
-                'commitments': list_commitments(), 'patterns': read_supplier_patterns(),
-            }
-    finally:
-        tenancy.reset_workspace(token)
+        token = tenancy.use_workspace(workspace_id)
+        try:
+            if created:
+                body = populate_synthetic_demo(db)
+            else:
+                records = records_for_current_workspace(db)
+                body = {
+                    'status': 'resumed', 'synthetic_data': True,
+                    'commitments': records,
+                    'patterns': patterns_for_records(records),
+                }
+        finally:
+            tenancy.reset_workspace(token)
     _set_cookie(response, request, tenancy.DEMO_COOKIE, workspace_id, int(tenancy.trial_ttl().total_seconds()))
     body['workspace'] = 'demo'
     body['expires_at'] = expires_at

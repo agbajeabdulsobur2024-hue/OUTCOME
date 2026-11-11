@@ -7,91 +7,100 @@
     {
       id: "introduce",
       place: "landing",
+      focus: "",
       wallet: false,
       action: "enter-sample",
       kicker: "Get started",
       title: "See an agreement held to its evidence",
-      body: "OUTCOME keeps what was agreed, what was verified, and what a person may do next on one record. A supplier order, a milestone, a repayment, or an expense uses that same record. This introduction uses a sample. It does not need a wallet, and it does not pay anyone.",
+      body: "A labelled sample. No wallet. Nothing is paid.",
       primary: "Get started"
     },
     {
       id: "sample",
       place: "overview",
+      focus: "order",
       wallet: false,
       action: "open-order",
-      kicker: "Sample scenario",
-      title: "These records are not your business",
-      body: "Acme Supplies is one configuration: two printer-paper orders. The sample is labelled, and it stays out of a personal workspace. Open the 50-carton order to see the agreement itself.",
+      kicker: "Sample",
+      title: "These records are not yours",
+      body: "Acme Supplies is a labelled sample: two printer-paper orders. It stays out of a personal workspace.",
       primary: "Open the 50-carton order"
     },
     {
       id: "agreement",
       place: "commitment",
+      focus: "facts",
       wallet: false,
       action: "next",
-      kicker: "Commitment",
-      title: "The record is what was agreed",
-      body: "PO-104 is 50 cartons for USD 250, due after verified full delivery. The terms stay with the evidence that follows. The type of obligation is a label. The checks do not change because this example is a supplier order.",
+      kicker: "Agreement",
+      title: "50 cartons. USD 250.",
+      body: "PO-104 is due after verified full delivery. The terms stay with the evidence.",
       primary: "See the evidence"
     },
     {
       id: "evidence",
       place: "commitment",
+      focus: "evidence",
       wallet: false,
       action: "next",
-      kicker: "Evidence and verification",
-      title: "Evidence is appended, then a person verifies it",
-      body: "The sample receiving record says 42 cartons arrived, and that fixture is marked verified. A later unverified note would not clear a verified shortfall. Verification is a review of the record. It is not a payment.",
-      primary: "See the discrepancy"
+      kicker: "Evidence",
+      title: "42 arrived, and a person verified it",
+      body: "A later unverified note would not clear that shortfall. Verification is a review, not a payment.",
+      primary: "See the exposure"
     },
     {
       id: "exposure",
       place: "commitment",
+      focus: "exposure",
       wallet: false,
       action: "show-signals",
-      kicker: "Assessment",
-      title: "The shortfall has an estimated exposure",
-      body: "Eight cartons are missing. The assessment estimates USD 40 of exposure from the agreed price. That figure is not an invoice and not a transfer. The summary says the evidence does not match the commitment.",
+      kicker: "Exposure",
+      title: "Eight cartons. USD 40.",
+      body: "The estimate is not an invoice and not a transfer. The evidence does not match the commitment.",
       primary: "See the repeated signal"
     },
     {
       id: "signal",
       place: "signals",
+      focus: "signal",
       wallet: false,
       action: "show-recommendation",
-      kicker: "Repeated signal",
-      title: "A second short delivery is a signal, not a verdict",
-      body: "PO-109 is also short. The signal is there because verified evidence repeated. It does not establish intent, misconduct, or fraud.",
+      kicker: "Signal",
+      title: "The same gap, twice",
+      body: "PO-109 is also short. A repeated signal is not a finding of intent, misconduct, or fraud.",
       primary: "See the recommendation"
     },
     {
       id: "recommendation",
       place: "commitment",
+      focus: "next",
       wallet: false,
       action: "show-payments",
       kicker: "Recommendation",
-      title: "The next step is for a person",
-      body: "The sample recommends asking the supplier for the missing 8 cartons or a credit note. OUTCOME does not send that request, and it does not move money.",
+      title: "A person decides what happens next",
+      body: "Ask Acme for the missing 8 cartons or a credit note. OUTCOME does not send that request, and it does not move money.",
       primary: "See why USD 250 stays blocked"
     },
     {
       id: "approval",
       place: "payments",
+      focus: "proposal",
       wallet: false,
       action: "next",
-      kicker: "Approval",
-      title: "A blocked proposal cannot be approved",
-      body: "The sample still asks for the original USD 250. Full delivery was not verified, so the proposal stays blocked. When a proposal is allowed, a human approval is recorded as APPROVED — NOT SUBMITTED unless a real transfer exists. That record is not a payment.",
-      primary: "Create my own commitment"
+      kicker: "Blocked",
+      title: "USD 250 cannot be approved",
+      body: "Full delivery was not verified, so the proposal stays blocked. When a proposal is allowed, a human approval is recorded as APPROVED — NOT SUBMITTED. That record is not a payment.",
+      primary: "Record my own commitment"
     },
     {
       id: "real",
       place: "workspace",
+      focus: "sample",
       wallet: true,
       action: "connect-for-real",
       kicker: "Your records",
-      title: "Keep your commitment out of the sample",
-      body: "A personal workspace is separate from these Acme records. Connecting a NEAR testnet wallet names that workspace. It does not authorise a payment, a transfer, or an on-chain signature. Tester signatures stay off while the live contract does not accept them.",
+      title: "Keep yours out of the sample",
+      body: "A personal workspace is separate from these Acme records. Connecting a NEAR testnet wallet names that workspace. It does not authorise a payment.",
       primary: "Connect a wallet to record mine"
     }
   ];
@@ -122,6 +131,40 @@
 
   function shouldAutoStart(state) {
     return !state || state.status === "new";
+  }
+
+  function presentation(state) {
+    if (!state || state.status === "new") return "arrive";
+    if (state.status === "dismissed" || state.status === "completed") return "quiet";
+    if (state.status === "in_progress" && state.step > 0) return "resume";
+    return "arrive";
+  }
+
+  function progressFor(stepIndex) {
+    var visible = STEPS.filter(function (step) { return step.place !== "landing"; });
+    var step = STEPS[stepIndex];
+    var index = -1;
+    for (var i = 0; i < visible.length; i += 1) {
+      if (step && visible[i].id === step.id) index = i;
+    }
+    return { index: index, total: visible.length };
+  }
+
+  function shareInflight(slot, start) {
+    if (slot && slot.current) return slot.current;
+    var tracked;
+    tracked = Promise.resolve().then(start).then(
+      function (value) {
+        if (slot.current === tracked) slot.current = null;
+        return value;
+      },
+      function (error) {
+        if (slot.current === tracked) slot.current = null;
+        throw error;
+      }
+    );
+    slot.current = tracked;
+    return tracked;
   }
 
   function begin(storage) {
@@ -159,6 +202,9 @@
     STEPS: STEPS,
     read: read,
     shouldAutoStart: shouldAutoStart,
+    presentation: presentation,
+    progressFor: progressFor,
+    shareInflight: shareInflight,
     begin: begin,
     move: move,
     dismiss: dismiss,

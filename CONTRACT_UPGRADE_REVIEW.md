@@ -1,16 +1,14 @@
 # Contract upgrade review
 
-This is a review package for a later decision. It is not a deployment. No transaction was sent to `thewordweaver.testnet`, to any public testnet account, or to mainnet. The app was not deployed. No payment rail was added.
-
-A later deploy of this wasm would establish that a second account can append a hash to this contract on testnet. It would not, by itself, establish that OUTCOME is ready for independent public use. Workspaces, evidence review, payment policy, the hosted app, and a person’s authorisation are separate from this contract.
+The storage-bounded upgrade described below has been deployed to `thewordweaver.testnet`. This file is the review of that change. It does not send another transaction, call `new`, or add a payment rail.
 
 ## What is live today
 
-The contract at `thewordweaver.testnet` is still the owner-gated deploy.
+- Upgrade [FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc](https://testnet.nearblocks.io/txns/FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc) is FINAL. Code hash `5UNnZ4KvwoCxHt5ADhJnkCchP2h1xR6fnCXPP8c1rgpr`. `get_anchor_policy` returns `any_account`. The owner is still `thewordweaver.testnet`.
+- `record_event` [3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj) is FINAL. The stored id is `OUTCOME-DEMO-PO-104`. That owner event survived the upgrade. It is not a tester signature, and no non-owner `record_event` has been sent.
+- The previous owner-gated code hash was `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`, from deploy [8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy). That hash is not the live code.
 
-- `record_event` [3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj) is FINAL. The stored id is `OUTCOME-DEMO-PO-104`. That is an owner event, not a tester anchor and not an `outcome-` digest from this app.
-- Deploy and init [8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy) is FINAL. Code hash `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`.
-- `get_anchor_policy` is not on that code. A view returns method-not-found. That absence is the live policy: only the owner can append.
+The sections below were written before that upgrade transaction. Where they say the upgrade has not been submitted, they describe the review as it stood then. The live code hash and policy are the ones in this section.
 
 The source of that owner gate is commit `299bed3` (`Only the configured owner account may append audit events`). Rebuilding that source with today’s compiler does not reproduce code hash `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`. The replay in section 3 downloads the wasm that is on chain and checks that its sha256, base58-encoded, equals that hash before any sandbox deploy. A rebuild of `299bed3` is a different artifact. `near/scripts/storage_anchor_test.cjs` still builds that older source; it is not the live-byte proof.
 
