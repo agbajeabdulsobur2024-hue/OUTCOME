@@ -573,8 +573,8 @@ def patterns_for_records(records):
     )
 
 
-def records_for_current_workspace(db):
-    """Load every commitment in the current workspace on the connection already open."""
+def records_for_current_workspace(db, limit=None):
+    """Load commitments in the current workspace on the connection already open."""
     workspace_id = tenancy.current_workspace_id()
     if workspace_id is None:
         rows = db.execute(
@@ -585,7 +585,10 @@ def records_for_current_workspace(db):
             'SELECT id FROM commitments WHERE workspace_id=? ORDER BY created_at DESC',
             (workspace_id,),
         ).fetchall()
-    return [get_record(row['id'], db) for row in rows]
+    ids = [row['id'] for row in rows]
+    if limit is not None:
+        ids = ids[:limit]
+    return [get_record(item, db) for item in ids]
 
 
 @app.get('/api/commitments')
@@ -1015,19 +1018,8 @@ def reserve_ai_call(request: Request) -> None:
 
 
 def workspace_records() -> list[dict]:
-    workspace_id = tenancy.current_workspace_id()
     with connect() as db:
-        if workspace_id is None:
-            rows = db.execute(
-                'SELECT id FROM commitments WHERE workspace_id IS NULL ORDER BY created_at DESC'
-            ).fetchall()
-        else:
-            rows = db.execute(
-                'SELECT id FROM commitments WHERE workspace_id=? ORDER BY created_at DESC',
-                (workspace_id,),
-            ).fetchall()
-        ids = [row['id'] for row in rows]
-    return [get_record(cid) for cid in ids[:40]]
+        return records_for_current_workspace(db, limit=40)
 
 
 def store_ai_brief(cid: str, result: dict) -> dict:

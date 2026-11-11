@@ -17,7 +17,7 @@ The Acme printer-paper orders are a synthetic demonstration, not the product bou
 
 A business agrees to buy 50 cartons of printer paper for USD 250. Verified evidence shows 42 received, so the estimated exposure is USD 40. OUTCOME explains the shortfall, recommends holding the release, and will not treat that evidence as proof the order was fulfilled. The USD 250 proposal cannot be approved. A second order from the same supplier shows the same kind of gap, so the repeated signal appears. No money moves.
 
-The hosted app at [outcome-puce.vercel.app](https://outcome-puce.vercel.app) serves version 0.4.0 until a later app deploy. The storage-bounded contract upgrade is already live on testnet. Use synthetic data only.
+The hosted app at [outcome-puce.vercel.app](https://outcome-puce.vercel.app) includes ordinary-language intake from pull request 12. The storage-bounded contract upgrade is already live on testnet. The first-run stage and the signature copy in this branch are not deployed yet. Use synthetic data only.
 
 ## NEAR
 
@@ -38,7 +38,7 @@ When a server-side `NEARAI_API_KEY` is set, a person can ask for a brief. The mo
 
 A live call on 11 November 2026 to [`cloud-api.near.ai/v1`](https://cloud-api.near.ai/v1) for `Qwen/Qwen3.6-35B-A3B-FP8` succeeded. Provider signature (`signature_kind` `provider_tee`, ECDSA/EIP-191) and Intel TDX attestation verified. Fail-closed held when evidence was tampered or missing. Pull request 6, merged as `fa6eb02`, returns that brief when verification passes. On 11 November 2026, `GET https://outcome-puce.vercel.app/api/ai/status` reported `configured: true`. This repository does not contain that key. A brief is still withheld unless the cryptographic checks pass. NVIDIA JWT signatures, Sigstore, and TLS binding of the completion connection are not in OUTCOME. The checks do not prove which machine served the model, that the connection was bound to the quote, or that a brief cannot be replayed. Details: [AI integration](docs/AI_INTEGRATION.md).
 
-The same key and the same checks support ordinary-language intake in this branch. A person reviews the extracted fields and confirms before a commitment or evidence row is saved. The deterministic assessment then runs. Intake is not deployed with this branch. The manual forms work without the key.
+The same key and the same checks support ordinary-language intake. A person reviews the extracted fields and confirms before a commitment or evidence row is saved. The deterministic assessment then runs. The manual forms work without the key.
 
 NEAR Intents and Chain Signatures are not connected. See the safety boundary and the [integration status](docs/NEAR_HACKATHON_INTEGRATION.md).
 
