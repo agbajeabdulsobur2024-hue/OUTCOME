@@ -23,21 +23,21 @@ Use synthetic data only. The hosted app has no login.
 
 ### Testnet audit anchor
 
-The Rust contract and testnet script are under [`near/`](near/).
+Completed on testnet account `thewordweaver.testnet`. The contract stores hash-only events in an append-only hash chain. The web app does not connect a wallet or hold a full-access key, and a full-access key was not put in Vercel.
 
-The contract stores hash-only events in an append-only hash chain with block metadata. The testnet script is written to add a function-call key that can call only `record_event` on that contract.
+- Deploy and init, FINAL: [`8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy`](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy). On-chain `code_hash` `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`.
+- `record_event` accepted and stored, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj).
+- Restricted key limited to `record_event`. `admin_probe` rejected with `MethodNameMismatch`: [`7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk`](https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk). That rejection is not indexed, which is expected on this nearcore version.
 
-- The contract and the testnet proof script are implemented. The WASM build has passed GitHub Actions.
-- A local sandbox script exercises the same method restriction. That chain is not testnet.
-- No testnet contract has been deployed. The testnet script has not been run, so there is no testnet contract address or transaction hash.
-
-The web app does not connect a wallet or hold the key. Setup: [near/README.md](near/README.md). Full status: [NEAR hackathon integration](docs/NEAR_HACKATHON_INTEGRATION.md).
+Explorer: [testnet.nearblocks.io/txns](https://testnet.nearblocks.io/txns/). Setup: [near/README.md](near/README.md).
 
 ### NEAR AI Cloud
 
-When enabled, a brief explains the deterministic assessment, uncertainty, and questions for the owner. The user triggers it with **Generate AI brief**. The model does not change commitment status, payment eligibility, or approvals, and it does not execute actions.
+Optional, user-triggered briefs explain the deterministic assessment. They do not change commitment status, payment eligibility, or approvals, and they do not execute actions.
 
-The adapter runs only when `NEARAI_API_KEY` is set on the server. A live completion and response signature have not been confirmed in this repository. Data boundaries and checks: [AI integration](docs/AI_INTEGRATION.md).
+- Live call on 11 November 2026 to [`cloud-api.near.ai/v1`](https://cloud-api.near.ai/v1) for `Qwen/Qwen3.6-35B-A3B-FP8` succeeded. Provider signature (`signature_kind` `provider_tee`, ECDSA/EIP-191) and Intel TDX attestation verified. Fail-closed held when evidence was tampered or missing.
+- The hosted Vercel demo does not serve those briefs. On current main, verification can pass while the brief still fails to display, because the model can spend the token budget on reasoning. Display fix: unmerged [PR #6](https://github.com/agbajeabdulsobur2024-hue/OUTCOME/pull/6).
+- NVIDIA JWT signatures, Sigstore, and TLS binding of the completion connection are not yet in OUTCOME. Boundaries: [AI integration](docs/AI_INTEGRATION.md).
 
 NEAR Intents and Chain Signatures are not connected. See the safety boundary and the [integration status](docs/NEAR_HACKATHON_INTEGRATION.md).
 
