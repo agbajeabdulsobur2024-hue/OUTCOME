@@ -5,8 +5,8 @@ Run the FastAPI app and open the local UI. The landing page is the start. Click 
 
 ## 1. Show the intelligence (30 seconds)
 The dashboard shows two Acme Supplies commitments. Both have verified short-delivery evidence:
-- 100 boxes agreed; 80 recorded as received.
-- 50 boxes agreed; 40 recorded as received.
+- 50 cartons of printer paper agreed; 42 recorded as received.
+- A second Acme order, 20 cartons agreed and 16 recorded as received.
 
 The pattern panel surfaces a repeated short-delivery **EARLY_SIGNAL**. Explain that this is a review signal, not an accusation or fraud finding.
 
@@ -24,7 +24,7 @@ Explain that a recorded invoice alone does not satisfy the delivery condition.
 In the action panel:
 1. Approve the proposed reconciliation action.
 2. Report that the supplier was contacted.
-3. Add new receiving evidence for 100 boxes.
+3. Add new receiving evidence for 50 cartons.
 4. Mark that new evidence verified.
 5. Verify the action outcome using that same verified evidence.
 
@@ -36,9 +36,9 @@ In the payment protection panel, run **Run adversarial payment test**. This simu
 This is an application-level policy gate. It is not a transfer.
 
 ## 5. Reassess payment (30 seconds)
-Submit the payment proposal again. With the latest delivery evidence verified, invoice evidence verified, exact destination matched and policy cap respected, the proposal becomes AWAITING_HUMAN_APPROVAL.
+Submit the payment proposal again. With the latest delivery evidence verified, invoice evidence verified, exact destination matched and policy cap respected, the proposal becomes AWAITING_HUMAN_APPROVAL. Record the human approval. OUTCOME stores that decision and does not submit a transfer: the official NEAR Intents Agent API is mainnet-only, and hackathon rule Q-007 says no Intents testnet exists.
 
-Emphasize the boundary: this is not payment approval and no money moves.
+Emphasize the boundary: approval is not a payment, and no money moves.
 
 ## 5b. Optional testnet audit (if the tester has a wallet)
 Connect a NEAR testnet wallet from the landing page and sign the audit record on the order. The wallet submits `record_event` to `thewordweaver.testnet`. OUTCOME shows the explorer link only after it has checked that the final transaction matches this order’s digest. The contract currently deployed still accepts that call only from `thewordweaver.testnet` until its owner upgrades the contract in this repository. A tester without a wallet can skip this step.

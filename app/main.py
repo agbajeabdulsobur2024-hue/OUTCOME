@@ -20,7 +20,7 @@ from app.ai import (
     AIConfigurationError, AIProviderError, brief_is_displayable,
     generate_operational_brief, is_configured, public_ai_brief_entry,
 )
-from app import anchors, auth_near, safety, tenancy
+from app import anchors, auth_near, finance, safety, tenancy
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv('OUTCOME_DATA_DIR', ROOT / 'data'))
@@ -143,6 +143,9 @@ def init_db():
         db.execute('''CREATE TABLE IF NOT EXISTS sessions (
             token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, account_id TEXT NOT NULL,
             created_at TEXT NOT NULL, expires_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS payment_decisions (
+            id TEXT PRIMARY KEY, proposal_id TEXT NOT NULL, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+            decision TEXT NOT NULL, actor TEXT NOT NULL, outcome_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
         db.execute('''CREATE TABLE IF NOT EXISTS audit_receipts (
             id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
             transaction_hash TEXT NOT NULL UNIQUE, signer_account_id TEXT NOT NULL,
@@ -304,6 +307,11 @@ def get_record(cid: str):
         proposals = [dict(row) for row in db.execute(
             'SELECT id, status, proposal_json, created_at FROM payment_proposals WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
         ).fetchall()]
+        payment_decisions = [dict(row) for row in db.execute(
+            '''SELECT id, proposal_id, decision, actor, outcome_json, created_at
+               FROM payment_decisions WHERE commitment_id=? ORDER BY created_at, rowid''',
+            (cid,),
+        ).fetchall()]
         action_rows = [dict(row) for row in db.execute(
             'SELECT id, action_type, description, created_at FROM commitment_actions WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
         ).fetchall()]
@@ -369,6 +377,14 @@ def get_record(cid: str):
             'title': 'Owner payment policy updated',
             'created_at': row['created_at'],
             'details': 'Policy snapshot recorded for this commitment.',
+        })
+    for row in payment_decisions:
+        outcome = json.loads(row['outcome_json'])
+        timeline.append({
+            'event_type': 'PAYMENT_DECISION',
+            'title': 'Human payment decision: ' + row['decision'].replace('_', ' '),
+            'created_at': row['created_at'],
+            'details': outcome.get('reason', ''),
         })
     for row in proposals:
         proposal = json.loads(row['proposal_json'])
@@ -445,6 +461,11 @@ def get_record(cid: str):
         'payment_proposals': [
             {'id': row['id'], 'status': row['status'], 'proposal': json.loads(row['proposal_json']), 'created_at': row['created_at']}
             for row in proposals
+        ],
+        'payment_decisions': [
+            {'id': row['id'], 'proposal_id': row['proposal_id'], 'decision': row['decision'],
+             'actor': row['actor'], 'outcome': json.loads(row['outcome_json']), 'created_at': row['created_at']}
+            for row in payment_decisions
         ],
         'actions': actions,
         'ai_brief_history': published_briefs,
@@ -740,6 +761,43 @@ def create_payment_proposal(cid: str, payload: PaymentProposalCreate):
     return {'id': proposal_id, 'commitment_id': cid, 'created_at': created_at, 'proposal': assessment}
 
 
+class PaymentDecisionCreate(BaseModel):
+    proposal_id: str = Field(min_length=8, max_length=80)
+    decision: Literal['APPROVED', 'REJECTED']
+    actor: str = Field(min_length=1, max_length=120)
+
+
+@app.post('/api/commitments/{cid}/payment-decisions', status_code=201)
+def decide_payment(cid: str, payload: PaymentDecisionCreate):
+    """Record a person's payment decision. Wallet connection does not call this."""
+    record = get_record(cid)
+    proposal = next((item for item in record['payment_proposals'] if item['id'] == payload.proposal_id), None)
+    if not proposal:
+        raise HTTPException(404, 'Payment proposal not found')
+    if payload.decision == 'APPROVED' and proposal['status'] != 'AWAITING_HUMAN_APPROVAL':
+        raise HTTPException(409, 'A blocked or unfinished proposal cannot be authorised. No transfer was submitted.')
+    if any(item['proposal_id'] == payload.proposal_id for item in record['payment_decisions']):
+        raise HTTPException(409, 'This proposal already has a human decision.')
+    try:
+        outcome = finance.human_payment_outcome(
+            payload.decision, proposal['status'], finance.observe_official_network(),
+        )
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
+    decision_id = str(uuid.uuid4())
+    created_at = utc_now()
+    with connect() as db:
+        db.execute(
+            '''INSERT INTO payment_decisions
+               (id, proposal_id, commitment_id, decision, actor, outcome_json, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            (decision_id, payload.proposal_id, cid, payload.decision, payload.actor.strip(),
+             json.dumps(outcome, sort_keys=True), created_at),
+        )
+    return {'id': decision_id, 'commitment_id': cid, 'proposal_id': payload.proposal_id,
+            'created_at': created_at, 'outcome': outcome}
+
+
 @app.get('/api/commitments/{cid}/payment-proposals')
 def list_payment_proposals(cid: str):
     return get_record(cid)['payment_proposals']
@@ -966,16 +1024,16 @@ def read_supplier_patterns():
 
 def populate_synthetic_demo():
     first = create_commitment(CommitmentCreate(
-        supplier='Acme Supplies', description='Packaging boxes — purchase order PO-104',
-        quantity=100, unit='boxes', amount=500, currency='USD',
+        supplier='Acme Supplies', description='Printer paper — purchase order PO-104',
+        quantity=50, unit='cartons', amount=250, currency='USD',
         due_date='2026-12-01', payment_condition='Pay after verified full delivery',
     ))
     second = create_commitment(CommitmentCreate(
-        supplier='Acme Supplies', description='Additional packaging boxes — purchase order PO-109',
-        quantity=50, unit='boxes', amount=250, currency='USD',
+        supplier='Acme Supplies', description='Printer paper — purchase order PO-109',
+        quantity=20, unit='cartons', amount=100, currency='USD',
         due_date='2026-12-05', payment_condition='Pay after verified full delivery',
     ))
-    for record, received, invoice in ((first, 80, 500), (second, 40, 250)):
+    for record, received, invoice in ((first, 42, 250), (second, 16, 100)):
         cid = record['commitment']['id']
         receiving = add_evidence(cid, EvidenceCreate(
             kind='quantity_received', value=received,
@@ -997,16 +1055,16 @@ def populate_synthetic_demo():
         ))
     first_id = first['commitment']['id']
     update_payment_policy(first_id, PaymentPolicyUpdate(
-        enabled=True, max_amount=500, allowed_destination='acme-demo-wallet.near',
+        enabled=True, max_amount=250, allowed_destination='acme-demo-wallet.near',
         require_full_delivery=True, require_invoice_match=True,
         require_verified_evidence=True, allow_partial_payments=False,
     ))
     create_payment_proposal(first_id, PaymentProposalCreate(
-        amount=500, currency='USD', destination='acme-demo-wallet.near',
+        amount=250, currency='USD', destination='acme-demo-wallet.near',
     ))
     create_commitment_action(first_id, CommitmentActionCreate(
         action_type='RECONCILE_DELIVERY',
-        description='Ask the supplier to deliver the missing 20 boxes or issue a credit note.',
+        description='Ask the supplier to deliver the missing 8 cartons or issue a credit note.',
     ))
     return {'status': 'seeded', 'synthetic_data': True, 'commitments': list_commitments(),
             'patterns': read_supplier_patterns()}

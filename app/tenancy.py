@@ -199,6 +199,7 @@ def delete_commitment_rows(db, ids: list[str]) -> None:
         ids,
     )
     db.execute(f'DELETE FROM commitment_actions WHERE commitment_id IN ({marks})', ids)
+    db.execute(f'DELETE FROM payment_decisions WHERE commitment_id IN ({marks})', ids)
     db.execute(f'DELETE FROM payment_proposals WHERE commitment_id IN ({marks})', ids)
     db.execute(f'DELETE FROM payment_policy_history WHERE commitment_id IN ({marks})', ids)
     db.execute(

@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from nacl.signing import SigningKey
 
@@ -59,19 +60,20 @@ def test_visitor_explores_guided_demo_without_a_wallet(tmp_path, monkeypatch):
         body = demo.json()
         assert body['synthetic_data'] is True
         descriptions = [item['commitment']['description'] for item in body['commitments']]
-        first = next(item for item in body['commitments'] if item['commitment']['description'].startswith('Packaging boxes — purchase order PO-104'))
+        first = next(item for item in body['commitments'] if item['commitment']['description'].startswith('Printer paper — purchase order PO-104'))
         second = next(item for item in body['commitments'] if 'PO-109' in item['commitment']['description'])
-        assert first['commitment']['quantity'] == 100
-        assert first['commitment']['amount'] == 500
+        assert first['commitment']['quantity'] == 50
+        assert first['commitment']['unit'] == 'cartons'
+        assert first['commitment']['amount'] == 250
         assert all(item['review_status'] == 'VERIFIED' for item in first['evidence'])
-        assert {item['kind']: item['value'] for item in first['evidence']}['quantity_received'] == 80
+        assert {item['kind']: item['value'] for item in first['evidence']}['quantity_received'] == 42
         assert first['payment_policy']['configured'] is True
         assert first['payment_policy']['enabled'] is True
         assert first['payment_proposals'][0]['status'] == 'BLOCKED'
         assert 'DELIVERY_SHORTFALL' in {reason['code'] for reason in first['payment_proposals'][0]['proposal']['reasons']}
         assert first['actions'][0]['status'] == 'PROPOSED'
-        assert second['commitment']['quantity'] == 50
-        assert {item['kind']: item['value'] for item in second['evidence']}['quantity_received'] == 40
+        assert second['commitment']['quantity'] == 20
+        assert {item['kind']: item['value'] for item in second['evidence']}['quantity_received'] == 16
         assert body['patterns'][0]['pattern_type'] == 'REPEATED_SHORT_DELIVERY'
         assert 'PO-104' in descriptions[0] or any('PO-104' in item for item in descriptions)
         listed = client.get('/api/commitments')
@@ -178,19 +180,35 @@ def test_payment_block_human_approval_and_resolution_on_the_demo(tmp_path, monke
             'event_type': 'APPROVED', 'actor': 'Owner', 'note': 'Hold the payment and ask for the rest.',
         })
         assert approved.status_code == 201
+        blocked_decision = client.post(f'/api/commitments/{cid}/payment-decisions', json={
+            'proposal_id': first['payment_proposals'][0]['id'], 'decision': 'APPROVED', 'actor': 'Owner',
+        })
+        assert blocked_decision.status_code == 409
+        assert blocked_decision.json()['detail']
         evidence = client.post(f'/api/commitments/{cid}/evidence', json={
-            'kind': 'quantity_received', 'value': 100, 'note': 'Remaining boxes arrived', 'source': 'warehouse',
+            'kind': 'quantity_received', 'value': 50, 'note': 'Remaining cartons arrived', 'source': 'warehouse',
         }).json()['evidence'][-1]
         reviewed = client.post(f"/api/evidence/{evidence['id']}/reviews", json={
             'status': 'VERIFIED', 'reviewer': 'Owner', 'note': 'Counted on the dock',
         })
         assert reviewed.status_code == 201
         proposal = client.post(f'/api/commitments/{cid}/payment-proposals', json={
-            'amount': 500, 'currency': 'USD', 'destination': 'acme-demo-wallet.near',
+            'amount': 250, 'currency': 'USD', 'destination': 'acme-demo-wallet.near',
         })
         assert proposal.status_code == 201
         assert proposal.json()['proposal']['status'] == 'AWAITING_HUMAN_APPROVAL'
         assert proposal.json()['proposal']['transfer_executed'] is False
+        monkeypatch.setattr('app.finance.observe_official_network', lambda: 'mainnet')
+        decision = client.post(f'/api/commitments/{cid}/payment-decisions', json={
+            'proposal_id': proposal.json()['id'], 'decision': 'APPROVED', 'actor': 'Owner',
+        })
+        assert decision.status_code == 201, decision.text
+        outcome = decision.json()['outcome']
+        assert outcome['financial_action'] == 'NOT_SUBMITTED'
+        assert outcome['transfer_executed'] is False
+        assert outcome['transaction_hash'] is None
+        assert outcome['sandbox_executed'] is False
+        assert outcome['official_network'] == 'mainnet'
 
 
 def anchor_tx(sender, anchor, method='record_event', receiver='thewordweaver.testnet', deposit='0', payload_hash=None):
@@ -332,6 +350,14 @@ def test_demo_reset_cannot_delete_personal_or_demo_workspaces(tmp_path, monkeypa
         assert db.execute('SELECT id FROM commitments WHERE id=?', (own,)).fetchone()
         assert db.execute('SELECT id FROM commitments WHERE id=?', (demo_id,)).fetchone()
         assert db.execute('SELECT id FROM workspaces WHERE kind=?', ('personal',)).fetchone()
+
+
+def test_official_intents_network_document_is_mainnet():
+    from app.finance import observe_official_network
+    observed = observe_official_network()
+    if observed == 'unconfirmed':
+        pytest.skip('Official Intents network document was not reachable')
+    assert observed == 'mainnet'
 
 
 def test_contract_interface_allows_user_anchors_and_keeps_admin_probe_private():

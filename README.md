@@ -13,9 +13,7 @@ The first workflow protects supplier payments by comparing what was agreed with 
 
 ## Demo
 
-A business agrees to receive 100 units for USD 500, payable after delivery. Receiving evidence shows 80 units.
-
-OUTCOME flags the 20-unit shortfall, estimates USD 100 exposure, and recommends holding payment approval until the discrepancy is resolved.
+A business agrees to buy 50 cartons of printer paper. Receiving evidence shows 42. OUTCOME explains the shortfall and the exposure, recommends holding payment, and will not treat that evidence as proof the order was fulfilled. A person has to authorise the next step. A second order from the same supplier shows the same kind of gap, so the repeated signal appears. No money moves.
 
 The hosted app at [outcome-puce.vercel.app](https://outcome-puce.vercel.app) does not yet include isolated workspaces or wallet sign-in. Those land when this work is deployed. Use synthetic data only.
 

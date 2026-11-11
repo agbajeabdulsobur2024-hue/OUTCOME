@@ -316,8 +316,8 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
 <section class="landing" id="landing">
   <div class="landing-wrap">
     <div class="landing-kicker">NEAR testnet</div>
-    <h1>Before you pay a supplier, know whether they delivered what you agreed to pay for.</h1>
-    <p class="landing-lead">OUTCOME compares the order you agreed with the evidence of what arrived. In a few minutes you can see a short delivery, a blocked payment, and the human decision that has to come next. The records are synthetic. Nothing is paid.</p>
+    <h1>Know what was agreed. Verify what happened. Control what happens next.</h1>
+    <p class="landing-lead">OUTCOME is AI-powered financial accountability. It asks whether a supplier delivered what you agreed to pay for, then keeps the next step with a person. The guided demo is one order: 50 cartons of printer paper agreed, 42 received. The records are synthetic. Nothing is paid.</p>
     <div class="landing-actions">
       <button id="exploreDemo" class="btn" type="button">Explore Demo</button>
       <button id="connectWallet" class="btn btn-ghost" type="button">Connect NEAR Wallet</button>
@@ -334,7 +334,7 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
         <h2>What you can try</h2>
         <ol>
           <li>Open the guided demo. No wallet and no login.</li>
-          <li>See the 100-box order, the 20-box gap, and the blocked payment.</li>
+          <li>See 50 cartons agreed, 42 received, the exposure, and the blocked payment.</li>
           <li>Approve the follow-up, record the rest of the delivery, and watch the proposal wait for a person.</li>
           <li>Connect a testnet wallet if you want to write a hash-only audit record yourself.</li>
         </ol>
@@ -372,8 +372,8 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
       <section class="hero is-welcome" id="hero">
         <div class="hero-copy">
           <div class="eyebrow">Business operations intelligence</div>
-          <h1>Before you pay a supplier, know whether they delivered what you agreed to pay for.</h1>
-          <p>This workspace is synthetic. A short delivery blocks the payment until a person decides what happens next. Connecting a testnet wallet is optional, and nothing is paid.</p>
+          <h1>Know what was agreed. Verify what happened. Control what happens next.</h1>
+          <p>This workspace is synthetic. Fifty cartons were agreed and 42 were received, so the payment stays blocked until a person decides. Connecting a testnet wallet does not pay anyone.</p>
         </div>
         <div class="hero-actions">
           <button id="demoSeed" class="btn btn-hero" type="button" data-demo-seed>Explore the live demo</button>
@@ -909,6 +909,18 @@ function renderAmendments(record){
   }).join('');
   return `<h3 class="card-title">Amendments</h3><p class="meta">Changes create a new version. Original terms and previous evidence remain preserved.</p><form id="amendmentForm" autocomplete="off"><div class="field"><label for="amend_reason">Reason for amendment</label><input id="amend_reason" name="reason" required minlength="3" maxlength="500" placeholder="Reason agreed by both parties"></div><div class="row"><div class="field"><label for="amend_quantity">New quantity</label><input id="amend_quantity" name="quantity" type="number" min=".01" step="any" placeholder="${esc(commitment.quantity)}"></div><div class="field"><label for="amend_amount">New amount</label><input id="amend_amount" name="amount" type="number" min=".01" step="any" placeholder="${esc(commitment.amount)}"></div></div><div class="row"><div class="field"><label for="amend_due">New due date</label><input id="amend_due" name="due_date" type="date"></div><div class="field"><label for="amend_unit">New unit</label><input id="amend_unit" name="unit" maxlength="40" placeholder="${esc(commitment.unit)}"></div></div><div class="field"><label for="amend_description">New description</label><input id="amend_description" name="description" maxlength="500" placeholder="${esc(commitment.description)}"></div><div class="field"><label for="amend_condition">New payment condition</label><input id="amend_condition" name="payment_condition" maxlength="300" placeholder="${esc(commitment.payment_condition)}"></div><div class="field"><label for="amend_currency">New currency</label><input id="amend_currency" name="currency" minlength="3" maxlength="8" placeholder="${esc(commitment.currency)}"></div><button class="btn" type="submit">Record amendment</button></form><h3 class="subhead">Version history</h3>${versions || '<p class="meta">No versions recorded.</p>'}`;
 }
+function renderPaymentDecision(record){
+  const proposals = record.payment_proposals || [];
+  const latest = proposals[proposals.length - 1];
+  const decisions = record.payment_decisions || [];
+  if (!latest) return '';
+  const decided = decisions.some(item => item.proposal_id === latest.id);
+  const history = decisions.map(item => `<li>${esc(item.decision)} by ${esc(item.actor)} · ${esc(item.outcome && item.outcome.financial_action || '')} · ${esc(item.outcome && item.outcome.reason || '')}</li>`).join('');
+  let controls = '';
+  if (!decided && latest.status === 'AWAITING_HUMAN_APPROVAL') controls = `<div class="btn-row"><button type="button" class="btn btn-sm payment-decision" data-proposal="${esc(latest.id)}" data-decision="APPROVED">Record human approval — no transfer</button><button type="button" class="btn btn-sm btn-danger payment-decision" data-proposal="${esc(latest.id)}" data-decision="REJECTED">Reject proposal</button></div>`;
+  else if (!decided && latest.status === 'BLOCKED') controls = '<p class="meta">This proposal is blocked. A person cannot authorise it.</p>';
+  return `<h3 class="subhead">Human authorisation</h3><p class="meta">Connecting a wallet does not authorise a payment. NEAR Intents has no testnet, so approval is recorded and no transfer is submitted.</p>${controls}${history ? `<ul class="log">${history}</ul>` : ''}`;
+}
 function renderAnchor(record){
   const anchor = record.audit_anchor || {};
   const receipts = record.audit_receipts || [];
@@ -923,7 +935,7 @@ function renderPayments(record){
   const history = proposals.length
     ? `<div class="stack">${proposals.map(item => `<article class="record"><div class="record-top"><h3>${esc(cash(item.proposal.requested_amount, item.proposal.currency))}</h3>${badge(item.status)}</div><p>${esc(item.proposal.message || '')}</p><p class="meta">${esc(item.proposal.destination || '')} · ${when(item.created_at)}</p>${(item.proposal.reasons || []).length ? `<ul class="log">${item.proposal.reasons.map(reason => `<li><b>${esc(pretty(reason.code))}</b> — ${esc(reason.message)}</li>`).join('')}</ul>` : ''}</article>`).join('')}</div>`
     : emptyBlock('shield', 'No proposals yet', 'Evaluate a payment against the owner policy. A passing result still needs a person. Nothing is transferred.');
-  return `<h3 class="card-title">Payment protection</h3><p class="meta">Simulation only. The policy starts disabled. Set an exact approved destination and a spending cap. OUTCOME never approves, signs or submits a transfer.</p><form id="policyForm" autocomplete="off"><label class="check"><input name="enabled" type="checkbox" ${checked(policy.enabled)}> Enable policy checks</label><div class="field"><label for="max_amount">Maximum permitted amount</label><input id="max_amount" name="max_amount" type="number" min=".01" step="any" value="${esc(policy.max_amount)}" required></div><div class="field"><label for="allowed_destination">Exact approved destination</label><input id="allowed_destination" name="allowed_destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><label class="check"><input name="require_full_delivery" type="checkbox" ${checked(policy.require_full_delivery)}> Require full delivery evidence</label><label class="check"><input name="require_invoice_match" type="checkbox" ${checked(policy.require_invoice_match)}> Require exact invoice match</label><label class="check"><input name="require_verified_evidence" type="checkbox" ${checked(policy.require_verified_evidence)}> Require latest evidence to be reviewed and verified</label><label class="check"><input name="allow_partial_payments" type="checkbox" ${checked(policy.allow_partial_payments)}> Allow partial payment proposals</label><button class="btn" type="submit">Save payment policy</button></form><h3 class="subhead">Evaluate a proposal</h3><form id="proposalForm" autocomplete="off"><div class="row"><div class="field"><label for="proposal_amount">Proposed amount</label><input id="proposal_amount" name="amount" type="number" min=".01" step="any" value="${esc(commitment.amount)}" required></div><div class="field"><label for="proposal_currency">Currency</label><input id="proposal_currency" name="currency" value="${esc(commitment.currency)}" required minlength="3" maxlength="8"></div></div><div class="field"><label for="proposal_destination">Destination</label><input id="proposal_destination" name="destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><button class="btn" type="submit">Evaluate proposal — no transfer</button></form><details id="security-test" class="disclosure"${securityOpen ? ' open' : ''}><summary>Adversarial payment test</summary><p>Simulate a prompt-injected agent trying to exceed the owner cap and pay an unapproved destination. The policy gate should block it before any signing or transfer.</p><button id="redTeamPaymentButton" class="btn btn-danger-solid" type="button">Run adversarial payment test</button></details><h3 class="subhead">Proposal history</h3>${history}<p class="meta check-note">A passing proposal is not approval. No funds move. A wallet signature, if you add one, is only for the audit record.</p>${renderAnchor(record)}`;
+  return `<h3 class="card-title">Payment protection</h3><p class="meta">Simulation only. The policy starts disabled. Set an exact approved destination and a spending cap. OUTCOME never approves, signs or submits a transfer.</p><form id="policyForm" autocomplete="off"><label class="check"><input name="enabled" type="checkbox" ${checked(policy.enabled)}> Enable policy checks</label><div class="field"><label for="max_amount">Maximum permitted amount</label><input id="max_amount" name="max_amount" type="number" min=".01" step="any" value="${esc(policy.max_amount)}" required></div><div class="field"><label for="allowed_destination">Exact approved destination</label><input id="allowed_destination" name="allowed_destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><label class="check"><input name="require_full_delivery" type="checkbox" ${checked(policy.require_full_delivery)}> Require full delivery evidence</label><label class="check"><input name="require_invoice_match" type="checkbox" ${checked(policy.require_invoice_match)}> Require exact invoice match</label><label class="check"><input name="require_verified_evidence" type="checkbox" ${checked(policy.require_verified_evidence)}> Require latest evidence to be reviewed and verified</label><label class="check"><input name="allow_partial_payments" type="checkbox" ${checked(policy.allow_partial_payments)}> Allow partial payment proposals</label><button class="btn" type="submit">Save payment policy</button></form><h3 class="subhead">Evaluate a proposal</h3><form id="proposalForm" autocomplete="off"><div class="row"><div class="field"><label for="proposal_amount">Proposed amount</label><input id="proposal_amount" name="amount" type="number" min=".01" step="any" value="${esc(commitment.amount)}" required></div><div class="field"><label for="proposal_currency">Currency</label><input id="proposal_currency" name="currency" value="${esc(commitment.currency)}" required minlength="3" maxlength="8"></div></div><div class="field"><label for="proposal_destination">Destination</label><input id="proposal_destination" name="destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><button class="btn" type="submit">Evaluate proposal — no transfer</button></form><details id="security-test" class="disclosure"${securityOpen ? ' open' : ''}><summary>Adversarial payment test</summary><p>Simulate a prompt-injected agent trying to exceed the owner cap and pay an unapproved destination. The policy gate should block it before any signing or transfer.</p><button id="redTeamPaymentButton" class="btn btn-danger-solid" type="button">Run adversarial payment test</button></details><h3 class="subhead">Proposal history</h3>${history}<p class="meta check-note">A passing proposal is not approval. No funds move. A wallet signature, if you add one, is only for the audit record.</p>${renderPaymentDecision(record)}${renderAnchor(record)}`;
 }
 function renderDetail(){
   const record = state.record;
@@ -1143,6 +1155,17 @@ async function savePolicy(form){
     try {
       await api('/api/commitments/' + encodeURIComponent(id) + '/payment-policy', { method:'PUT', body:JSON.stringify({ enabled: data.has('enabled'), max_amount: Number(data.get('max_amount')), allowed_destination: data.get('allowed_destination'), require_full_delivery: data.has('require_full_delivery'), require_invoice_match: data.has('require_invoice_match'), require_verified_evidence: data.has('require_verified_evidence'), allow_partial_payments: data.has('allow_partial_payments') }) });
       toast('Payment policy saved. No transfer was enabled.', 'ok');
+      await showDetail(id);
+    } catch (error) { toast(error.message, 'error'); }
+  });
+}
+async function decidePayment(button){
+  const id = state.record?.commitment.id;
+  if (!id) return;
+  await withBusy(button, async () => {
+    try {
+      const result = await api('/api/commitments/' + encodeURIComponent(id) + '/payment-decisions', { method:'POST', body: JSON.stringify({ proposal_id: button.dataset.proposal, decision: button.dataset.decision, actor: 'Business owner' }) });
+      toast(result.outcome.reason, 'warn');
       await showDetail(id);
     } catch (error) { toast(error.message, 'error'); }
   });
@@ -1398,7 +1421,9 @@ document.addEventListener('click', event => {
   const redTeam = hit(event, '#redTeamPaymentButton');
   if (redTeam){ runSecurityTest(redTeam); return; }
   const anchor = hit(event, '#anchorRecord');
-  if (anchor) signAnchor(anchor);
+  if (anchor){ signAnchor(anchor); return; }
+  const paymentDecision = hit(event, '.payment-decision');
+  if (paymentDecision) decidePayment(paymentDecision);
 });
 document.addEventListener('submit', event => {
   const form = event.target;
