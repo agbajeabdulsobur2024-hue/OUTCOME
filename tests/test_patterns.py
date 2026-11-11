@@ -19,6 +19,41 @@ def test_repeated_short_delivery_requires_two_verified_incidents():
     assert len(short) == 0
 
 
+def test_newer_unreviewed_quantity_does_not_hide_a_verified_short_delivery_signal():
+    commitments = [
+        {"id": "a", "supplier": "Acme", "quantity": 50, "amount": 250, "due_date": "2026-12-01"},
+        {"id": "b", "supplier": "Acme", "quantity": 20, "amount": 100, "due_date": "2026-12-02"},
+    ]
+    evidence = {
+        "a": [
+            {"id": "ea", "kind": "quantity_received", "value": 42, "review_status": "VERIFIED"},
+            {"id": "ea2", "kind": "quantity_received", "value": 50, "review_status": "UNREVIEWED"},
+        ],
+        "b": [
+            {"id": "eb", "kind": "quantity_received", "value": 16, "review_status": "VERIFIED"},
+            {"id": "eb2", "kind": "quantity_received", "value": 20, "review_status": "UNREVIEWED"},
+        ],
+    }
+    result = detect_supplier_patterns(commitments, evidence, today=date(2026, 11, 10))
+    short = next(item for item in result if item["pattern_type"] == "REPEATED_SHORT_DELIVERY")
+    assert short["occurrences"] == 2
+
+
+def test_milestone_shortfalls_use_the_same_signal_as_a_delivery():
+    commitments = [
+        {"id": "a", "supplier": "Jordan Lee", "quantity": 3, "amount": 3000, "due_date": "2026-12-01"},
+        {"id": "b", "supplier": "Jordan Lee", "quantity": 2, "amount": 800, "due_date": "2026-12-02"},
+    ]
+    evidence = {
+        "a": [{"id": "ea", "kind": "obligation_fulfilled", "value": 2, "review_status": "VERIFIED"}],
+        "b": [{"id": "eb", "kind": "obligation_fulfilled", "value": 1, "review_status": "VERIFIED"}],
+    }
+    result = detect_supplier_patterns(commitments, evidence, today=date(2026, 11, 10))
+    short = next(item for item in result if item["pattern_type"] == "REPEATED_SHORT_DELIVERY")
+    assert short["occurrences"] == 2
+    assert short["counterparty"] == "Jordan Lee"
+
+
 def test_two_verified_short_deliveries_create_early_signal_not_accusation():
     commitments = [
         {"id": "a", "supplier": "Acme", "quantity": 100, "amount": 500, "due_date": "2026-12-01"},

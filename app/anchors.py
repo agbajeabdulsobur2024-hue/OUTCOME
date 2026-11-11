@@ -12,6 +12,9 @@ from app.auth_near import contract_id, rpc_url
 
 ALLOWED_METHOD = 'record_event'
 EVENT_TYPE = 'COMMITMENT_STATE_ANCHORED'
+OWNER_ACCOUNT_ID = 'thewordweaver.testnet'
+STORAGE_BYTE_COST_YOCTO = 10 ** 19
+EVENT_HASH_BYTES = 64
 
 
 class AnchorRejected(Exception):
@@ -99,6 +102,42 @@ def _decode_args(raw) -> dict:
     return parsed
 
 
+def storage_bytes_for_event(
+    *,
+    commitment_id: str,
+    event_type: str,
+    payload_hash: str,
+    previous_hash: str,
+    actor_account_id: str,
+    last_hash_len: int = EVENT_HASH_BYTES,
+) -> int:
+    """Bytes added for one new audit event.
+
+    LookupMap key is a 1-byte storage prefix plus an 8-byte sequence.
+    The value is the Borsh encoding of the event. Replacing last_hash grows
+    the contract state only when it is shorter than the 64-character event hash.
+    """
+    value = (
+        8
+        + 4 + len(commitment_id)
+        + 4 + len(event_type)
+        + 4 + len(payload_hash)
+        + 4 + len(previous_hash)
+        + 4 + EVENT_HASH_BYTES
+        + 4 + len(actor_account_id)
+        + 8
+        + 8
+    )
+    total = 1 + 8 + value
+    if last_hash_len < EVENT_HASH_BYTES:
+        total += EVENT_HASH_BYTES - last_hash_len
+    return total
+
+
+def required_storage_deposit_yocto(**kwargs) -> int:
+    return storage_bytes_for_event(**kwargs) * STORAGE_BYTE_COST_YOCTO
+
+
 def assess_anchor_transaction(
     tx_result: dict,
     *,
@@ -122,11 +161,26 @@ def assess_anchor_transaction(
     call = _function_call(transaction)
     if call.get('method_name') != ALLOWED_METHOD:
         raise AnchorRejected(403, 'Only a hash-only record_event can be stored. Other contract calls are refused.')
-    deposit = str(call.get('deposit', '0'))
-    if deposit not in {'0', '0.0'}:
-        raise AnchorRejected(422, 'The audit transaction must not attach funds.')
     args = _decode_args(call.get('args'))
     payload_hash = str(args.get('payload_hash', '')).lower()
+    deposit_text = str(call.get('deposit', '0')).split('.', 1)[0] or '0'
+    try:
+        attached = int(deposit_text)
+    except ValueError:
+        raise AnchorRejected(422, 'The attached deposit could not be read.')
+    if attached == 0:
+        if expected_signer != OWNER_ACCOUNT_ID:
+            raise AnchorRejected(422, 'A non-owner audit record must attach the exact storage deposit.')
+    else:
+        required = required_storage_deposit_yocto(
+            commitment_id=str(args.get('commitment_id') or ''),
+            event_type=str(args.get('event_type') or ''),
+            payload_hash=payload_hash,
+            previous_hash=str(args.get('previous_hash') or ''),
+            actor_account_id=expected_signer,
+        )
+        if attached != required:
+            raise AnchorRejected(422, 'The attached deposit is not the storage amount required for this audit record.')
     if payload_hash != expected_payload_hash:
         raise AnchorRejected(422, 'The anchored digest does not match this commitment.')
     if args.get('commitment_id') != expected_commitment_ref:

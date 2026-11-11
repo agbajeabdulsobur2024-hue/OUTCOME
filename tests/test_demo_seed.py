@@ -17,6 +17,7 @@ def test_demo_seed_builds_synthetic_scenario_and_never_overwrites_existing_data(
         first = next(x for x in body['commitments'] if x['commitment']['description'].startswith('Printer paper — purchase order PO-104'))
         assert first['commitment']['quantity'] == 50
         assert first['commitment']['unit'] == 'cartons'
+        assert first['commitment']['commitment_kind'] == 'supplier_delivery'
         assert {item['kind']: item['value'] for item in first['evidence']}['quantity_received'] == 42
         assert first['payment_proposals'][0]['status'] == 'BLOCKED'
         assert first['actions'][0]['status'] == 'PROPOSED'

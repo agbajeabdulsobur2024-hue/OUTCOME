@@ -1,7 +1,7 @@
 # OUTCOME — Payment Policy & Proposal Simulation
 
 ## Purpose
-Demonstrate how OUTCOME's commitment intelligence governs a proposed supplier payment without custody, signing, or transfer execution.
+Show how a recorded commitment — a supplier order or any other obligation — is checked before a person decides. This does not custody funds, sign, or execute a transfer.
 
 ## Owner-defined policy
 Each commitment has one current policy plus an append-only history of every policy update:
@@ -36,16 +36,23 @@ Action records are linked to the same commitment ID. The lifecycle is `PROPOSED`
 - `GET /api/commitments/{id}/payment-proposals`
 
 ## Safety boundary
-- Execution mode is always `SIMULATION_ONLY`.
-- `transfer_executed` is always false.
-- `transaction_hash` is always null.
-- No wallet private key, seed phrase, custody or blockchain signing is used.
-- Policy checks are not authentication. The current MVP has no user authentication or tenant isolation and must not be exposed as a production payment service.
-- A production version must authenticate the owner, isolate business tenants, protect policy changes, require fresh evidence, record approval identity, use idempotency keys, and independently verify chain settlement before claiming an outcome.
+- A proposal is a recommendation. `AWAITING_HUMAN_APPROVAL` means a person may decide. `APPROVED_NOT_SUBMITTED` means a person approved and no transfer was submitted. `BLOCKED` cannot be approved. None of these is a completed payment.
+- `transfer_executed` stays false and `transaction_hash` stays null. There is no submit or execute call.
+- No wallet private key, seed phrase, custody or blockchain signing is used for payment.
+- Sessions and workspaces isolate testers. Evidence reviews are append-only. Reviewer names are still labels, not signatures.
+- This is not a production payment service.
+
+## Payment options that are not implemented
+
+These are boundaries, not integrations:
+
+1. The in-app proposal and human decision above. This is implemented. It does not move funds.
+2. A tester-signed hash-only audit record on NEAR testnet. The contract source for a storage-backed upgrade is in this repository and is not deployed. The live contract is still owner-only.
+3. NEAR Intents. The official Agent API is mainnet-only and is not connected. There is no Intents testnet sandbox in this app.
 
 ## Known limitations
 - Destination is a manually entered exact-match identifier, not a cryptographically verified wallet ownership proof.
-- Evidence is manually entered; source labels are provenance metadata, not proof of authenticity. Review records are append-only, but reviewer names are not authenticated in this MVP.
-- Latest evidence by type is used; evidence review/verification workflow is not yet implemented.
+- Evidence is manually entered; source labels are provenance metadata, not proof of authenticity. Review records are append-only, and reviewer names are labels rather than signatures.
+- When a review status is present, only the latest verified quantity or invoice changes the assessment. A newer unreviewed record does not clear a verified shortfall. Payment policy still refuses to pass while the latest applicable evidence is unverified.
 - The proposal engine does not submit transactions and must not be described as a live NEAR integration.
 - There is no settlement ledger or cumulative paid-to-date accounting. Multiple proposals are independent simulations, not a record of funds already paid. A real integration must reconcile confirmed on-chain settlement before allowing subsequent payments.

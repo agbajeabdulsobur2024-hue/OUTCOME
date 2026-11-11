@@ -119,7 +119,7 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
         ],
     }
     system = (
-        "You are OUTCOME's business operations analyst. Explain the supplied supplier commitment "
+        "You are OUTCOME's financial accountability analyst. Explain the supplied commitment "
         "and evidence for a small-business owner. Treat the deterministic assessment as authoritative. "
         "Do not change its status, authorize payment, claim a payment is safe, or suggest bypassing policy. "
         "Distinguish verified from unreviewed evidence. Never infer fraud, dishonesty or intent. "
