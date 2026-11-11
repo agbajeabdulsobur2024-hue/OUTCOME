@@ -1,5 +1,6 @@
 import base64
 import json
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -79,6 +80,43 @@ def test_visitor_explores_guided_demo_without_a_wallet(tmp_path, monkeypatch):
         listed = client.get('/api/commitments')
         assert listed.status_code == 200
         assert len(listed.json()) == 2
+
+
+def test_demo_trial_reads_stay_on_the_open_connection(tmp_path, monkeypatch):
+    use_db(tmp_path, monkeypatch)
+    with TestClient(main.app) as client:
+        calls = {'n': 0}
+        real = main.connect
+
+        @contextmanager
+        def counting():
+            calls['n'] += 1
+            with real() as db:
+                yield db
+
+        monkeypatch.setattr(main, 'connect', counting)
+        opened = client.post('/api/demo/trials')
+        assert opened.status_code == 201, opened.text
+        body = opened.json()
+        assert body['status'] == 'seeded'
+        assert len(body['commitments']) == 2
+        assert body['commitments'][0]['evidence']
+        # One connection resolves the request. The next writes the sample and
+        # reads both commitments back before it closes.
+        assert calls['n'] == 2, calls['n']
+
+        calls['n'] = 0
+        listed = client.get('/api/commitments')
+        assert listed.status_code == 200
+        assert len(listed.json()) == 2
+        assert calls['n'] == 2, calls['n']
+
+        calls['n'] = 0
+        resumed = client.post('/api/demo/trials')
+        assert resumed.status_code == 201, resumed.text
+        assert resumed.json()['status'] == 'resumed'
+        assert len(resumed.json()['commitments']) == 2
+        assert calls['n'] == 2, calls['n']
 
 
 def test_two_demo_visitors_and_two_signed_in_testers_are_isolated(tmp_path, monkeypatch):

@@ -38,6 +38,11 @@ def public_contract() -> dict:
         'explorer_tx': 'https://testnet.nearblocks.io/txns/',
         'anchor_policy_method': 'get_anchor_policy',
         'policy_after_upgrade': 'any_account',
+        'code_hash': '5UNnZ4KvwoCxHt5ADhJnkCchP2h1xR6fnCXPP8c1rgpr',
+        'owner_account_id': OWNER_ACCOUNT_ID,
+        'owner_event_id': 'OUTCOME-DEMO-PO-104',
+        'upgrade_transaction': 'FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc',
+        'tester_signature_recorded': False,
         'known_transactions': [
             {
                 'label': 'Deploy and init',
@@ -50,6 +55,15 @@ def public_contract() -> dict:
                 'hash': '3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj',
                 'url': 'https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj',
                 'status': 'FINAL',
+                'stored_id': 'OUTCOME-DEMO-PO-104',
+                'note': 'Owner event. It survived the upgrade and is not a tester signature.',
+            },
+            {
+                'label': 'Upgrade',
+                'hash': 'FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc',
+                'url': 'https://testnet.nearblocks.io/txns/FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc',
+                'status': 'FINAL',
+                'code_hash': '5UNnZ4KvwoCxHt5ADhJnkCchP2h1xR6fnCXPP8c1rgpr',
             },
         ],
     }

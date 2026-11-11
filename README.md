@@ -17,7 +17,7 @@ The Acme printer-paper orders are a synthetic demonstration, not the product bou
 
 A business agrees to buy 50 cartons of printer paper for USD 250. Verified evidence shows 42 received, so the estimated exposure is USD 40. OUTCOME explains the shortfall, recommends holding the release, and will not treat that evidence as proof the order was fulfilled. The USD 250 proposal cannot be approved. A second order from the same supplier shows the same kind of gap, so the repeated signal appears. No money moves.
 
-The hosted app at [outcome-puce.vercel.app](https://outcome-puce.vercel.app) serves version 0.4.0, including the work merged in pull request 9. The honesty fixes and the storage-bounded contract upgrade in this branch are not deployed. Use synthetic data only.
+The hosted app at [outcome-puce.vercel.app](https://outcome-puce.vercel.app) serves version 0.4.0 until a later app deploy. The storage-bounded contract upgrade is already live on testnet. Use synthetic data only.
 
 ## NEAR
 
@@ -25,11 +25,12 @@ The hosted app at [outcome-puce.vercel.app](https://outcome-puce.vercel.app) ser
 
 Completed on testnet account `thewordweaver.testnet`. The contract stores hash-only events in an append-only hash chain. The app does not hold a full-access key, and a full-access key was not put in Vercel.
 
-- Deploy and init, FINAL: [`8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy`](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy). On-chain `code_hash` `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`.
-- `record_event` accepted and stored, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj).
+- Deploy and init, FINAL: [`8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy`](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy).
+- `record_event` accepted and stored, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj). Stored id `OUTCOME-DEMO-PO-104`. That owner event survived the upgrade. No tester signature has been written on chain.
+- Upgrade, FINAL: [`FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc`](https://testnet.nearblocks.io/txns/FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc). Code hash `5UNnZ4KvwoCxHt5ADhJnkCchP2h1xR6fnCXPP8c1rgpr`. `get_anchor_policy` returns `any_account`. The owner is still `thewordweaver.testnet`.
 - Restricted key limited to `record_event`. `admin_probe` rejected with `MethodNameMismatch`: [`7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk`](https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk). That rejection is not indexed, which is expected on this nearcore version.
 
-The deployed contract still accepts `record_event` only from its owner. `get_anchor_policy` is not on that deployment. The app does not ask a tester to sign an anchor until a live view returns `any_account`. The source in this repository prepares a storage-backed upgrade and does not deploy it. A visitor can connect a testnet wallet for a personal workspace. That connection does not authorise a payment. Setup: [near/README.md](near/README.md). The upgrade review is [CONTRACT_UPGRADE_REVIEW.md](CONTRACT_UPGRADE_REVIEW.md). Full status: [NEAR hackathon integration](docs/NEAR_HACKATHON_INTEGRATION.md).
+The app offers a signature only when a live `get_anchor_policy` view returns `any_account`. If that view cannot be read, the signature is not offered. Connecting a wallet to sign writes an audit record only and does not authorise a payment. A visitor can connect a testnet wallet for a personal workspace. That connection does not authorise a payment either. Setup: [near/README.md](near/README.md). The upgrade review is [CONTRACT_UPGRADE_REVIEW.md](CONTRACT_UPGRADE_REVIEW.md). Full status: [NEAR hackathon integration](docs/NEAR_HACKATHON_INTEGRATION.md).
 
 ### NEAR AI Cloud
 
@@ -54,7 +55,7 @@ uvicorn app.main:app --reload
 
 1. Open http://127.0.0.1:8000.
 2. Open API docs at http://127.0.0.1:8000/docs.
-3. A first visit opens the guide. **Get started** walks through the labelled sample. No wallet is required. **Revisit the sample** opens that sample again later.
+3. A first visit is the landing. **Get started** is the primary action and walks through the labelled sample. No wallet is required. **Revisit the sample** opens that sample again without the introduction. **Revisit the guide** plays it again. A completed or dismissed introduction does not open on its own.
 
 The guided demo gives that visitor a private synthetic copy: two Acme orders, verified short deliveries, a configured payment policy, a blocked proposal, a follow-up action, and a repeated short-delivery signal. It does not overwrite another visitor’s data. The older shared seed still refuses to run when that shared area already has commitments.
 

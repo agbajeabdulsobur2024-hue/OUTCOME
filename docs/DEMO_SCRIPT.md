@@ -3,7 +3,7 @@
 This walkthrough is the synthetic Acme supplier trial. It demonstrates the product. It is not the only commitment OUTCOME can record. A person can open **New commitment** and enter a different obligation, such as a milestone or a repayment, and the same checks run.
 
 ## Setup
-Run the FastAPI app and open the local UI. A first visit opens the guide on the landing page. **Get started** enters that visitor’s labelled sample. No wallet is required. **Revisit the sample** opens the same sample later without restarting the guide, and **Revisit the guide** plays the introduction again. Each visitor gets a separate synthetic copy, so one person’s changes do not alter the next person’s sample or anyone’s personal workspace. The old shared seed still refuses to overwrite commitments that are already in that shared area.
+Run the FastAPI app and open the local UI. A first visit is the landing, with **Get started** as the primary action. That enters the visitor’s labelled sample and stages one moment at a time. No wallet is required. **Revisit the sample** opens the same sample later without restarting the introduction, and **Revisit the guide** plays it again. A completed or dismissed introduction stays quiet. Each visitor gets a separate synthetic copy, so one person’s changes do not alter the next person’s sample or anyone’s personal workspace. The old shared seed still refuses to overwrite commitments that are already in that shared area.
 
 ## 1. Show the intelligence (30 seconds)
 The dashboard shows two Acme Supplies commitments. Both have verified short-delivery evidence:
@@ -43,7 +43,7 @@ Submit the payment proposal again. With the latest delivery evidence verified, i
 Emphasize the boundary: approval is not a payment, and no money moves.
 
 ## 5b. Optional testnet audit (if the tester has a wallet)
-Connect a NEAR testnet wallet from the landing page and sign the audit record on the order. The wallet submits `record_event` to `thewordweaver.testnet`. OUTCOME shows the explorer link only after it has checked that the final transaction matches this order’s digest. The contract currently deployed still accepts that call only from `thewordweaver.testnet` until its owner upgrades the contract in this repository. A tester without a wallet can skip this step.
+Connect a NEAR testnet wallet from the landing page and sign the audit record on the order only when the live `get_anchor_policy` view returns `any_account`. The wallet submits `record_event` to `thewordweaver.testnet`. OUTCOME shows the explorer link only after it has checked that the final transaction matches this order’s digest. That signature is the audit record only and does not authorise a payment. The upgrade [FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc](https://testnet.nearblocks.io/txns/FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc) is FINAL. No tester signature has been written on chain yet. A tester without a wallet can skip this step.
 
 ## 6. Close (15 seconds)
 OUTCOME connects what was agreed, what happened, what evidence supports it, what action was taken and whether the intended result was verified. The shared commitment record keeps that history together.

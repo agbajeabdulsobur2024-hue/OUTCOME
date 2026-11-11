@@ -6,11 +6,12 @@ This is an isolated testnet demonstration. It does not move NEAR or supplier fun
 
 Account `thewordweaver.testnet`:
 
-- Deploy and init, FINAL: [`8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy`](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy). On-chain `code_hash` `7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS`.
-- `record_event` accepted and stored, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj).
+- Deploy and init, FINAL: [`8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy`](https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy).
+- `record_event` accepted and stored, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj). Stored id `OUTCOME-DEMO-PO-104`. That owner event survived the upgrade. No tester signature has been written on chain.
+- Upgrade, FINAL: [`FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc`](https://testnet.nearblocks.io/txns/FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc). Code hash `5UNnZ4KvwoCxHt5ADhJnkCchP2h1xR6fnCXPP8c1rgpr`. `get_anchor_policy` returns `any_account`. The owner is still `thewordweaver.testnet`.
 - `admin_probe` rejected with `MethodNameMismatch`: [`7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk`](https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk). That rejection is not indexed, which is expected on this nearcore version.
 
-The deployed contract accepts `record_event` only from its owner. The source in this repository prepares a later upgrade: the owner may still append with no deposit, any other account must attach the storage deposit from `get_required_storage_deposit`, and `admin_probe` stays owner-only. That upgrade has not been submitted. The account owner must deploy it with their own key. Do not paste that key into the repo, the hosted app, or Vercel. The web app does not offer a tester signature until the live `get_anchor_policy` view returns `any_account`. It does not hold a full-access key, and a full-access key was not put in Vercel. Storage math and the sandbox checks are in [CONTRACT_UPGRADE_REVIEW.md](../CONTRACT_UPGRADE_REVIEW.md). The steps below are how the restricted-key proof is repeated.
+The upgrade is live. The owner may still append with no deposit, any other account must attach the storage deposit from `get_required_storage_deposit`, and `admin_probe` stays owner-only. Do not paste a full-access key into the repo, the hosted app, or Vercel. The web app offers a signature only when a live `get_anchor_policy` view returns `any_account`. If that view cannot be read, the signature is not offered. A signature is the audit record only and does not authorise a payment. The app does not hold a full-access key, and a full-access key was not put in Vercel. Storage math and the sandbox checks are in [CONTRACT_UPGRADE_REVIEW.md](../CONTRACT_UPGRADE_REVIEW.md). The steps below are how the restricted-key proof is repeated.
 
 ## What the testnet proof is designed to demonstrate
 

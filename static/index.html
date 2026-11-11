@@ -109,7 +109,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .signal-card h3{font-family:var(--display);font-size:16px;margin:0}
 .signal-card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .signal-type{margin:8px 0 0;font-weight:700}
-.signal-stat,.signal-note,.meta,.quiet-line{color:var(--muted);font-size:14px;line-height:1.5}
+.signal-stat,.signal-note,.meta,.quiet-line{color:var(--muted);font-size:14px;line-height:1.5;overflow-wrap:anywhere}
 .signal-note{margin:8px 0 0}
 .form-card{max-width:740px}
 label{display:block;font-size:13.5px;color:#3e5148;font-weight:700;margin:14px 0 6px}
@@ -139,9 +139,14 @@ input::placeholder{color:#8b9a93}
 .btn-row{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin-top:12px}
 .btn-row .btn{flex:1 1 160px}
 form .btn{margin-top:16px}
-.empty{padding:8px 2px 4px}
-.empty-mark{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--mint);color:#28754f;margin-bottom:12px}
-.empty h3{font-family:var(--display);font-size:16px;margin:0 0 6px}
+.empty{padding:22px 6px 10px}
+.empty-mark{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--mint);color:#28754f;margin-bottom:14px}
+.empty h3{font-family:var(--display);font-size:20px;letter-spacing:-.03em;margin:0 0 8px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.skeleton{display:grid;gap:10px}
+.skeleton-row{height:76px;border-radius:14px;background:linear-gradient(90deg,#e7eee9 0%,#f7faf8 48%,#e7eee9 100%);background-size:200% 100%;animation:skeleton 1.3s ease-in-out infinite}
+.skeleton-row.short{height:28px;width:42%;border-radius:8px}
+@keyframes skeleton{from{background-position:100% 0}to{background-position:-100% 0}}
 .empty p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.55;max-width:58ch}
 .empty-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .detail-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px 16px;flex-wrap:wrap}
@@ -277,24 +282,48 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
   .btn-danger-solid:hover{background:#833f32}
   .nav a:hover{background:#233b30;color:#fff}
 }
-.sample-banner{display:flex;align-items:center;justify-content:space-between;gap:12px 18px;flex-wrap:wrap;margin:0 0 16px;padding:12px 14px;background:#fff6e4;border:1px solid #f0e3bf;border-radius:14px;color:#6d4b10;font-size:14.5px;line-height:1.45}
+.sample-banner{display:flex;align-items:center;justify-content:space-between;gap:12px 18px;flex-wrap:wrap;margin:0 0 16px;padding:14px 16px;background:#fff6e4;border:1px solid #f0e3bf;border-radius:16px;color:#6d4b10;font-size:15px;line-height:1.5}
 .sample-banner strong{font-weight:800}
-.guide{position:fixed;z-index:30;right:20px;bottom:20px;width:min(420px,calc(100vw - 32px));background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 50px rgba(16,37,28,.16);padding:18px 18px 16px}
-.guide-kicker{margin:0 0 6px;color:#2f7a52;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
-.guide h2{font-family:var(--display);font-size:22px;letter-spacing:-.03em;line-height:1.2;margin:0 0 8px}
-.guide p{margin:0;color:#31443b;font-size:14.5px;line-height:1.5}
-.guide-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.guide-progress{margin-top:10px;color:#66776e;font-size:12.5px;font-weight:700}
-.guide-focus{outline:3px solid #1f7a52;outline-offset:3px}
-.landing-points{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+body.is-guided .app-shell{grid-template-columns:252px minmax(0,1fr) minmax(320px,420px)}
+.stage{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;justify-content:flex-end;gap:22px;padding:32px 32px 36px;background:#10211c;color:#f4faf6;overflow:auto}
+.stage-progress{display:flex;gap:6px;margin-bottom:auto;padding-top:6px}
+.stage-progress span{flex:1;height:3px;border-radius:99px;background:#ffffff2b}
+.stage-progress span.is-done,.stage-progress span.is-now{background:#8bd1a5}
+.stage-kicker{margin:0 0 12px;color:#8bd1a5;font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.stage h2{font-family:var(--display);font-size:clamp(32px,3vw,46px);line-height:1.02;letter-spacing:-.045em;font-weight:800;margin:0 0 14px;color:#fff}
+.stage-copy p{margin:0;color:#d5e4db;font-size:17px;line-height:1.5;max-width:34ch}
+.stage-copy.is-in{animation:stageIn .45s cubic-bezier(.2,.7,.2,1)}
+@keyframes stageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.stage-actions{display:grid;gap:4px}
+.stage .btn-stage{width:100%;min-height:56px;padding:16px 18px;border-radius:16px;background:#8bd1a5;color:#10251b;font-size:16.5px;box-shadow:none}
+.stage .btn-stage:hover,.stage .btn-stage:active{background:#c9eed6;color:#10251b}
+.stage-quiet{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.stage-text{min-height:44px;padding:10px 2px;color:#c5d5cb;font-weight:650;font-size:15px}
+.stage-text:hover{color:#fff}
+.guide-focus{border-radius:16px;box-shadow:0 0 0 1px #1f7a54,0 0 0 8px #1f7a5418;scroll-margin-top:calc(var(--header-offset, 72px) + 16px);scroll-margin-bottom:calc(var(--stage-space, 0px) + 24px);animation:guideSettle .55s ease}
+@keyframes guideSettle{from{box-shadow:0 0 0 0 #1f7a5400}to{box-shadow:0 0 0 1px #1f7a54,0 0 0 8px #1f7a5418}}
+.landing-points{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:28px}
 .landing-card b{display:block;font-family:var(--display);font-size:16px;margin-bottom:4px;color:#1a2a23}
-@media(max-width:700px){.landing-points{grid-template-columns:1fr}.guide{right:16px;left:16px;width:auto}}
-.landing{min-height:100vh;background:var(--canvas)}
-.landing-wrap{max-width:920px;margin:0 auto;padding:42px 20px 80px}
+@media(max-width:1099px){
+  body.is-guided .app-shell{display:block}
+  body.is-guided .stage{position:fixed;z-index:24;top:auto;left:0;right:0;bottom:0;height:auto;max-height:min(42vh,380px);justify-content:flex-start;gap:12px;padding:16px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid #234036;box-shadow:0 -18px 50px rgba(8,16,12,.28)}
+  body.is-guided .stage-progress{margin-bottom:0}
+  body.is-guided .stage h2{font-size:28px}
+  body.is-guided .stage-copy p{font-size:15.5px}
+  body.is-guided .content{padding-bottom:calc(var(--stage-space, 220px) + 28px)}
+}
+@media(max-width:700px){.landing-points{grid-template-columns:1fr}}
+.landing{min-height:100vh;background:
+  radial-gradient(900px 420px at 100% -10%, #e7f3ec 0%, transparent 60%),
+  var(--canvas)}
+.landing-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:920px;margin:0 auto;padding:22px 20px 0}
+.landing-bar .brand{color:#13211d;padding:0}
+.landing-wrap{max-width:920px;margin:0 auto;padding:36px 20px 88px}
 .landing-kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#176d4c;background:#e7f3ec;border:1px solid #d5e7dc;border-radius:999px;padding:6px 10px}
 .landing h1{font-family:var(--display);font-size:clamp(32px,5vw,50px);line-height:1.08;letter-spacing:-.04em;margin:16px 0 12px}
 .landing-lead{font-size:18px;line-height:1.5;max-width:64ch;color:#24352d}
-.landing-actions{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 8px}
+.landing-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:28px 0 10px}
+.landing-actions #getStarted{min-height:56px;padding:16px 26px;border-radius:16px;font-size:17px}
 .landing-status{min-height:1.4em;font-weight:700;color:#174b34}
 .landing-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
 .landing-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px}
@@ -304,7 +333,7 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
 .wallet-line{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 @media(max-width:700px){.landing-grid{grid-template-columns:1fr}.landing-wrap{padding-top:28px}}
 @media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important}
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
 </style>
 </head>
@@ -331,6 +360,10 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
 </script>
 <script type="module" src="/static/near-wallet.js"></script>
 <section class="landing" id="landing">
+  <header class="landing-bar">
+    <div class="brand"><span class="brand-mark">O</span> OUTCOME</div>
+    <span class="env-pill">NEAR testnet</span>
+  </header>
   <div class="landing-wrap">
     <div class="landing-kicker">Financial accountability</div>
     <h1>Know what was agreed. Verify what happened. Control what happens next.</h1>
@@ -363,7 +396,7 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
       <article class="landing-card">
         <h2>What this does not do</h2>
         <p>No transfer is sent from this app. The hosted service may have an AI key configured; a brief is still shown only after the cryptographic checks pass.</p>
-        <p>The live audit contract is still owner-only. Tester signatures are not offered. The existing on-chain record is an owner event, stored id <code>OUTCOME-DEMO-PO-104</code>, not this sample’s digest. <a href="https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj">record_event 3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj</a> is FINAL. <a href="https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy">Deploy and init 8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy</a> is FINAL. Code hash <code>7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS</code>.</p>
+        <p id="landingAnchor"><span id="landingPolicy">The live audit contract accepts a record from any account.</span> Upgrade <a href="https://testnet.nearblocks.io/txns/FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc">FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc</a> is FINAL. Code hash <code>5UNnZ4KvwoCxHt5ADhJnkCchP2h1xR6fnCXPP8c1rgpr</code>. The existing on-chain record is still an owner event, stored id <code>OUTCOME-DEMO-PO-104</code>, not this sample’s digest. No tester signature has been written on chain yet. <a href="https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj">record_event 3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj</a> is FINAL. Connecting a wallet to sign an audit record does not authorise a payment.</p>
         <p>No testnet account yet? Create one in <a href="https://testnet.mynearwallet.com">MyNearWallet on testnet</a>. OUTCOME does not create wallets or hand out keys.</p>
       </article>
     </div>
@@ -525,22 +558,27 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
     <footer><span class="foot-strong">OUTCOME</span> is decision support, not an autonomous payment service. It does not approve invoices, custody funds or move money. Human review remains required. Sample records stay in the sample workspace.</footer>
   </main>
 </div>
-</div>
-<aside class="guide" id="guide" hidden role="dialog" aria-labelledby="guideTitle">
-  <p class="guide-kicker" id="guideKicker"></p>
-  <h2 id="guideTitle"></h2>
-  <p id="guideBody"></p>
-  <div class="guide-actions">
-    <button id="guidePrimary" class="btn" type="button"></button>
-    <button id="guideBack" class="btn btn-ghost" type="button">Back</button>
-    <button id="guideDismiss" class="btn btn-ghost" type="button">Not now</button>
+<aside class="stage" id="guide" hidden role="region" aria-labelledby="guideTitle">
+  <div class="stage-progress" id="guideProgress" role="progressbar" aria-valuemin="1" aria-valuemax="8" aria-valuenow="1" aria-label="Introduction"></div>
+  <div class="stage-copy" id="guideCopy">
+    <p class="stage-kicker" id="guideKicker"></p>
+    <h2 id="guideTitle"></h2>
+    <p id="guideBody"></p>
   </div>
-  <p class="guide-progress" id="guideProgress"></p>
+  <div class="stage-actions">
+    <button id="guidePrimary" class="btn btn-stage" type="button"></button>
+    <div class="stage-quiet">
+      <button id="guideBack" class="stage-text" type="button">Back</button>
+      <button id="guideDismiss" class="stage-text" type="button">Not now</button>
+    </div>
+  </div>
 </aside>
+</div>
+<script src="/static/anchor-copy.js"></script>
 <script src="/static/onboarding.js"></script>
 <script>
 const $ = selector => document.querySelector(selector);
-const state = { commitments: [], patterns: [], record: null, ai: { configured: false }, scope: null, session: null, anchorStatus: '' };
+const state = { commitments: [], patterns: [], record: null, ai: { configured: false }, scope: null, session: null, anchorStatus: '', anchorPolicy: 'pending', anchorChecked: false };
 let selected = null;
 let view = 'overview';
 let detailTab = 'decision';
@@ -616,6 +654,9 @@ function when(value){
 }
 function emptyBlock(icon, title, body, actions=''){
   return `<div class="empty"><div class="empty-mark">${ico(icon)}</div><h3>${esc(title)}</h3><p>${esc(body)}</p>${actions ? `<div class="empty-actions">${actions}</div>` : ''}</div>`;
+}
+function skeletonBlock(){
+  return `<div class="skeleton" aria-busy="true"><span class="sr-only">Loading records</span><div class="skeleton-row short"></div><div class="skeleton-row"></div><div class="skeleton-row"></div></div>`;
 }
 function errorMessage(data){
   const detail = data && data.detail;
@@ -753,7 +794,7 @@ function renderPatterns(){
     return;
   }
   overview.innerHTML = `<div class="stack">${state.patterns.slice(0, 2).map(patternCard).join('')}</div>`;
-  full.innerHTML = `<div class="pattern-grid">${state.patterns.map(patternCard).join('')}</div>`;
+  full.innerHTML = `<div class="pattern-grid" id="stage-signals">${state.patterns.map(patternCard).join('')}</div>`;
 }
 function renderList(){
   const host = $('#list');
@@ -921,7 +962,8 @@ function renderEvidence(record){
   return `<div class="stack">${items.map(item => {
     const value = item.value == null || item.value === '' ? '' : `<div class="value">${esc(num(item.value))}</div>`;
     const reviews = (item.review_history || []).map(review => `<li>${esc(pretty(review.status))} by ${esc(review.reviewer)} · ${when(review.created_at)}${review.note ? ` — ${esc(review.note)}` : ''}</li>`).join('');
-    return `<article class="record"><div class="record-top"><h3>${esc(pretty(item.kind))}</h3>${badge(item.review_status)}</div>${value}<p class="meta">Source ${esc(item.source)} · ${when(item.created_at)}</p>${item.note ? `<p>${esc(item.note)}</p>` : ''}${reviews ? `<ul class="log">${reviews}</ul>` : ''}<div class="field"><label for="reviewer-${esc(item.id)}">Reviewer</label><input id="reviewer-${esc(item.id)}" data-reviewer-for="${esc(item.id)}" value="Business owner" maxlength="120"></div><div class="btn-row"><button type="button" class="btn btn-sm review-evidence" data-id="${esc(item.id)}" data-status="VERIFIED">Verify</button><button type="button" class="btn btn-sm btn-danger review-evidence" data-id="${esc(item.id)}" data-status="REJECTED">Reject</button></div></article>`;
+    const stageId = item.kind === 'quantity_received' ? ' id="stage-received"' : '';
+    return `<article class="record"${stageId}><div class="record-top"><h3>${esc(pretty(item.kind))}</h3>${badge(item.review_status)}</div>${value}<p class="meta">Source ${esc(item.source)} · ${when(item.created_at)}</p>${item.note ? `<p>${esc(item.note)}</p>` : ''}${reviews ? `<ul class="log">${reviews}</ul>` : ''}<div class="field"><label for="reviewer-${esc(item.id)}">Reviewer</label><input id="reviewer-${esc(item.id)}" data-reviewer-for="${esc(item.id)}" value="Business owner" maxlength="120"></div><div class="btn-row"><button type="button" class="btn btn-sm review-evidence" data-id="${esc(item.id)}" data-status="VERIFIED">Verify</button><button type="button" class="btn btn-sm btn-danger review-evidence" data-id="${esc(item.id)}" data-status="REJECTED">Reject</button></div></article>`;
   }).join('')}</div>`;
 }
 function renderActions(record){
@@ -940,7 +982,7 @@ function renderActions(record){
 function renderDecision(record){
   const assessment = record.assessment;
   const issues = (assessment.issues || []).map(issue => `<article class="issue"><h3>${esc(pretty(issue.code))}</h3><p>${esc(issue.message)}</p>${issue.financial_exposure_estimate ? `<p class="exposure">Estimated exposure ${esc(cash(issue.financial_exposure_estimate, issue.currency || record.commitment.currency))}</p>` : ''}</article>`).join('');
-  return `<div class="decision-grid"><div><p class="summary">${esc(assessment.summary)}</p>${issues ? `<div class="stack">${issues}</div>` : '<p class="quiet-line">No discrepancy is flagged on the latest evidence. This is not payment authorization.</p>'}<h3 class="subhead">Evidence</h3><p class="meta">${esc(assessment.evidence_count)} recorded. New observations are appended. Previous records are retained.</p>${renderEvidence(record)}<div class="inset"><h3 class="card-title">Add evidence</h3><form id="evidenceForm" autocomplete="off"><div class="field"><label for="evidence_kind">Evidence type</label><select id="evidence_kind" name="kind"><option value="obligation_fulfilled">Obligation fulfilled</option><option value="amount_claimed">Amount claimed</option><option value="quantity_received">Quantity received</option><option value="invoice_amount">Invoice amount</option><option value="note">Note or confirmation</option></select></div><div class="field"><label for="evidence_value">Value</label><input id="evidence_value" name="value" type="number" step="any" min="0" placeholder="e.g. 80"></div><div class="field"><label for="evidence_note">Evidence note</label><input id="evidence_note" name="note" maxlength="1000" placeholder="Receiving note #DN-104"></div><div class="field"><label for="evidence_source">Evidence source</label><input id="evidence_source" name="source" value="manual" maxlength="100"></div><button class="btn" type="submit">Save evidence and reassess</button></form></div><p class="meta">Demo review labels are not authenticated signatures. Production use requires verified reviewer identity and source authenticity.</p></div><div><section class="rail-card"><h3>What should happen next</h3><ol class="actions">${(assessment.next_actions || []).map(item => `<li>${esc(item)}</li>`).join('')}</ol></section>${renderAi(record)}${renderActions(record)}</div></div>`;
+  return `<div class="decision-grid"><div><p class="summary">${esc(assessment.summary)}</p>${issues ? `<div class="stack" id="stage-exposure">${issues}</div>` : '<p class="quiet-line" id="stage-exposure">No discrepancy is flagged on the latest evidence. This is not payment authorization.</p>'}<h3 class="subhead">Evidence</h3><p class="meta">${esc(assessment.evidence_count)} recorded. New observations are appended. Previous records are retained.</p><div id="stage-evidence">${renderEvidence(record)}</div><div class="inset"><h3 class="card-title">Add evidence</h3><form id="evidenceForm" autocomplete="off"><div class="field"><label for="evidence_kind">Evidence type</label><select id="evidence_kind" name="kind"><option value="obligation_fulfilled">Obligation fulfilled</option><option value="amount_claimed">Amount claimed</option><option value="quantity_received">Quantity received</option><option value="invoice_amount">Invoice amount</option><option value="note">Note or confirmation</option></select></div><div class="field"><label for="evidence_value">Value</label><input id="evidence_value" name="value" type="number" step="any" min="0" placeholder="e.g. 80"></div><div class="field"><label for="evidence_note">Evidence note</label><input id="evidence_note" name="note" maxlength="1000" placeholder="Receiving note #DN-104"></div><div class="field"><label for="evidence_source">Evidence source</label><input id="evidence_source" name="source" value="manual" maxlength="100"></div><button class="btn" type="submit">Save evidence and reassess</button></form></div><p class="meta">Demo review labels are not authenticated signatures. Production use requires verified reviewer identity and source authenticity.</p></div><div><section class="rail-card" id="stage-next"><h3>What should happen next</h3><ol class="actions">${(assessment.next_actions || []).map(item => `<li>${esc(item)}</li>`).join('')}</ol></section>${renderAi(record)}${renderActions(record)}</div></div>`;
 }
 function renderTimeline(record){
   const events = record.timeline || [];
@@ -974,21 +1016,37 @@ function renderPaymentDecision(record){
   else if (!decided && latest.status === 'BLOCKED') controls = '<p class="meta">This proposal is blocked. A person cannot authorise it.</p>';
   return `<h3 class="subhead">Human authorisation</h3><p class="meta">Connecting a wallet does not authorise a payment. NEAR Intents has no testnet, so approval is recorded and no transfer is submitted.</p>${controls}${history ? `<ul class="log">${history}</ul>` : ''}`;
 }
+function anchorClaim(policy){
+  if (window.OutcomeAnchor) return OutcomeAnchor.claim(policy);
+  return {
+    offer: false,
+    policyLine: 'OUTCOME could not read the live audit policy, so a signature is not offered.',
+    digestLine: 'This order’s digest is not on chain.',
+    ownerLine: 'The existing on-chain record is still an owner event, stored id OUTCOME-DEMO-PO-104. It is not this order’s digest.',
+    codeHash: '',
+    upgradeTx: '',
+    ownerEventTx: '',
+    ownerEventId: 'OUTCOME-DEMO-PO-104',
+  };
+}
 function renderAnchor(record){
   const anchor = record.audit_anchor || {};
   const receipts = record.audit_receipts || [];
   const links = receipts.map(item => `<li><a href="${esc(item.explorer_url)}" target="_blank" rel="noopener">${esc(item.execution_status)} · ${esc(item.transaction_hash)}</a> · ${item.matches_current_record ? 'matches this record' : 'record has changed since this anchor'}</li>`).join('');
   const signedIn = Boolean(state.session && state.session.authenticated);
-  const offerSignature = state.anchorPolicy === 'any_account';
-  const signButton = offerSignature ? `<div class="btn-row"><button id="anchorRecord" class="btn" type="button">${signedIn ? 'Sign audit record' : 'Connect a wallet to sign'}</button></div>` : '';
-  return `<h3 class="subhead">Testnet audit record</h3><p class="meta">This order’s digest is not on chain. The live contract still accepts new records only from its owner, so a tester signature is not offered.</p><p class="meta">Owner event, not a tester anchor. Stored id OUTCOME-DEMO-PO-104. <a href="https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj" target="_blank" rel="noopener">record_event 3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj</a> is FINAL. <a href="https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy" target="_blank" rel="noopener">Deploy and init 8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy</a> is FINAL. Code hash 7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS.</p><p class="meta">Digest for this order, not written on chain: ${esc(anchor.payload_hash || '')}</p>${state.anchorStatus ? `<p class="meta" id="anchorStatus">${esc(state.anchorStatus)}</p>` : ''}${links ? `<ul class="log">${links}</ul>` : ''}${signButton}`;
+  const claim = anchorClaim(state.anchorPolicy);
+  const signButton = claim.offer ? `<div class="btn-row"><button id="anchorRecord" class="btn" type="button">${signedIn ? 'Sign audit record' : 'Connect a wallet to sign'}</button></div>` : '';
+  const ownerTx = claim.ownerEventTx ? ` <a href="https://testnet.nearblocks.io/txns/${esc(claim.ownerEventTx)}" target="_blank" rel="noopener">record_event ${esc(claim.ownerEventTx)}</a> is FINAL.` : '';
+  const upgrade = claim.upgradeTx ? `<a href="https://testnet.nearblocks.io/txns/${esc(claim.upgradeTx)}" target="_blank" rel="noopener">Upgrade ${esc(claim.upgradeTx)}</a> is FINAL.` : '';
+  const hash = claim.codeHash ? ` Code hash ${esc(claim.codeHash)}.` : '';
+  return `<h3 class="subhead">Testnet audit record</h3><p class="meta">${esc(claim.digestLine)}</p><p class="meta">${esc(claim.policyLine)}</p><p class="meta">${esc(claim.ownerLine)}${ownerTx}</p><p class="meta">${upgrade}${hash}</p><p class="meta">Digest for this order, not written on chain: ${esc(anchor.payload_hash || '')}</p>${state.anchorStatus ? `<p class="meta" id="anchorStatus">${esc(state.anchorStatus)}</p>` : ''}${links ? `<ul class="log">${links}</ul>` : ''}${signButton}`;
 }
 function renderPayments(record){
   const commitment = record.commitment;
   const policy = record.payment_policy;
   const proposals = record.payment_proposals || [];
   const history = proposals.length
-    ? `<div class="stack">${proposals.map(item => `<article class="record"><div class="record-top"><h3>${esc(cash(item.proposal.requested_amount, item.proposal.currency))}</h3>${badge(item.status)}</div><p>${esc(item.proposal.message || '')}</p><p class="meta">${esc(item.proposal.destination || '')} · ${when(item.created_at)}</p>${(item.proposal.reasons || []).length ? `<ul class="log">${item.proposal.reasons.map(reason => `<li><b>${esc(pretty(reason.code))}</b> — ${esc(reason.message)}</li>`).join('')}</ul>` : ''}</article>`).join('')}</div>`
+    ? `<div class="stack" id="stage-proposal">${proposals.map(item => `<article class="record"><div class="record-top"><h3>${esc(cash(item.proposal.requested_amount, item.proposal.currency))}</h3>${badge(item.status)}</div><p>${esc(item.proposal.message || '')}</p><p class="meta">${esc(item.proposal.destination || '')} · ${when(item.created_at)}</p>${(item.proposal.reasons || []).length ? `<ul class="log">${item.proposal.reasons.map(reason => `<li><b>${esc(pretty(reason.code))}</b> — ${esc(reason.message)}</li>`).join('')}</ul>` : ''}</article>`).join('')}</div>`
     : emptyBlock('shield', 'No proposals yet', 'Evaluate a payment against the owner policy. A passing result still needs a person. Nothing is transferred.');
   return `<h3 class="card-title">Payment protection</h3><p class="meta">Simulation only. The policy starts disabled. Set an exact approved destination and a spending cap. OUTCOME never approves, signs or submits a transfer.</p><form id="policyForm" autocomplete="off"><label class="check"><input name="enabled" type="checkbox" ${checked(policy.enabled)}> Enable policy checks</label><div class="field"><label for="max_amount">Maximum permitted amount</label><input id="max_amount" name="max_amount" type="number" min=".01" step="any" value="${esc(policy.max_amount)}" required></div><div class="field"><label for="allowed_destination">Exact approved destination</label><input id="allowed_destination" name="allowed_destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><label class="check"><input name="require_full_delivery" type="checkbox" ${checked(policy.require_full_delivery)}> Require the agreed obligation to be fully recorded</label><label class="check"><input name="require_invoice_match" type="checkbox" ${checked(policy.require_invoice_match)}> Require the claimed amount to match</label><label class="check"><input name="require_verified_evidence" type="checkbox" ${checked(policy.require_verified_evidence)}> Require latest evidence to be reviewed and verified</label><label class="check"><input name="allow_partial_payments" type="checkbox" ${checked(policy.allow_partial_payments)}> Allow partial payment proposals</label><button class="btn" type="submit">Save payment policy</button></form><h3 class="subhead">Evaluate a proposal</h3><form id="proposalForm" autocomplete="off"><div class="row"><div class="field"><label for="proposal_amount">Proposed amount</label><input id="proposal_amount" name="amount" type="number" min=".01" step="any" value="${esc(commitment.amount)}" required></div><div class="field"><label for="proposal_currency">Currency</label><input id="proposal_currency" name="currency" value="${esc(commitment.currency)}" required minlength="3" maxlength="8"></div></div><div class="field"><label for="proposal_destination">Destination</label><input id="proposal_destination" name="destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><button class="btn" type="submit">Evaluate proposal — no transfer</button></form><details id="security-test" class="disclosure"${securityOpen ? ' open' : ''}><summary>Adversarial payment test</summary><p>Simulate a prompt-injected agent trying to exceed the owner cap and pay an unapproved destination. The policy gate should block it before any signing or transfer.</p><button id="redTeamPaymentButton" class="btn btn-danger-solid" type="button">Run adversarial payment test</button></details><h3 class="subhead">Proposal history</h3>${history}<p class="meta check-note">A passing proposal is not approval. No funds move. A wallet signature, if you add one, is only for the audit record.</p>${renderPaymentDecision(record)}${renderAnchor(record)}`;
 }
@@ -1002,7 +1060,7 @@ function renderDetail(){
   const tab = TABS.includes(detailTab) ? detailTab : 'decision';
   detailTab = tab;
   const panel = tab === 'timeline' ? renderTimeline(record) : tab === 'amendments' ? renderAmendments(record) : tab === 'payments' ? renderPayments(record) : renderDecision(record);
-  $('#detail').innerHTML = `<button type="button" class="btn btn-ghost back-mobile" id="backToList">${ico('arrow', 16)} Back to commitments</button><div class="detail-top"><div><p class="kicker">${esc(pretty(commitment.commitment_kind || 'general'))}</p><h2 id="detail-title" tabindex="-1">${esc(commitment.counterparty || commitment.supplier)}</h2><p class="lede">${esc(commitment.description)}</p></div><div>${badge(assessment.status)}</div></div><dl class="facts"><div><dt>Obligation</dt><dd>${esc(num(commitment.quantity))} ${esc(commitment.unit)}</dd></div><div><dt>Amount</dt><dd>${esc(cash(commitment.amount, commitment.currency))}</dd></div><div><dt>Due</dt><dd>${esc(formatDate(commitment.due_date))}</dd></div><div><dt>Condition</dt><dd>${esc(commitment.payment_condition)}</dd></div></dl>${latest ? `<button type="button" class="jump" data-goto-tab="payments">Latest payment proposal ${badge(latest.status)}</button>` : ''}<div class="tabs" role="tablist" aria-label="Commitment sections">${TABS.map(name => `<button type="button" role="tab" id="tab-${name}" data-tab="${name}" aria-controls="commitment-panel" aria-selected="${name===tab ? 'true' : 'false'}" tabindex="${name===tab ? '0' : '-1'}">${name === 'decision' ? 'Decision' : name === 'timeline' ? 'Timeline' : name === 'amendments' ? 'Amendments' : 'Payments'}</button>`).join('')}</div><div id="commitment-panel" role="tabpanel" aria-labelledby="tab-${tab}">${panel}</div>`;
+  $('#detail').innerHTML = `<button type="button" class="btn btn-ghost back-mobile" id="backToList">${ico('arrow', 16)} Back to commitments</button><div class="detail-top"><div><p class="kicker">${esc(pretty(commitment.commitment_kind || 'general'))}</p><h2 id="detail-title" tabindex="-1">${esc(commitment.counterparty || commitment.supplier)}</h2><p class="lede">${esc(commitment.description)}</p></div><div>${badge(assessment.status)}</div></div><dl class="facts" id="stage-facts"><div><dt>Obligation</dt><dd>${esc(num(commitment.quantity))} ${esc(commitment.unit)}</dd></div><div><dt>Amount</dt><dd>${esc(cash(commitment.amount, commitment.currency))}</dd></div><div><dt>Due</dt><dd>${esc(formatDate(commitment.due_date))}</dd></div><div><dt>Condition</dt><dd>${esc(commitment.payment_condition)}</dd></div></dl>${latest ? `<button type="button" class="jump" data-goto-tab="payments">Latest payment proposal ${badge(latest.status)}</button>` : ''}<div class="tabs" role="tablist" aria-label="Commitment sections">${TABS.map(name => `<button type="button" role="tab" id="tab-${name}" data-tab="${name}" aria-controls="commitment-panel" aria-selected="${name===tab ? 'true' : 'false'}" tabindex="${name===tab ? '0' : '-1'}">${name === 'decision' ? 'Decision' : name === 'timeline' ? 'Timeline' : name === 'amendments' ? 'Amendments' : 'Payments'}</button>`).join('')}</div><div id="commitment-panel" role="tabpanel" aria-labelledby="tab-${tab}">${panel}</div>`;
   syncEvidenceValue();
   $('#commit-layout')?.classList.toggle('has-selection', true);
 }
@@ -1020,10 +1078,45 @@ function activateTab(name, focus){
   renderDetail();
   if (focus !== false) document.querySelector(`[role="tab"][data-tab="${name}"]`)?.focus();
 }
+async function readAnchorPolicy(){
+  const contractId = (state.session && state.session.near && state.session.near.contract_id) || 'thewordweaver.testnet';
+  try {
+    const policy = await nearView(contractId, 'get_anchor_policy');
+    state.anchorPolicy = policy === 'any_account' ? 'any_account' : 'closed';
+  } catch {
+    state.anchorPolicy = '';
+  }
+  state.anchorChecked = true;
+  paintLandingAnchor();
+  return state.anchorPolicy;
+}
+function paintLandingAnchor(){
+  const slot = $('#landingPolicy');
+  if (!slot || !state.anchorChecked) return;
+  if (state.anchorPolicy === 'any_account') slot.textContent = 'The live audit contract accepts a record from any account.';
+  else if (!state.anchorPolicy) slot.textContent = 'OUTCOME could not read the live audit policy. A signature is not offered until that view succeeds.';
+  else if (state.anchorPolicy !== 'pending') slot.textContent = 'The live audit policy does not currently accept a signature from any account.';
+}
+function cachedRecord(id){
+  if (state.record && state.record.commitment && state.record.commitment.id === id) return state.record;
+  return (state.commitments || []).find(record => record.commitment && record.commitment.id === id) || null;
+}
 async function showDetail(id, options={}){
   const token = ++detailToken;
+  const cached = cachedRecord(id);
+  if (options.fresh === false && cached){
+    state.record = cached;
+    if (options.policy){
+      state.anchorPolicy = 'pending';
+      await readAnchorPolicy();
+      if (token !== detailToken || selected !== id) return;
+    }
+    renderDetail();
+    if (options.focus) $('#detail-title')?.focus();
+    return;
+  }
   if (!state.record || state.record.commitment.id !== id){
-    $('#detail').innerHTML = emptyBlock('clock', 'Opening commitment', 'Loading status, evidence and the next decision.');
+    $('#detail').innerHTML = skeletonBlock();
     $('#commit-layout')?.classList.add('has-selection');
   }
   try {
@@ -1033,13 +1126,15 @@ async function showDetail(id, options={}){
     if (token !== detailToken || selected !== id) return;
     state.record = record;
     state.ai = ai;
-    state.anchorPolicy = 'owner_only';
+    state.anchorPolicy = 'pending';
     try {
-      const contractId = (state.session && state.session.near && state.session.near.contract_id) || 'thewordweaver.testnet';
-      const policy = await nearView(contractId, 'get_anchor_policy');
+      await readAnchorPolicy();
       if (token !== detailToken || selected !== id) return;
-      if (policy === 'any_account') state.anchorPolicy = 'any_account';
-    } catch { state.anchorPolicy = 'owner_only'; }
+    } catch {
+      if (token !== detailToken || selected !== id) return;
+      state.anchorPolicy = '';
+      state.anchorChecked = true;
+    }
     if (token !== detailToken || selected !== id) return;
     renderDetail();
     if (options.focus) $('#detail-title')?.focus();
@@ -1049,16 +1144,17 @@ async function showDetail(id, options={}){
     $('#detail').innerHTML = emptyBlock('alert', 'Could not open this commitment', error.message);
   }
 }
-async function openCommitment(id){
+async function openCommitment(id, options={}){
   if (!id) return;
   const changed = selected !== id || view !== 'commitments';
-  if (selected !== id) detailTab = 'decision';
+  if (options.tab && TABS.includes(options.tab)) detailTab = options.tab;
+  else if (selected !== id) detailTab = 'decision';
   selected = id;
-  if (view !== 'commitments') goTo('commitments', 'top');
+  if (view !== 'commitments') goTo('commitments', options.scroll || 'top');
   else $('#commit-layout')?.classList.add('has-selection');
   markActive();
-  await showDetail(id, { focus: changed });
-  if (isNarrowDetail()) requestAnimationFrame(() => $('#detail')?.scrollIntoView({ block: 'start', behavior: 'instant' in window ? 'instant' : 'auto' }));
+  await showDetail(id, { focus: changed && options.focus !== false, fresh: options.fresh !== false, policy: options.policy === true });
+  if (isNarrowDetail() && options.scroll !== 'none') requestAnimationFrame(() => $('#detail')?.scrollIntoView({ block: 'start', behavior: 'instant' in window ? 'instant' : 'auto' }));
 }
 async function load(){
   loadError = '';
@@ -1145,62 +1241,147 @@ function syncWorkspaceChrome(){
     if (note) note.textContent = 'An approval stays APPROVED — NOT SUBMITTED unless a real transfer exists.';
   }
 }
-let guideOverride = null;
+const trialSlot = { current: null };
+function openTrial(){
+  return OutcomeOnboarding.shareInflight(trialSlot, () => api('/api/demo/trials', { method:'POST' }));
+}
+function clearGuideFocus(){
+  document.querySelectorAll('.guide-focus').forEach(node => node.classList.remove('guide-focus'));
+}
+function syncStageSpace(){
+  const panel = $('#guide');
+  const narrow = window.matchMedia('(max-width: 1099px)').matches;
+  const space = panel && !panel.hidden && narrow ? Math.ceil(panel.getBoundingClientRect().height) : 0;
+  document.documentElement.style.setProperty('--stage-space', space + 'px');
+}
+function renderProgress(stepIndex){
+  const progress = OutcomeOnboarding.progressFor(stepIndex);
+  const host = $('#guideProgress');
+  if (!host) return;
+  const current = progress.index < 0 ? 1 : progress.index + 1;
+  host.setAttribute('aria-valuenow', String(current));
+  host.setAttribute('aria-valuemax', String(progress.total));
+  host.setAttribute('aria-valuetext', 'Part ' + current + ' of ' + progress.total);
+  host.replaceChildren();
+  for (let index = 0; index < progress.total; index += 1){
+    const bar = document.createElement('span');
+    if (index < progress.index) bar.className = 'is-done';
+    else if (index === progress.index) bar.className = 'is-now';
+    host.appendChild(bar);
+  }
+}
 function renderGuide(){
   const panel = $('#guide');
   if (!panel || !window.OutcomeOnboarding) return;
   const stored = OutcomeOnboarding.read(localStorage);
-  const stepIndex = guideOverride != null ? guideOverride : (stored.status === 'in_progress' ? stored.step : -1);
-  if (stepIndex < 0){ panel.hidden = true; return; }
-  const step = OutcomeOnboarding.STEPS[stepIndex];
+  const step = OutcomeOnboarding.STEPS[stored.step];
+  const showing = stored.status === 'in_progress' && stored.step > 0 && step && step.place !== 'landing' && !$('.app-shell').hidden;
+  document.body.classList.toggle('is-guided', showing);
+  if (!showing){
+    panel.hidden = true;
+    panel.removeAttribute('data-step');
+    document.documentElement.style.setProperty('--stage-space', '0px');
+    clearGuideFocus();
+    return;
+  }
+  const previous = panel.dataset.step;
   panel.hidden = false;
+  panel.dataset.step = step.id;
   $('#guideKicker').textContent = step.kicker;
   $('#guideTitle').textContent = step.title;
   $('#guideBody').textContent = step.body;
   $('#guidePrimary').textContent = step.primary;
-  $('#guideBack').hidden = stepIndex === 0;
-  $('#guideProgress').textContent = 'Step ' + (stepIndex + 1) + ' of ' + OutcomeOnboarding.STEPS.length;
+  renderProgress(stored.step);
+  if (previous !== step.id){
+    const copy = $('#guideCopy');
+    copy.classList.remove('is-in');
+    void copy.offsetWidth;
+    copy.classList.add('is-in');
+  }
+  syncStageSpace();
 }
 async function enterSample(){
+  if (state.scope === 'demo' && state.commitments.length) {
+    return { commitments: state.commitments, patterns: state.patterns, status: 'cached' };
+  }
   state.scope = null;
-  await api('/api/demo/trials', { method:'POST' });
-  await enterWorkspace('demo');
+  return openTrial();
 }
 function sampleOrder(){
   return (state.commitments || []).find(record => String(record.commitment.description || '').includes('PO-104'));
 }
-async function placeGuide(stepIndex){
-  const step = OutcomeOnboarding.STEPS[stepIndex];
-  document.querySelectorAll('.guide-focus').forEach(node => node.classList.remove('guide-focus'));
-  if (!step || step.place === 'landing'){ showLanding(); return; }
-  if (state.scope !== 'demo') await enterSample();
-  if (step.place === 'overview'){ goTo('overview', 'top'); return; }
-  if (step.place === 'signals'){
-    goTo('signals', 'top');
-    $('#overview-patterns')?.classList.add('guide-focus');
+function guideTarget(step){
+  if (!step) return null;
+  if (step.focus === 'order'){
+    const order = sampleOrder();
+    if (!order) return $('#attention');
+    return document.querySelector('#attention [data-open="' + CSS.escape(order.commitment.id) + '"]') || $('#attention');
+  }
+  const ids = { facts:'stage-facts', evidence:'stage-received', exposure:'stage-exposure', signal:'stage-signals', next:'stage-next', proposal:'stage-proposal', sample:'sampleBanner' };
+  const id = ids[step.focus];
+  return (id && document.getElementById(id)) || (step.focus === 'evidence' ? document.getElementById('stage-evidence') : null);
+}
+function focusGuideTarget(node){
+  clearGuideFocus();
+  if (!node) return;
+  node.classList.add('guide-focus');
+  const stage = $('#guide');
+  const narrow = window.matchMedia('(max-width: 1099px)').matches;
+  const stageHeight = stage && !stage.hidden && narrow ? stage.getBoundingClientRect().height : 0;
+  const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  if (!stageHeight){
+    node.scrollIntoView({ block:'center', inline:'nearest', behavior });
     return;
   }
-  if (step.place === 'workspace') return;
+  const rect = node.getBoundingClientRect();
+  const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-offset')) || 72;
+  const freeTop = header + 12;
+  const freeBottom = window.innerHeight - stageHeight - 16;
+  const free = Math.max(120, freeBottom - freeTop);
+  const next = rect.height < free
+    ? window.scrollY + rect.top - (freeTop + (free - rect.height) / 2)
+    : window.scrollY + rect.top - freeTop;
+  window.scrollTo({ top: Math.max(0, next), behavior });
+}
+async function placeGuide(stepIndex){
+  const step = OutcomeOnboarding.STEPS[stepIndex];
+  clearGuideFocus();
+  if (!step || step.place === 'landing'){ showLanding(); return; }
+  if (state.scope !== 'demo' || !state.commitments.length){
+    const trial = await enterSample();
+    await enterWorkspace('demo', trial);
+  } else if ($('.app-shell').hidden){
+    showApp();
+    paintAccount();
+  }
+  if (step.place === 'overview' || step.place === 'workspace'){ goTo('overview', 'none'); return; }
+  if (step.place === 'signals'){ goTo('signals', 'none'); return; }
   const order = sampleOrder();
   if (!order) return;
-  if (view !== 'commitments' || selected !== order.commitment.id) await openCommitment(order.commitment.id);
   const tab = step.place === 'payments' ? 'payments' : 'decision';
-  if (detailTab !== tab) activateTab(tab, false);
-  document.querySelector('[data-open="' + CSS.escape(order.commitment.id) + '"]')?.classList.add('guide-focus');
+  await openCommitment(order.commitment.id, { fresh:false, focus:false, policy: step.place === 'payments', tab, scroll:'none' });
+}
+async function showStep(stepIndex){
+  await placeGuide(stepIndex);
+  renderGuide();
+  syncStageSpace();
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  syncStageSpace();
+  focusGuideTarget(guideTarget(OutcomeOnboarding.STEPS[stepIndex]));
 }
 async function guidePrimary(button){
   const stored = OutcomeOnboarding.read(localStorage);
-  const stepIndex = guideOverride != null ? guideOverride : stored.step;
-  const step = OutcomeOnboarding.STEPS[stepIndex];
+  const step = OutcomeOnboarding.STEPS[stored.step];
   if (!step) return;
   if (step.action === 'enter-sample'){
     await withBusy(button, async () => {
       try {
-        await enterSample();
-        guideOverride = null;
+        setLandingStatus('Opening the labelled sample.');
+        const trial = await enterSample();
+        await enterWorkspace('demo', trial);
+        setLandingStatus('');
         const next = OutcomeOnboarding.move(localStorage, 1);
-        await placeGuide(next.step);
-        renderGuide();
+        await showStep(next.step);
       } catch (error) {
         setLandingStatus(error.message);
         toast(error.message, 'error');
@@ -1213,45 +1394,43 @@ async function guidePrimary(button){
     return;
   }
   if (step.action === 'open-order' || step.action === 'show-signals' || step.action === 'show-recommendation' || step.action === 'show-payments' || step.action === 'next'){
-    const next = OutcomeOnboarding.move(localStorage, stepIndex + 1);
-    guideOverride = null;
-    await placeGuide(next.step);
-    renderGuide();
+    const next = OutcomeOnboarding.move(localStorage, stored.step + 1);
+    await showStep(next.step);
   }
 }
 async function guideBack(){
-  if (guideOverride != null){ guideOverride = null; showLanding(); renderGuide(); return; }
   const stored = OutcomeOnboarding.read(localStorage);
-  if (stored.step <= 0) return;
+  if (stored.step <= 0){ showLanding(); renderGuide(); return; }
   const next = OutcomeOnboarding.move(localStorage, stored.step - 1);
-  if (next.step === 0) showLanding();
-  else await placeGuide(next.step);
-  renderGuide();
+  if (next.step === 0){ showLanding(); renderGuide(); return; }
+  await showStep(next.step);
 }
 function guideDismiss(){
-  if (guideOverride != null){ guideOverride = null; renderGuide(); return; }
   const stored = OutcomeOnboarding.read(localStorage);
   OutcomeOnboarding.dismiss(localStorage, stored.step);
-  document.querySelectorAll('.guide-focus').forEach(node => node.classList.remove('guide-focus'));
+  clearGuideFocus();
   renderGuide();
 }
-async function revisitGuide(){
-  guideOverride = null;
+async function revisitGuide(button){
   OutcomeOnboarding.revisit(localStorage);
-  showLanding();
-  renderGuide();
-  $('#guideTitle')?.focus();
+  await guidePrimary(button || $('#guidePrimary'));
 }
 async function getStarted(button){
-  const stored = OutcomeOnboarding.read(localStorage);
-  if (stored.status === 'completed' || stored.status === 'dismissed'){
-    guideOverride = OutcomeOnboarding.STEPS.length - 1;
-    showLanding();
-    renderGuide();
-    return;
-  }
-  if (stored.status !== 'in_progress') OutcomeOnboarding.begin(localStorage);
-  await guidePrimary(button);
+  let stored = OutcomeOnboarding.read(localStorage);
+  if (stored.status === 'new' || stored.status === 'completed' || stored.status === 'dismissed') stored = OutcomeOnboarding.begin(localStorage);
+  if (stored.step <= 0){ await guidePrimary(button); return; }
+  await withBusy(button, async () => {
+    try {
+      setLandingStatus('Opening the labelled sample.');
+      const trial = await enterSample();
+      await enterWorkspace('demo', trial);
+      setLandingStatus('');
+      await showStep(stored.step);
+    } catch (error) {
+      setLandingStatus(error.message);
+      toast(error.message, 'error');
+    }
+  });
 }
 async function continueToRealCommitment(button){
   try {
@@ -1262,7 +1441,6 @@ async function continueToRealCommitment(button){
     await withBusy(button, async () => {
       await api('/api/workspaces', { method:'POST' });
       OutcomeOnboarding.complete(localStorage);
-      guideOverride = null;
       renderGuide();
       await enterWorkspace('personal');
       goTo('new', 'top');
@@ -1272,24 +1450,51 @@ async function continueToRealCommitment(button){
     toast(error.message, 'error');
   }
 }
-async function enterWorkspace(scope){
+function applyRecords(commitments, patterns){
+  loadError = '';
+  state.commitments = commitments || [];
+  state.patterns = patterns || [];
+  updateMetrics(state.commitments);
+  renderAttention();
+  renderPatterns();
+  renderList();
+  renderEmptyDetail();
+}
+function showWorkspaceSkeleton(){
+  const block = skeletonBlock();
+  ['attention', 'list', 'overview-patterns', 'patterns'].forEach(id => {
+    const node = document.getElementById(id);
+    if (node) node.innerHTML = block;
+  });
+}
+async function enterWorkspace(scope, seeded){
   state.scope = scope;
   sessionStorage.setItem('outcome-open', scope);
-  showApp();
-  paintAccount();
   selected = null;
   state.record = null;
+  if (seeded && Array.isArray(seeded.commitments)){
+    applyRecords(seeded.commitments, seeded.patterns);
+    showApp();
+    paintAccount();
+    paint();
+    return;
+  }
+  showWorkspaceSkeleton();
+  showApp();
+  paintAccount();
   await load();
 }
 async function seedDemo(button){
   await withBusy(button, async () => {
     try {
+      setLandingStatus('Opening the labelled sample.');
       state.scope = null;
-      await api('/api/demo/trials', { method:'POST' });
-      await enterWorkspace('demo');
+      const trial = await openTrial();
+      await enterWorkspace('demo', trial);
       if (view !== 'overview') goTo('overview', 'top');
-      toast('Guided demo ready. These records are synthetic.', 'ok');
+      toast('Sample ready. These records are synthetic.', 'ok');
       setLandingStatus('');
+      renderGuide();
     } catch (error) {
       setLandingStatus(error.message);
       toast(error.message, 'error');
@@ -1643,7 +1848,7 @@ async function signAnchor(button){
   const record = state.record;
   if (!record) return;
   if (state.anchorPolicy !== 'any_account') {
-    toast('The live contract does not accept a tester signature yet.', 'warn');
+    toast(anchorClaim(state.anchorPolicy).policyLine, 'warn');
     return;
   }
   if (!state.session || !state.session.authenticated) {
@@ -1659,7 +1864,7 @@ async function signAnchor(button){
       let previous = '';
       try { previous = await nearView(contractId, 'get_latest_hash'); } catch (error) { throw Error('Could not read the testnet contract. ' + error.message); }
       if (state.anchorPolicy !== 'any_account') {
-        state.anchorStatus = 'The live contract does not accept a tester signature yet.';
+        state.anchorStatus = anchorClaim(state.anchorPolicy).policyLine;
         renderDetail();
         return;
       }
@@ -1777,6 +1982,11 @@ document.addEventListener('submit', event => {
   else saveAction(form);
 });
 document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !$('#guide')?.hidden && !event.target.matches?.('input, textarea, select')){
+    event.preventDefault();
+    guideDismiss();
+    return;
+  }
   const tab = event.target.closest?.('[role="tab"]');
   if (!tab || !tab.closest('#detail')) return;
   const index = TABS.indexOf(tab.dataset.tab);
@@ -1812,7 +2022,7 @@ function syncFromHistory(){
 }
 window.addEventListener('popstate', syncFromHistory);
 window.addEventListener('hashchange', syncFromHistory);
-window.addEventListener('resize', syncChrome);
+window.addEventListener('resize', () => { syncChrome(); syncStageSpace(); });
 window.matchMedia('(max-width: 759px)').addEventListener('change', event => {
   syncChrome();
   if (event.matches && selected && view === 'commitments') $('#detail')?.scrollIntoView({ block: 'start', behavior: 'auto' });
@@ -1821,11 +2031,10 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 view = viewFromHash();
 if (location.hash !== '#' + HASH_FOR[view]) history.replaceState({ view }, '', '#' + HASH_FOR[view]);
 paint();
-$('#attention').innerHTML = emptyBlock('clock', 'Loading the workspace', 'Fetching commitments, evidence and signals.');
-$('#list').innerHTML = emptyBlock('clock', 'Loading commitments', 'Fetching the records in this workspace.');
 async function boot(){
   try { await refreshSession(); }
   catch (error) { setLandingStatus(error.message); }
+  readAnchorPolicy().catch(() => {});
   whenWallet(wallet => wallet.subscribe(snapshot => {
     const signedIn = state.session && state.session.account_id;
     if (signedIn && snapshot.accountId && snapshot.accountId !== signedIn) {
@@ -1835,13 +2044,15 @@ async function boot(){
       }).catch(error => setLandingStatus(error.message));
     }
   })).catch(() => {});
-  let guideState = OutcomeOnboarding.read(localStorage);
-  if (OutcomeOnboarding.shouldAutoStart(guideState)) guideState = OutcomeOnboarding.begin(localStorage);
-  if (guideState.status === 'in_progress' && guideState.step > 0){
+  const guideState = OutcomeOnboarding.read(localStorage);
+  const mode = OutcomeOnboarding.presentation(guideState);
+  if (mode === 'resume'){
+    setLandingStatus('Opening the labelled sample.');
     try {
-      await enterSample();
-      await placeGuide(guideState.step);
-      renderGuide();
+      const trial = await enterSample();
+      await enterWorkspace('demo', trial);
+      setLandingStatus('');
+      await showStep(guideState.step);
     } catch (error) {
       showLanding();
       setLandingStatus(error.message);
@@ -1849,15 +2060,11 @@ async function boot(){
     }
     return;
   }
-  if (guideState.status === 'in_progress'){
-    showLanding();
-    renderGuide();
-    return;
-  }
   const open = sessionStorage.getItem('outcome-open');
-  if (open === 'demo' && state.session && state.session.demo && state.session.demo.active) await enterWorkspace('demo');
-  else if (open === 'personal' && state.session && state.session.personal && state.session.personal.active) await enterWorkspace('personal');
+  if (mode === 'quiet' && open === 'demo' && state.session && state.session.demo && state.session.demo.active) await enterWorkspace('demo');
+  else if (mode === 'quiet' && open === 'personal' && state.session && state.session.personal && state.session.personal.active) await enterWorkspace('personal');
   else showLanding();
+  renderGuide();
 }
 boot().catch(error => setLandingStatus(error.message));
 </script>
