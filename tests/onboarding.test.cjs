@@ -78,7 +78,9 @@ function main() {
   const revisit = actions.indexOf('id="exploreDemo"');
   assert(getStarted >= 0 && revisit > getStarted, "Get started was not the primary landing action");
   assert(actions.includes(">Get started<"), "the primary CTA was not Get started");
-  assert(actions.includes(">Revisit the sample<"), "the sample was not a secondary action");
+  assert(actions.includes(">See how it works<"), "the secondary CTA was not See how it works");
+  assert(actions.indexOf(">See how it works<") > getStarted, "See how it works did not follow Get started");
+  assert(actions.includes(">Revisit the sample<"), "the sample was not available from the landing");
   assert(!actions.includes(">Explore Demo<"), "Explore Demo was still the landing CTA");
   assert(html.includes('id="guide"') && html.includes('id="sampleBanner"'), "the guide or sample banner is missing");
   assert(html.includes('src="/static/onboarding.js"'), "the page does not load the onboarding state");
@@ -88,6 +90,12 @@ function main() {
   assert(!html.includes("Loading commitments"), "the workspace still flashes Loading commitments");
   assert(html.indexOf('id="guide"') > html.indexOf('class="app-shell"'), "the guide sits on the landing page");
   assert(html.includes("OutcomeOnboarding.presentation"), "a first visit does not choose arrival, resume, or quiet");
+  assert(html.includes('id="welcome"') && html.includes('id="welcomeProgress"'), "first-login introduction is missing");
+  assert(html.includes("OutcomeWelcome.shouldAutoPresent"), "a signed-in first visit does not decide whether to open the introduction");
+  assert(html.includes(">Continue<") && html.includes(">Skip<"), "the introduction has no continue or skip");
+  assert(html.includes("Know what was agreed. Verify what happened. Control what happens next."), "the hero promise changed");
+  assert(html.includes("OUTCOME helps businesses track commitments, verify evidence, identify discrepancies and make better-informed financial decisions."), "the supporting message changed");
+  assert(html.includes("50 cartons") && html.includes("42 received") && html.includes("8 cartons") && html.includes("$40"), "the illustrative example lost the sample figures");
   assert(!html.includes("shouldAutoStart"), "boot still starts the guide before Get started");
   assert(html.includes("function openTrial("), "a second sample request is not guarded");
   const enterSample = html.slice(html.indexOf("async function enterSample"), html.indexOf("function sampleOrder"));

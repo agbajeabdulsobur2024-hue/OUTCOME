@@ -20,6 +20,19 @@ def test_public_contract_reports_the_deployed_upgrade():
     assert facts["owner_account_id"] == "thewordweaver.testnet"
     assert facts["owner_event_id"] == "OUTCOME-DEMO-PO-104"
     assert facts["tester_signature_recorded"] is False
+    assert facts["app_wallet_signature_recorded"] is False
+    non_owner = facts["non_owner_event"]
+    assert non_owner["account_id"] == "nocgykc7.thewordweaver.testnet"
+    assert non_owner["sequence"] == 2
+    assert non_owner["transaction"] == "7ZXWXUjPtWFQiYG6FKH91WimEmQWMwibSRoxifeweHk3"
+    assert non_owner["status"] == "FINAL"
+    assert non_owner["filed_through_app_sign_button"] is False
+    assert non_owner["is_sample_digest"] is False
+    recorded = [item for item in facts["known_transactions"] if item["label"] == "record_event"]
+    assert {item["hash"] for item in recorded} >= {
+        "3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj",
+        "7ZXWXUjPtWFQiYG6FKH91WimEmQWMwibSRoxifeweHk3",
+    }
     assert facts["policy_after_upgrade"] == "any_account"
     upgrade = next(item for item in facts["known_transactions"] if item["label"] == "Upgrade")
     assert upgrade["hash"] == facts["upgrade_transaction"]
