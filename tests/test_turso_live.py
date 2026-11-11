@@ -37,6 +37,11 @@ def test_turso_remote_schema_and_foreign_key_enforcement(monkeypatch):
         "action_events",
         "ai_briefs",
         "ai_request_limits",
+        "workspaces",
+        "users",
+        "sessions",
+        "audit_receipts",
+        "request_limits",
     }
     assert required.issubset(tables)
 

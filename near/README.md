@@ -10,7 +10,7 @@ Account `thewordweaver.testnet`:
 - `record_event` accepted and stored, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj).
 - `admin_probe` rejected with `MethodNameMismatch`: [`7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk`](https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk). That rejection is not indexed, which is expected on this nearcore version.
 
-The web app does not connect a wallet or hold a full-access key. A full-access key was not put in Vercel. The steps below are how that proof is repeated.
+The deployed contract accepts `record_event` only from its owner. The source in this repository now lets any account append a hash-only event and adds `get_anchor_policy`. That upgrade has not been submitted. The account owner must deploy it with their own key. Do not paste that key into the repo, the hosted app, or Vercel. `admin_probe` stays owner-only. The web app can ask a visitor to sign with their own testnet wallet. It does not hold a full-access key, and a full-access key was not put in Vercel. The steps below are how the restricted-key proof is repeated.
 
 ## What the testnet proof is designed to demonstrate
 
