@@ -273,6 +273,18 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
   .btn-danger-solid:hover{background:#833f32}
   .nav a:hover{background:#233b30;color:#fff}
 }
+.sample-banner{display:flex;align-items:center;justify-content:space-between;gap:12px 18px;flex-wrap:wrap;margin:0 0 16px;padding:12px 14px;background:#fff6e4;border:1px solid #f0e3bf;border-radius:14px;color:#6d4b10;font-size:14.5px;line-height:1.45}
+.sample-banner strong{font-weight:800}
+.guide{position:fixed;z-index:30;right:20px;bottom:20px;width:min(420px,calc(100vw - 32px));background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 50px rgba(16,37,28,.16);padding:18px 18px 16px}
+.guide-kicker{margin:0 0 6px;color:#2f7a52;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.guide h2{font-family:var(--display);font-size:22px;letter-spacing:-.03em;line-height:1.2;margin:0 0 8px}
+.guide p{margin:0;color:#31443b;font-size:14.5px;line-height:1.5}
+.guide-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.guide-progress{margin-top:10px;color:#66776e;font-size:12.5px;font-weight:700}
+.guide-focus{outline:3px solid #1f7a52;outline-offset:3px}
+.landing-points{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:22px}
+.landing-card b{display:block;font-family:var(--display);font-size:16px;margin-bottom:4px;color:#1a2a23}
+@media(max-width:700px){.landing-points{grid-template-columns:1fr}.guide{right:16px;left:16px;width:auto}}
 .landing{min-height:100vh;background:var(--canvas)}
 .landing-wrap{max-width:920px;margin:0 auto;padding:42px 20px 80px}
 .landing-kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#176d4c;background:#e7f3ec;border:1px solid #d5e7dc;border-radius:999px;padding:6px 10px}
@@ -316,36 +328,38 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
 <script type="module" src="/static/near-wallet.js"></script>
 <section class="landing" id="landing">
   <div class="landing-wrap">
-    <div class="landing-kicker">NEAR testnet</div>
+    <div class="landing-kicker">Financial accountability</div>
     <h1>Know what was agreed. Verify what happened. Control what happens next.</h1>
-    <p class="landing-lead">OUTCOME is general-purpose financial accountability. You record what was agreed, who owes what, and the evidence of what happened. A supplier order, a contractor milestone, a repayment, a reimbursement, an expense, or an escrow-style release uses the same record. Nothing here grants unrestricted access to money or to another person’s records.</p>
-    <p class="landing-lead">The guided demo is one synthetic trial, not the product boundary. It contains two Acme Supplies orders. The first agrees to buy 50 cartons of printer paper for USD 250. Verified evidence says 42 arrived, so the estimated exposure is USD 40. The USD 250 proposal stays blocked, and a person cannot approve it. The second order is also short, which is why a repeated signal appears. Nothing in the trial has been paid.</p>
+    <p class="landing-lead">OUTCOME is the record between an agreement and the next decision. You keep what was promised, the evidence of what happened, the exposure when they differ, and a recommendation a person can accept or refuse.</p>
+    <p class="landing-lead">A supplier order, a contractor milestone, a repayment, a reimbursement, an expense, or an escrow-style release uses the same record. Nothing here grants access to money or to another person’s records.</p>
     <div class="landing-actions">
-      <button id="exploreDemo" class="btn" type="button">Explore Demo</button>
+      <button id="getStarted" class="btn" type="button">Get started</button>
+      <button id="exploreDemo" class="btn btn-ghost" type="button">Revisit the sample</button>
       <button id="connectWallet" class="btn btn-ghost" type="button">Connect NEAR Wallet</button>
-      <button id="createWorkspace" class="btn btn-ghost" type="button">Create Personal Workspace</button>
     </div>
     <p class="landing-status" id="landingStatus" role="status"></p>
+    <p class="meta">No wallet is required to see how OUTCOME works. A wallet is used only for a personal workspace or, later, an on-chain record. Connecting one does not authorise a payment.</p>
     <div class="wallet-line">
       <span class="env-pill" id="landingNetwork">NEAR testnet</span>
-      <span id="landingAccount">No wallet connected. You can explore the demo without one.</span>
+      <span id="landingAccount">No wallet connected. You can explore the product without one.</span>
       <button id="disconnectWallet" class="btn btn-ghost btn-sm" type="button" hidden>Disconnect</button>
+      <button id="createWorkspace" class="btn btn-ghost btn-sm" type="button">Create a personal workspace</button>
+    </div>
+    <div class="landing-points">
+      <article class="landing-card"><b>The problem</b><p>The agreement, the delivery, and the amount someone asks to release drift apart. A shortfall can still be presented as the original figure.</p></article>
+      <article class="landing-card"><b>The record</b><p>One commitment holds the terms. Evidence is appended and reviewed. An unverified note does not erase a verified shortfall.</p></article>
+      <article class="landing-card"><b>The exposure</b><p>When the evidence does not match, OUTCOME estimates the financial exposure and recommends a next step. The estimate is not an invoice and not a transfer.</p></article>
+      <article class="landing-card"><b>The decision</b><p>A blocked proposal cannot be approved. A human approval, when one is allowed, is APPROVED — NOT SUBMITTED unless a real transfer exists. An AI brief never authorises a payment.</p></article>
     </div>
     <div class="landing-grid">
       <article class="landing-card">
-        <h2>What you can try</h2>
-        <ol>
-          <li>Open the guided demo. No wallet and no login. It is the Acme trial above.</li>
-          <li>Or record your own commitment: name the other party, what is owed, and the evidence. The same checks run. There is no separate workflow for that kind of obligation.</li>
-          <li>See both Acme orders, the USD 40 exposure, and the blocked USD 250 proposal.</li>
-          <li>A later approval, when one is allowed, is marked approved and not submitted. That is not a payment.</li>
-          <li>Connect a testnet wallet if you want a personal workspace. That connection does not authorise a payment or an anchor.</li>
-        </ol>
+        <h2>What you will see</h2>
+        <p>Get started opens a labelled sample: two Acme Supplies orders. One agrees to 50 cartons for USD 250. Verified evidence says 42 arrived, so the estimated exposure is USD 40, and the USD 250 proposal stays blocked. A second short order produces a repeated signal. That sample is one configuration, not the limit of the product. Nothing in it has been paid.</p>
       </article>
       <article class="landing-card">
         <h2>What this does not do</h2>
-        <p>A blocked proposal cannot be approved. A human approval, when one is allowed, is recorded as approved and not submitted. No transfer is sent, so nothing is paid. An AI brief never authorises a payment. The hosted service may have an AI key configured; a brief is still shown only after the cryptographic checks pass.</p>
-        <p>The live audit contract is still owner-only. Tester signatures are not offered. The existing on-chain record is an owner event, stored id <code>OUTCOME-DEMO-PO-104</code>, not this trial’s digest. <a href="https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj">record_event 3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj</a> is FINAL. <a href="https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy">Deploy and init 8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy</a> is FINAL. Code hash <code>7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS</code>.</p>
+        <p>No transfer is sent from this app. The hosted service may have an AI key configured; a brief is still shown only after the cryptographic checks pass.</p>
+        <p>The live audit contract is still owner-only. Tester signatures are not offered. The existing on-chain record is an owner event, stored id <code>OUTCOME-DEMO-PO-104</code>, not this sample’s digest. <a href="https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj">record_event 3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj</a> is FINAL. <a href="https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy">Deploy and init 8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy</a> is FINAL. Code hash <code>7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS</code>.</p>
         <p>No testnet account yet? Create one in <a href="https://testnet.mynearwallet.com">MyNearWallet on testnet</a>. OUTCOME does not create wallets or hand out keys.</p>
       </article>
     </div>
@@ -371,16 +385,20 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
   </header>
   <div id="toasts" class="toasts" aria-live="polite"></div>
   <main class="content" id="content">
+    <div class="sample-banner" id="sampleBanner" hidden>
+      <p id="sampleBannerText"><strong>Sample scenario.</strong> These records are synthetic.</p>
+      <button id="revisitGuide" class="btn btn-ghost btn-sm" type="button">Revisit the guide</button>
+    </div>
     <section id="overview" data-view="overview">
       <section class="hero is-welcome" id="hero">
         <div class="hero-copy">
-          <div class="eyebrow">Financial accountability</div>
-          <h1>Know what was agreed. Verify what happened. Control what happens next.</h1>
-          <p>Record any financial commitment, compare it with the evidence, and keep the next step with a person. The open demo is a synthetic trial of two Acme orders: 50 cartons agreed for USD 250, 42 received, estimated exposure USD 40. That USD 250 proposal cannot be approved. Connecting a wallet does not pay anyone.</p>
+          <div class="eyebrow" id="heroEyebrow">Sample scenario</div>
+          <h1 id="heroTitle">One supplier order, so you can see the record work</h1>
+          <p id="heroLead">Acme Supplies is a sample. Fifty cartons were agreed, forty-two were verified as received, and the original USD 250 proposal stays blocked. A milestone or a repayment uses this same record. Nothing here was paid.</p>
         </div>
         <div class="hero-actions">
-          <button id="demoSeed" class="btn btn-hero" type="button" data-demo-seed>Explore the live demo</button>
-          <span class="hero-note">Opens your own synthetic copy. It does not change anyone else’s records.</span>
+          <button id="demoSeed" class="btn btn-hero" type="button" data-mode="guide">Revisit the guide</button>
+          <span class="hero-note" id="heroNote">The sample stays separate from a personal workspace.</span>
         </div>
       </section>
       <section class="metrics-grid" id="overviewMetrics" aria-label="Live workspace summary">
@@ -489,10 +507,22 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
         </form>
       </div>
     </section>
-    <footer><span class="foot-strong">OUTCOME</span> is decision support, not an autonomous payment service. It does not approve invoices, custody funds or move money. Human review remains required. Use synthetic data only in this hackathon demo.</footer>
+    <footer><span class="foot-strong">OUTCOME</span> is decision support, not an autonomous payment service. It does not approve invoices, custody funds or move money. Human review remains required. Sample records stay in the sample workspace.</footer>
   </main>
 </div>
 </div>
+<aside class="guide" id="guide" hidden role="dialog" aria-labelledby="guideTitle">
+  <p class="guide-kicker" id="guideKicker"></p>
+  <h2 id="guideTitle"></h2>
+  <p id="guideBody"></p>
+  <div class="guide-actions">
+    <button id="guidePrimary" class="btn" type="button"></button>
+    <button id="guideBack" class="btn btn-ghost" type="button">Back</button>
+    <button id="guideDismiss" class="btn btn-ghost" type="button">Not now</button>
+  </div>
+  <p class="guide-progress" id="guideProgress"></p>
+</aside>
+<script src="/static/onboarding.js"></script>
 <script>
 const $ = selector => document.querySelector(selector);
 const state = { commitments: [], patterns: [], record: null, ai: { configured: false }, scope: null, session: null, anchorStatus: '' };
@@ -675,7 +705,7 @@ function renderAttention(){
   if (!state.commitments.length){
     title.textContent = 'Commitments';
     note.textContent = 'Nothing is recorded in this workspace yet.';
-    host.innerHTML = emptyBlock('box', 'No commitments yet', 'Record an agreement, or load the fictional demo to see a short delivery and a blocked payment.', '<a class="btn" href="#new-commitment">Record a commitment</a><button class="btn btn-ghost" type="button" data-demo-seed>Explore the live demo</button>');
+    host.innerHTML = emptyBlock('box', 'No commitments yet', 'Record an agreement. The sample scenario stays in its own workspace.', '<a class="btn" href="#new-commitment">Record a commitment</a><button class="btn btn-ghost" type="button" data-demo-seed>Revisit the sample</button>');
     return;
   }
   const needs = state.commitments.filter(record => record.assessment.status !== 'ON_TRACK')
@@ -1069,6 +1099,162 @@ function paintAccount(){
   const scopeLabel = state.scope === 'personal' ? 'Personal workspace · NEAR testnet' : state.scope === 'demo' ? 'Guided demo · NEAR testnet' : 'NEAR testnet';
   if ($('#scopePill')) $('#scopePill').textContent = scopeLabel;
   if ($('#scopePillSide')) $('#scopePillSide').textContent = scopeLabel;
+  syncWorkspaceChrome();
+}
+function syncWorkspaceChrome(){
+  const sample = state.scope === 'demo';
+  const banner = $('#sampleBanner');
+  if (banner) banner.hidden = !sample;
+  const bannerText = $('#sampleBannerText');
+  if (bannerText) bannerText.textContent = OutcomeOnboarding.bannerFor(state.scope);
+  const eyebrow = $('#heroEyebrow');
+  const title = $('#heroTitle');
+  const lead = $('#heroLead');
+  const note = $('#heroNote');
+  const button = $('#demoSeed');
+  if (!button) return;
+  if (sample){
+    if (eyebrow) eyebrow.textContent = 'Sample scenario';
+    if (title) title.textContent = 'One supplier order, so you can see the record work';
+    if (lead) lead.textContent = 'Acme Supplies is a sample. Fifty cartons were agreed, forty-two were verified as received, and the original USD 250 proposal stays blocked. A milestone or a repayment uses this same record. Nothing here was paid.';
+    button.textContent = 'Revisit the guide';
+    button.dataset.mode = 'guide';
+    if (note) note.textContent = 'The sample stays separate from a personal workspace.';
+  } else {
+    if (eyebrow) eyebrow.textContent = 'Your records';
+    if (title) title.textContent = 'Know what was agreed. Verify what happened.';
+    if (lead) lead.textContent = 'This workspace is separate from the sample. Record a commitment, attach evidence, and keep the next decision with a person. Connecting a wallet did not authorise a payment.';
+    button.textContent = 'New commitment';
+    button.dataset.mode = 'new';
+    if (note) note.textContent = 'An approval stays APPROVED — NOT SUBMITTED unless a real transfer exists.';
+  }
+}
+let guideOverride = null;
+function renderGuide(){
+  const panel = $('#guide');
+  if (!panel || !window.OutcomeOnboarding) return;
+  const stored = OutcomeOnboarding.read(localStorage);
+  const stepIndex = guideOverride != null ? guideOverride : (stored.status === 'in_progress' ? stored.step : -1);
+  if (stepIndex < 0){ panel.hidden = true; return; }
+  const step = OutcomeOnboarding.STEPS[stepIndex];
+  panel.hidden = false;
+  $('#guideKicker').textContent = step.kicker;
+  $('#guideTitle').textContent = step.title;
+  $('#guideBody').textContent = step.body;
+  $('#guidePrimary').textContent = step.primary;
+  $('#guideBack').hidden = stepIndex === 0;
+  $('#guideProgress').textContent = 'Step ' + (stepIndex + 1) + ' of ' + OutcomeOnboarding.STEPS.length;
+}
+async function enterSample(){
+  state.scope = null;
+  await api('/api/demo/trials', { method:'POST' });
+  await enterWorkspace('demo');
+}
+function sampleOrder(){
+  return (state.commitments || []).find(record => String(record.commitment.description || '').includes('PO-104'));
+}
+async function placeGuide(stepIndex){
+  const step = OutcomeOnboarding.STEPS[stepIndex];
+  document.querySelectorAll('.guide-focus').forEach(node => node.classList.remove('guide-focus'));
+  if (!step || step.place === 'landing'){ showLanding(); return; }
+  if (state.scope !== 'demo') await enterSample();
+  if (step.place === 'overview'){ goTo('overview', 'top'); return; }
+  if (step.place === 'signals'){
+    goTo('signals', 'top');
+    $('#overview-patterns')?.classList.add('guide-focus');
+    return;
+  }
+  if (step.place === 'workspace') return;
+  const order = sampleOrder();
+  if (!order) return;
+  if (view !== 'commitments' || selected !== order.commitment.id) await openCommitment(order.commitment.id);
+  const tab = step.place === 'payments' ? 'payments' : 'decision';
+  if (detailTab !== tab) activateTab(tab, false);
+  document.querySelector('[data-open="' + CSS.escape(order.commitment.id) + '"]')?.classList.add('guide-focus');
+}
+async function guidePrimary(button){
+  const stored = OutcomeOnboarding.read(localStorage);
+  const stepIndex = guideOverride != null ? guideOverride : stored.step;
+  const step = OutcomeOnboarding.STEPS[stepIndex];
+  if (!step) return;
+  if (step.action === 'enter-sample'){
+    await withBusy(button, async () => {
+      try {
+        await enterSample();
+        guideOverride = null;
+        const next = OutcomeOnboarding.move(localStorage, 1);
+        await placeGuide(next.step);
+        renderGuide();
+      } catch (error) {
+        setLandingStatus(error.message);
+        toast(error.message, 'error');
+      }
+    });
+    return;
+  }
+  if (step.action === 'connect-for-real'){
+    await continueToRealCommitment(button);
+    return;
+  }
+  if (step.action === 'open-order' || step.action === 'show-signals' || step.action === 'show-recommendation' || step.action === 'show-payments' || step.action === 'next'){
+    const next = OutcomeOnboarding.move(localStorage, stepIndex + 1);
+    guideOverride = null;
+    await placeGuide(next.step);
+    renderGuide();
+  }
+}
+async function guideBack(){
+  if (guideOverride != null){ guideOverride = null; showLanding(); renderGuide(); return; }
+  const stored = OutcomeOnboarding.read(localStorage);
+  if (stored.step <= 0) return;
+  const next = OutcomeOnboarding.move(localStorage, stored.step - 1);
+  if (next.step === 0) showLanding();
+  else await placeGuide(next.step);
+  renderGuide();
+}
+function guideDismiss(){
+  if (guideOverride != null){ guideOverride = null; renderGuide(); return; }
+  const stored = OutcomeOnboarding.read(localStorage);
+  OutcomeOnboarding.dismiss(localStorage, stored.step);
+  document.querySelectorAll('.guide-focus').forEach(node => node.classList.remove('guide-focus'));
+  renderGuide();
+}
+async function revisitGuide(){
+  guideOverride = null;
+  OutcomeOnboarding.revisit(localStorage);
+  showLanding();
+  renderGuide();
+  $('#guideTitle')?.focus();
+}
+async function getStarted(button){
+  const stored = OutcomeOnboarding.read(localStorage);
+  if (stored.status === 'completed' || stored.status === 'dismissed'){
+    guideOverride = OutcomeOnboarding.STEPS.length - 1;
+    showLanding();
+    renderGuide();
+    return;
+  }
+  if (stored.status !== 'in_progress') OutcomeOnboarding.begin(localStorage);
+  await guidePrimary(button);
+}
+async function continueToRealCommitment(button){
+  try {
+    if (!state.session || !state.session.authenticated){
+      await connectWallet(button);
+      if (!state.session || !state.session.authenticated) return;
+    }
+    await withBusy(button, async () => {
+      await api('/api/workspaces', { method:'POST' });
+      OutcomeOnboarding.complete(localStorage);
+      guideOverride = null;
+      renderGuide();
+      await enterWorkspace('personal');
+      goTo('new', 'top');
+      toast('Personal workspace ready. It is separate from the sample. Nothing was paid.', 'ok');
+    });
+  } catch (error) {
+    toast(error.message, 'error');
+  }
 }
 async function enterWorkspace(scope){
   state.scope = scope;
@@ -1251,13 +1437,17 @@ async function recordActionEvent(button){
   });
 }
 function whenWallet(work){
-  if (window.OutcomeWallet) return work(window.OutcomeWallet);
+  // Always a Promise. The connector module can already be loaded when boot
+  // resumes, and subscribe() returns an unsubscribe function, not a Promise.
+  // Callers attach .catch; a bare return would throw and abort boot.
+  const ready = () => new Promise((resolve) => resolve(work(window.OutcomeWallet)));
+  if (window.OutcomeWallet) return ready();
   return new Promise((resolve, reject) => {
     const started = Date.now();
     const timer = setInterval(() => {
       if (window.OutcomeWallet) {
         clearInterval(timer);
-        resolve(work(window.OutcomeWallet));
+        resolve(ready());
       } else if (Date.now() - started > 8000) {
         clearInterval(timer);
         reject(Error('The wallet connector did not load. Check your connection and try again.'));
@@ -1417,6 +1607,19 @@ document.addEventListener('click', event => {
   }
   const opener = hit(event, '[data-open]');
   if (opener){ openCommitment(opener.dataset.open); return; }
+  const started = hit(event, '#getStarted');
+  if (started){ getStarted(started); return; }
+  const guideButton = hit(event, '#guidePrimary');
+  if (guideButton){ guidePrimary(guideButton); return; }
+  if (hit(event, '#guideBack')){ guideBack(); return; }
+  if (hit(event, '#guideDismiss')){ guideDismiss(); return; }
+  if (hit(event, '#revisitGuide')){ revisitGuide(); return; }
+  const workspaceAction = hit(event, '#demoSeed');
+  if (workspaceAction){
+    if (workspaceAction.dataset.mode === 'new') goTo('new', 'top');
+    else revisitGuide();
+    return;
+  }
   const demo = hit(event, '[data-demo-seed], #exploreDemo');
   if (demo){ seedDemo(demo); return; }
   const connect = hit(event, '#connectWallet');
@@ -1518,6 +1721,25 @@ async function boot(){
       }).catch(error => setLandingStatus(error.message));
     }
   })).catch(() => {});
+  let guideState = OutcomeOnboarding.read(localStorage);
+  if (OutcomeOnboarding.shouldAutoStart(guideState)) guideState = OutcomeOnboarding.begin(localStorage);
+  if (guideState.status === 'in_progress' && guideState.step > 0){
+    try {
+      await enterSample();
+      await placeGuide(guideState.step);
+      renderGuide();
+    } catch (error) {
+      showLanding();
+      setLandingStatus(error.message);
+      renderGuide();
+    }
+    return;
+  }
+  if (guideState.status === 'in_progress'){
+    showLanding();
+    renderGuide();
+    return;
+  }
   const open = sessionStorage.getItem('outcome-open');
   if (open === 'demo' && state.session && state.session.demo && state.session.demo.active) await enterWorkspace('demo');
   else if (open === 'personal' && state.session && state.session.personal && state.session.personal.active) await enterWorkspace('personal');

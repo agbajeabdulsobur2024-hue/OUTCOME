@@ -52,7 +52,7 @@ uvicorn app.main:app --reload
 
 1. Open http://127.0.0.1:8000.
 2. Open API docs at http://127.0.0.1:8000/docs.
-3. Click **Explore Demo**. No wallet is required.
+3. A first visit opens the guide. **Get started** walks through the labelled sample. No wallet is required. **Revisit the sample** opens that sample again later.
 
 The guided demo gives that visitor a private synthetic copy: two Acme orders, verified short deliveries, a configured payment policy, a blocked proposal, a follow-up action, and a repeated short-delivery signal. It does not overwrite another visitor’s data. The older shared seed still refuses to run when that shared area already has commitments.
 
