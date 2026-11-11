@@ -1,7 +1,7 @@
 # OUTCOME — Intelligence Architecture & Capability Contracts
 
 ## Product boundary
-OUTCOME is a commitment-centred operations intelligence system. The first vertical slice protects supplier payments by comparing agreed terms with observed evidence. It is decision support: it does not approve invoices, custody funds or submit payments.
+OUTCOME is general-purpose financial accountability. The core record is a configurable commitment: parties, what each owes, evidence, assessment, a human decision, and the resolution. A supplier payment is one demonstration of that record, not a separate product. OUTCOME does not custody funds or submit payments.
 
 ## Core operating loop
 1. **UNDERSTAND** — establish the business context, objectives, constraints and relevant parties.
@@ -38,7 +38,7 @@ Minimum state: identity; parties; agreed deliverables; quantities/units; agreed 
 **Purpose:** connect observations to the commitment and assess their reliability.
 **Inputs:** receiving records, invoices, delivery notes, receipts, messages and manual observations.
 **Outputs:** append-only evidence records with type, value, source, timestamp and an append-only review history.
-**Contract:** preserve source and timestamp; distinguish unreviewed, verified and rejected evidence; reviewer decisions are append-only; a newer unreviewed or rejected record supersedes older verified evidence for current decisions; missing evidence is not proof of failure or success; corrections create a new record or explicit retraction.
+**Contract:** preserve source and timestamp; distinguish unreviewed, verified and rejected evidence; reviewer decisions are append-only; when a review exists, only the latest verified record may clear a shortfall, and a newer unreviewed record does not; a payment proposal still refuses to pass while the latest applicable evidence is unverified; missing evidence is not proof of failure or success; corrections create a new record or explicit retraction.
 
 ### 4. Pattern Recognition Intelligence
 **Purpose:** detect meaningful anomalies and recurring operational patterns.

@@ -98,6 +98,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .badge,.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.02em;padding:5px 9px;border-radius:999px;background:#eef2ef;color:#3e5248;white-space:nowrap;flex:0 0 auto;max-width:100%}
 .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
 .badge.ON_TRACK,.badge.VERIFIED,.badge.APPROVED,.badge.OUTCOME_VERIFIED{background:#e7f5ec;color:#17693f}
+.badge.APPROVED_NOT_SUBMITTED{background:#fff6e2;color:#8a5d10}
 .badge.DISCREPANCY,.badge.BLOCKED,.badge.REJECTED,.badge.OUTCOME_FAILED{background:#fff0ea;color:#9a3f28}
 .badge.AWAITING_EVIDENCE{background:#edf4fb;color:#3d6484}
 .badge.REVIEW_REQUIRED,.badge.OVERDUE,.badge.UNREVIEWED,.badge.AWAITING_HUMAN_APPROVAL,.badge.PROPOSED,.badge.EXECUTION_REPORTED,.badge.EARLY_SIGNAL,.badge.RECURRING_PATTERN{background:#fff6e2;color:#8a5d10}
@@ -317,7 +318,8 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
   <div class="landing-wrap">
     <div class="landing-kicker">NEAR testnet</div>
     <h1>Know what was agreed. Verify what happened. Control what happens next.</h1>
-    <p class="landing-lead">OUTCOME is AI-powered financial accountability. It asks whether a supplier delivered what you agreed to pay for, then keeps the next step with a person. The guided demo is one order: 50 cartons of printer paper agreed, 42 received. The records are synthetic. Nothing is paid.</p>
+    <p class="landing-lead">OUTCOME is general-purpose financial accountability. You record what was agreed, who owes what, and the evidence of what happened. A supplier order, a contractor milestone, a repayment, a reimbursement, an expense, or an escrow-style release uses the same record. Nothing here grants unrestricted access to money or to another person’s records.</p>
+    <p class="landing-lead">The guided demo is one synthetic trial, not the product boundary. It contains two Acme Supplies orders. The first agrees to buy 50 cartons of printer paper for USD 250. Verified evidence says 42 arrived, so the estimated exposure is USD 40. The USD 250 proposal stays blocked, and a person cannot approve it. The second order is also short, which is why a repeated signal appears. Nothing in the trial has been paid.</p>
     <div class="landing-actions">
       <button id="exploreDemo" class="btn" type="button">Explore Demo</button>
       <button id="connectWallet" class="btn btn-ghost" type="button">Connect NEAR Wallet</button>
@@ -333,16 +335,17 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
       <article class="landing-card">
         <h2>What you can try</h2>
         <ol>
-          <li>Open the guided demo. No wallet and no login.</li>
-          <li>See 50 cartons agreed, 42 received, the exposure, and the blocked payment.</li>
-          <li>Approve the follow-up, record the rest of the delivery, and watch the proposal wait for a person.</li>
-          <li>Connect a testnet wallet if you want to write a hash-only audit record yourself.</li>
+          <li>Open the guided demo. No wallet and no login. It is the Acme trial above.</li>
+          <li>Or record your own commitment: name the other party, what is owed, and the evidence. The same checks run. There is no separate workflow for that kind of obligation.</li>
+          <li>See both Acme orders, the USD 40 exposure, and the blocked USD 250 proposal.</li>
+          <li>A later approval, when one is allowed, is marked approved and not submitted. That is not a payment.</li>
+          <li>Connect a testnet wallet if you want a personal workspace. That connection does not authorise a payment or an anchor.</li>
         </ol>
       </article>
       <article class="landing-card">
         <h2>What this does not do</h2>
-        <p>Payments stay a simulation. NEAR settlement here is testnet only. Supplier money does not move. An AI brief stays off unless the server already has a key, and a brief never approves a payment.</p>
-        <p>Earlier testnet transactions, for reference only: <a href="https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy">deploy and init</a> and <a href="https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj">record_event</a> on thewordweaver.testnet. Those are not a substitute for an anchor you sign.</p>
+        <p>A blocked proposal cannot be approved. A human approval, when one is allowed, is recorded as approved and not submitted. No transfer is sent, so nothing is paid. An AI brief never authorises a payment. The hosted service may have an AI key configured; a brief is still shown only after the cryptographic checks pass.</p>
+        <p>The live audit contract is still owner-only. Tester signatures are not offered. The existing on-chain record is an owner event, stored id <code>OUTCOME-DEMO-PO-104</code>, not this trial’s digest. <a href="https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj">record_event 3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj</a> is FINAL. <a href="https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy">Deploy and init 8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy</a> is FINAL. Code hash <code>7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS</code>.</p>
         <p>No testnet account yet? Create one in <a href="https://testnet.mynearwallet.com">MyNearWallet on testnet</a>. OUTCOME does not create wallets or hand out keys.</p>
       </article>
     </div>
@@ -356,7 +359,7 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
   <nav class="nav" aria-label="Workspace">
     <a class="active" data-view="overview" href="#overview" aria-current="page"><span class="nav-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-home"/></svg></span>Overview</a>
     <a data-view="commitments" href="#commitments"><span class="nav-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-list"/></svg></span>Commitments</a>
-    <a data-view="signals" href="#patterns-section"><span class="nav-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-pulse"/></svg></span>Supplier signals</a>
+    <a data-view="signals" href="#patterns-section"><span class="nav-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-pulse"/></svg></span>Repeated signals</a>
     <a data-view="new" href="#new-commitment"><span class="nav-icon"><svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-plus"/></svg></span>New commitment</a>
   </nav>
   <div class="sidebar-foot"><span class="live-dot"></span>Intelligence workspace<br>Human approval stays in control.</div>
@@ -371,9 +374,9 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
     <section id="overview" data-view="overview">
       <section class="hero is-welcome" id="hero">
         <div class="hero-copy">
-          <div class="eyebrow">Business operations intelligence</div>
+          <div class="eyebrow">Financial accountability</div>
           <h1>Know what was agreed. Verify what happened. Control what happens next.</h1>
-          <p>This workspace is synthetic. Fifty cartons were agreed and 42 were received, so the payment stays blocked until a person decides. Connecting a testnet wallet does not pay anyone.</p>
+          <p>Record any financial commitment, compare it with the evidence, and keep the next step with a person. The open demo is a synthetic trial of two Acme orders: 50 cartons agreed for USD 250, 42 received, estimated exposure USD 40. That USD 250 proposal cannot be approved. Connecting a wallet does not pay anyone.</p>
         </div>
         <div class="hero-actions">
           <button id="demoSeed" class="btn btn-hero" type="button" data-demo-seed>Explore the live demo</button>
@@ -405,7 +408,7 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
             <div>
               <div class="section-kicker">Pattern recognition</div>
               <div class="section-title-row">
-                <h2 id="overview-signals-title">Supplier signals</h2>
+                <h2 id="overview-signals-title">Repeated signals</h2>
                 <a class="text-link" href="#patterns-section">View signals</a>
               </div>
               <p>Repeated, verified discrepancies.</p>
@@ -445,8 +448,8 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
       <div class="section-head">
         <div>
           <div class="section-kicker">Pattern recognition</div>
-          <h1 class="page-title">Emerging supplier signals</h1>
-          <p>Repeated, verified discrepancies across commitments. Patterns need at least two verified incidents. They are review signals, not findings of misconduct.</p>
+          <h1 class="page-title">Repeated signals</h1>
+          <p>Repeated, verified discrepancies for the same other party. A supplier shortfall is one example. Patterns need at least two verified incidents. They are review signals, not findings of misconduct.</p>
         </div>
         <span class="pill">Evidence-led</span>
       </div>
@@ -458,18 +461,21 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
         <div>
           <div class="section-kicker">Operations workspace</div>
           <h1 class="page-title">Record a commitment</h1>
-          <p>Start with the agreement. Add evidence as it arrives.</p>
+          <p>Name the other party and what was agreed. A supplier order, a service, a repayment, a milestone, an expense, or another obligation uses this same form.</p>
         </div>
       </div>
       <div class="panel form-card">
         <form id="create" autocomplete="off">
-          <label for="supplier">Supplier</label>
-          <input id="supplier" name="supplier" placeholder="Acme Supplies" required maxlength="120">
+          <label for="counterparty">Other party</label>
+          <input id="counterparty" name="counterparty" placeholder="A person or organisation" required maxlength="120">
+          <label for="commitment_kind">Commitment type</label>
+          <input id="commitment_kind" name="commitment_kind" value="general" required maxlength="48" placeholder="milestone, repayment, service, expense, escrow">
+          <p class="meta">The type is a label you choose. The checks do not change for that label. The carton demo is one supplier-delivery example.</p>
           <label for="description">What was agreed?</label>
-          <input id="description" name="description" placeholder="Delivery of packaging materials" required maxlength="500">
+          <input id="description" name="description" placeholder="What each party owes, and on what condition" required maxlength="500">
           <div class="row">
-            <div><label for="quantity">Quantity</label><input id="quantity" name="quantity" type="number" min=".01" step="any" value="100" required></div>
-            <div><label for="unit">Unit</label><input id="unit" name="unit" value="units" required maxlength="40"></div>
+            <div><label for="quantity">Obligation</label><input id="quantity" name="quantity" type="number" min=".01" step="any" value="3" required></div>
+            <div><label for="unit">Unit</label><input id="unit" name="unit" value="milestones" required maxlength="40" placeholder="milestones, payments, hours, cartons"></div>
           </div>
           <div class="row">
             <div><label for="amount">Agreed amount</label><input id="amount" name="amount" type="number" min=".01" step="any" value="500" required></div>
@@ -478,7 +484,7 @@ footer{padding:28px 2px 0;color:#5c6b63;font-size:13.5px;line-height:1.6}
           <label for="due_date">Due date</label>
           <input id="due_date" name="due_date" type="date" required>
           <label for="payment_condition">Payment condition</label>
-          <input id="payment_condition" name="payment_condition" value="Pay after verified delivery" maxlength="300">
+          <input id="payment_condition" name="payment_condition" value="Release only after the agreed obligation is verified" maxlength="300">
           <button class="btn" type="submit">Create commitment</button>
         </form>
       </div>
@@ -498,17 +504,18 @@ let securityOpen = false;
 let loadError = '';
 const RANK = { DISCREPANCY: 0, OVERDUE: 1, REVIEW_REQUIRED: 2, AWAITING_EVIDENCE: 3, ON_TRACK: 4 };
 const TABS = ['decision', 'timeline', 'amendments', 'payments'];
-const BADGE = new Set(['AWAITING_EVIDENCE','DISCREPANCY','REVIEW_REQUIRED','OVERDUE','ON_TRACK','UNREVIEWED','VERIFIED','REJECTED','BLOCKED','AWAITING_HUMAN_APPROVAL','PROPOSED','APPROVED','EXECUTION_REPORTED','OUTCOME_VERIFIED','OUTCOME_FAILED','EARLY_SIGNAL','RECURRING_PATTERN']);
+const BADGE = new Set(['AWAITING_EVIDENCE','DISCREPANCY','REVIEW_REQUIRED','OVERDUE','ON_TRACK','UNREVIEWED','VERIFIED','REJECTED','BLOCKED','AWAITING_HUMAN_APPROVAL','APPROVED_NOT_SUBMITTED','REJECTED_BY_HUMAN','PROPOSED','APPROVED','EXECUTION_REPORTED','OUTCOME_VERIFIED','OUTCOME_FAILED','EARLY_SIGNAL','RECURRING_PATTERN']);
 const LABELS = {
   AWAITING_EVIDENCE:'Awaiting evidence', DISCREPANCY:'Discrepancy', REVIEW_REQUIRED:'Review required', OVERDUE:'Overdue', ON_TRACK:'On track',
   UNREVIEWED:'Unreviewed', VERIFIED:'Verified', REJECTED:'Rejected', BLOCKED:'Blocked', AWAITING_HUMAN_APPROVAL:'Awaiting approval',
+  APPROVED_NOT_SUBMITTED:'APPROVED — NOT SUBMITTED', REJECTED_BY_HUMAN:'Rejected — not submitted',
   PROPOSED:'Proposed', APPROVED:'Approved', EXECUTION_REPORTED:'Execution reported', OUTCOME_VERIFIED:'Outcome verified', OUTCOME_FAILED:'Outcome failed',
   EARLY_SIGNAL:'Early signal', RECURRING_PATTERN:'Recurring pattern', REPEATED_SHORT_DELIVERY:'Repeated short delivery',
   REPEATED_INVOICE_OVERCHARGE:'Repeated invoice overcharge', REPEATED_LATE_DELIVERY:'Repeated late delivery',
-  CONTACT_SUPPLIER:'Contact supplier', REQUEST_EVIDENCE:'Request evidence', HOLD_PAYMENT:'Hold payment', RECONCILE_DELIVERY:'Reconcile delivery', OTHER:'Other',
-  quantity_received:'Quantity received', invoice_amount:'Invoice amount', note:'Observation'
+  CONFIRM_OBLIGATION:'Confirm the obligation', CONTACT_SUPPLIER:'Contact the other party', REQUEST_EVIDENCE:'Request evidence', HOLD_PAYMENT:'Hold the release', RECONCILE_DELIVERY:'Reconcile the shortfall', OTHER:'Other',
+  quantity_received:'Quantity received', obligation_fulfilled:'Obligation fulfilled', invoice_amount:'Invoice amount', amount_claimed:'Amount claimed', note:'Note or confirmation'
 };
-const VIEW_NAMES = { overview:'Overview', commitments:'Commitments', signals:'Supplier signals', new:'New commitment' };
+const VIEW_NAMES = { overview:'Overview', commitments:'Commitments', signals:'Repeated signals', new:'New commitment' };
 
 function esc(value){return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 function ico(name, size=18){return `<svg class="ico" width="${size}" height="${size}" aria-hidden="true"><use href="#i-${name}"/></svg>`;}
@@ -641,7 +648,7 @@ function commitmentButton(record){
   const commitment = record.commitment;
   const assessment = record.assessment;
   const exposure = Number(assessment.financial_exposure) > 0 ? ` · ${cash(assessment.financial_exposure, assessment.currency)} exposure` : '';
-  return `<button type="button" class="item${selected===commitment.id ? ' active' : ''}" data-open="${esc(commitment.id)}" aria-pressed="${selected===commitment.id ? 'true' : 'false'}"><span class="item-top"><span class="item-title">${esc(commitment.supplier)}</span>${badge(assessment.status)}</span><span class="item-desc">${esc(commitment.description)}</span><span class="item-meta">${esc(cash(commitment.amount, commitment.currency))} · Due ${esc(formatDate(commitment.due_date))}${esc(exposure)}</span></button>`;
+  return `<button type="button" class="item${selected===commitment.id ? ' active' : ''}" data-open="${esc(commitment.id)}" aria-pressed="${selected===commitment.id ? 'true' : 'false'}"><span class="item-top"><span class="item-title">${esc(commitment.counterparty || commitment.supplier)}</span>${badge(assessment.status)}</span><span class="item-desc">${esc(commitment.description)}</span><span class="item-meta">${esc(pretty(commitment.commitment_kind || 'general'))} · ${esc(cash(commitment.amount, commitment.currency))} · Due ${esc(formatDate(commitment.due_date))}${esc(exposure)}</span></button>`;
 }
 function patternCard(pattern){
   return `<article class="signal-card"><div class="signal-card-top"><h3>${esc(pattern.supplier)}</h3>${badge(pattern.confidence)}</div><p class="signal-type">${esc(pretty(pattern.pattern_type))}</p><p class="signal-stat">${esc(pattern.occurrences)} verified incidents across ${esc(pattern.observed_commitments)} observed commitments (${Math.round(Number(pattern.rate) * 100)}%).</p><p class="signal-note">${esc(pattern.interpretation)}</p></article>`;
@@ -695,7 +702,7 @@ function renderPatterns(){
     return;
   }
   if (!state.patterns.length){
-    const block = emptyBlock('pulse', 'No repeated signals', 'Patterns appear after at least two verified incidents for the same supplier. They are review signals, not findings of misconduct.');
+    const block = emptyBlock('pulse', 'No repeated signals', 'Patterns appear after at least two verified incidents for the same other party. They are review signals, not findings of misconduct.');
     overview.innerHTML = block;
     full.innerHTML = block;
     return;
@@ -864,7 +871,7 @@ function renderAi(record){
 }
 function renderEvidence(record){
   const items = record.evidence || [];
-  if (!items.length) return emptyBlock('file', 'No evidence yet', 'Record what arrived: a received quantity, an invoice amount, or a note. Earlier records stay in the history.');
+  if (!items.length) return emptyBlock('file', 'No evidence yet', 'Record what happened: fulfilment of the obligation, a claimed amount, or a note. Earlier records stay in the history.');
   return `<div class="stack">${items.map(item => {
     const value = item.value == null || item.value === '' ? '' : `<div class="value">${esc(num(item.value))}</div>`;
     const reviews = (item.review_history || []).map(review => `<li>${esc(pretty(review.status))} by ${esc(review.reviewer)} · ${when(review.created_at)}${review.note ? ` — ${esc(review.note)}` : ''}</li>`).join('');
@@ -882,12 +889,12 @@ function renderActions(record){
     const events = (action.events || []).map(event => `<li>${esc(pretty(event.event_type))} by ${esc(event.actor)} · ${when(event.created_at)}${event.note ? ` — ${esc(event.note)}` : ''}</li>`).join('');
     return `<article class="record"><div class="record-top"><h3>${esc(pretty(action.action_type))}</h3>${badge(action.status)}</div><p>${esc(action.description)}</p>${events ? `<ul class="log">${events}</ul>` : ''}<div class="field"><label for="actor-${esc(action.id)}">Actor</label><input id="actor-${esc(action.id)}" data-action-actor="${esc(action.id)}" value="Business owner" maxlength="120"></div>${controls}</article>`;
   }).join('');
-  return `<section class="rail-card"><h3>Follow-through</h3><p class="meta">Record an action, obtain approval, report what was done, then verify the outcome against reviewed evidence. OUTCOME does not perform the external action.</p>${cards ? `<div class="stack">${cards}</div>` : emptyBlock('check', 'No follow-through yet', 'Propose a human action. OUTCOME records the approval and the outcome. It does not contact the supplier or move money.')}<div class="inset"><h3 class="card-title">${actions.length ? 'Propose another action' : 'Propose an action'}</h3><form id="actionForm" autocomplete="off"><div class="field"><label for="action_type">Action type</label><select id="action_type" name="action_type"><option value="CONTACT_SUPPLIER">Contact supplier</option><option value="REQUEST_EVIDENCE">Request evidence</option><option value="HOLD_PAYMENT">Hold payment</option><option value="RECONCILE_DELIVERY">Reconcile delivery</option><option value="OTHER">Other</option></select></div><div class="field"><label for="action_description">Action description</label><input id="action_description" name="description" minlength="3" maxlength="1000" required placeholder="Ask supplier to reconcile the missing quantity"></div><button class="btn" type="submit">Propose action</button></form></div><p class="meta">Actor names are demo labels, not authenticated identities. Verified outcomes require evidence already marked verified.</p></section>`;
+  return `<section class="rail-card"><h3>Follow-through</h3><p class="meta">Record an action, obtain approval, report what was done, then verify the outcome against reviewed evidence. OUTCOME does not perform the external action.</p>${cards ? `<div class="stack">${cards}</div>` : emptyBlock('check', 'No follow-through yet', 'Propose a human action. OUTCOME records the approval and the outcome. It does not move money.')}<div class="inset"><h3 class="card-title">${actions.length ? 'Propose another action' : 'Propose an action'}</h3><form id="actionForm" autocomplete="off"><div class="field"><label for="action_type">Action type</label><select id="action_type" name="action_type"><option value="CONFIRM_OBLIGATION">Confirm the obligation</option><option value="REQUEST_EVIDENCE">Request evidence</option><option value="HOLD_PAYMENT">Hold the release</option><option value="RECONCILE_DELIVERY">Reconcile the shortfall</option><option value="CONTACT_SUPPLIER">Contact the other party</option><option value="OTHER">Other</option></select></div><div class="field"><label for="action_description">Action description</label><input id="action_description" name="description" minlength="3" maxlength="1000" required placeholder="Ask the other party to complete what is still owed"></div><button class="btn" type="submit">Propose action</button></form></div><p class="meta">Actor names are labels, not authenticated identities. A verified outcome must cite evidence that covers the agreed obligation.</p></section>`;
 }
 function renderDecision(record){
   const assessment = record.assessment;
   const issues = (assessment.issues || []).map(issue => `<article class="issue"><h3>${esc(pretty(issue.code))}</h3><p>${esc(issue.message)}</p>${issue.financial_exposure_estimate ? `<p class="exposure">Estimated exposure ${esc(cash(issue.financial_exposure_estimate, issue.currency || record.commitment.currency))}</p>` : ''}</article>`).join('');
-  return `<div class="decision-grid"><div><p class="summary">${esc(assessment.summary)}</p>${issues ? `<div class="stack">${issues}</div>` : '<p class="quiet-line">No discrepancy is flagged on the latest evidence. This is not payment authorization.</p>'}<h3 class="subhead">Evidence</h3><p class="meta">${esc(assessment.evidence_count)} recorded. New observations are appended. Previous records are retained.</p>${renderEvidence(record)}<div class="inset"><h3 class="card-title">Add evidence</h3><form id="evidenceForm" autocomplete="off"><div class="field"><label for="evidence_kind">Evidence type</label><select id="evidence_kind" name="kind"><option value="quantity_received">Quantity received</option><option value="invoice_amount">Invoice amount</option><option value="note">Observation / note</option></select></div><div class="field"><label for="evidence_value">Value</label><input id="evidence_value" name="value" type="number" step="any" min="0" placeholder="e.g. 80"></div><div class="field"><label for="evidence_note">Evidence note</label><input id="evidence_note" name="note" maxlength="1000" placeholder="Receiving note #DN-104"></div><div class="field"><label for="evidence_source">Evidence source</label><input id="evidence_source" name="source" value="manual" maxlength="100"></div><button class="btn" type="submit">Save evidence and reassess</button></form></div><p class="meta">Demo review labels are not authenticated signatures. Production use requires verified reviewer identity and source authenticity.</p></div><div><section class="rail-card"><h3>What should happen next</h3><ol class="actions">${(assessment.next_actions || []).map(item => `<li>${esc(item)}</li>`).join('')}</ol></section>${renderAi(record)}${renderActions(record)}</div></div>`;
+  return `<div class="decision-grid"><div><p class="summary">${esc(assessment.summary)}</p>${issues ? `<div class="stack">${issues}</div>` : '<p class="quiet-line">No discrepancy is flagged on the latest evidence. This is not payment authorization.</p>'}<h3 class="subhead">Evidence</h3><p class="meta">${esc(assessment.evidence_count)} recorded. New observations are appended. Previous records are retained.</p>${renderEvidence(record)}<div class="inset"><h3 class="card-title">Add evidence</h3><form id="evidenceForm" autocomplete="off"><div class="field"><label for="evidence_kind">Evidence type</label><select id="evidence_kind" name="kind"><option value="obligation_fulfilled">Obligation fulfilled</option><option value="amount_claimed">Amount claimed</option><option value="quantity_received">Quantity received</option><option value="invoice_amount">Invoice amount</option><option value="note">Note or confirmation</option></select></div><div class="field"><label for="evidence_value">Value</label><input id="evidence_value" name="value" type="number" step="any" min="0" placeholder="e.g. 80"></div><div class="field"><label for="evidence_note">Evidence note</label><input id="evidence_note" name="note" maxlength="1000" placeholder="Receiving note #DN-104"></div><div class="field"><label for="evidence_source">Evidence source</label><input id="evidence_source" name="source" value="manual" maxlength="100"></div><button class="btn" type="submit">Save evidence and reassess</button></form></div><p class="meta">Demo review labels are not authenticated signatures. Production use requires verified reviewer identity and source authenticity.</p></div><div><section class="rail-card"><h3>What should happen next</h3><ol class="actions">${(assessment.next_actions || []).map(item => `<li>${esc(item)}</li>`).join('')}</ol></section>${renderAi(record)}${renderActions(record)}</div></div>`;
 }
 function renderTimeline(record){
   const events = record.timeline || [];
@@ -926,7 +933,9 @@ function renderAnchor(record){
   const receipts = record.audit_receipts || [];
   const links = receipts.map(item => `<li><a href="${esc(item.explorer_url)}" target="_blank" rel="noopener">${esc(item.execution_status)} · ${esc(item.transaction_hash)}</a> · ${item.matches_current_record ? 'matches this record' : 'record has changed since this anchor'}</li>`).join('');
   const signedIn = Boolean(state.session && state.session.authenticated);
-  return `<h3 class="subhead">Testnet audit record</h3><p class="meta">Write a hash of this order to thewordweaver.testnet with your own wallet. The chain stores the digest, not supplier names, notes, or bank details. This does not pay anyone.</p><p class="meta">Digest ${esc(anchor.payload_hash || '')}</p>${state.anchorStatus ? `<p class="meta" id="anchorStatus">${esc(state.anchorStatus)}</p>` : ''}${links ? `<ul class="log">${links}</ul>` : ''}<div class="btn-row"><button id="anchorRecord" class="btn" type="button">${signedIn ? 'Sign audit record' : 'Connect a wallet to sign'}</button></div><p class="meta">The contract already on testnet still accepts a new record only from thewordweaver.testnet until its owner upgrades it. After that upgrade, any testnet account can append a hash. OUTCOME never holds a key.</p>`;
+  const offerSignature = state.anchorPolicy === 'any_account';
+  const signButton = offerSignature ? `<div class="btn-row"><button id="anchorRecord" class="btn" type="button">${signedIn ? 'Sign audit record' : 'Connect a wallet to sign'}</button></div>` : '';
+  return `<h3 class="subhead">Testnet audit record</h3><p class="meta">This order’s digest is not on chain. The live contract still accepts new records only from its owner, so a tester signature is not offered.</p><p class="meta">Owner event, not a tester anchor. Stored id OUTCOME-DEMO-PO-104. <a href="https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj" target="_blank" rel="noopener">record_event 3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj</a> is FINAL. <a href="https://testnet.nearblocks.io/txns/8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy" target="_blank" rel="noopener">Deploy and init 8qK4xfgicVX61qERb9cyTZhbjMoynDvJAMTmiXpQT5cy</a> is FINAL. Code hash 7KHQPNxsWM1vKCYR4b743c7ZAj9fVhcZcXSjoLKsRQaS.</p><p class="meta">Digest for this order, not written on chain: ${esc(anchor.payload_hash || '')}</p>${state.anchorStatus ? `<p class="meta" id="anchorStatus">${esc(state.anchorStatus)}</p>` : ''}${links ? `<ul class="log">${links}</ul>` : ''}${signButton}`;
 }
 function renderPayments(record){
   const commitment = record.commitment;
@@ -935,7 +944,7 @@ function renderPayments(record){
   const history = proposals.length
     ? `<div class="stack">${proposals.map(item => `<article class="record"><div class="record-top"><h3>${esc(cash(item.proposal.requested_amount, item.proposal.currency))}</h3>${badge(item.status)}</div><p>${esc(item.proposal.message || '')}</p><p class="meta">${esc(item.proposal.destination || '')} · ${when(item.created_at)}</p>${(item.proposal.reasons || []).length ? `<ul class="log">${item.proposal.reasons.map(reason => `<li><b>${esc(pretty(reason.code))}</b> — ${esc(reason.message)}</li>`).join('')}</ul>` : ''}</article>`).join('')}</div>`
     : emptyBlock('shield', 'No proposals yet', 'Evaluate a payment against the owner policy. A passing result still needs a person. Nothing is transferred.');
-  return `<h3 class="card-title">Payment protection</h3><p class="meta">Simulation only. The policy starts disabled. Set an exact approved destination and a spending cap. OUTCOME never approves, signs or submits a transfer.</p><form id="policyForm" autocomplete="off"><label class="check"><input name="enabled" type="checkbox" ${checked(policy.enabled)}> Enable policy checks</label><div class="field"><label for="max_amount">Maximum permitted amount</label><input id="max_amount" name="max_amount" type="number" min=".01" step="any" value="${esc(policy.max_amount)}" required></div><div class="field"><label for="allowed_destination">Exact approved destination</label><input id="allowed_destination" name="allowed_destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><label class="check"><input name="require_full_delivery" type="checkbox" ${checked(policy.require_full_delivery)}> Require full delivery evidence</label><label class="check"><input name="require_invoice_match" type="checkbox" ${checked(policy.require_invoice_match)}> Require exact invoice match</label><label class="check"><input name="require_verified_evidence" type="checkbox" ${checked(policy.require_verified_evidence)}> Require latest evidence to be reviewed and verified</label><label class="check"><input name="allow_partial_payments" type="checkbox" ${checked(policy.allow_partial_payments)}> Allow partial payment proposals</label><button class="btn" type="submit">Save payment policy</button></form><h3 class="subhead">Evaluate a proposal</h3><form id="proposalForm" autocomplete="off"><div class="row"><div class="field"><label for="proposal_amount">Proposed amount</label><input id="proposal_amount" name="amount" type="number" min=".01" step="any" value="${esc(commitment.amount)}" required></div><div class="field"><label for="proposal_currency">Currency</label><input id="proposal_currency" name="currency" value="${esc(commitment.currency)}" required minlength="3" maxlength="8"></div></div><div class="field"><label for="proposal_destination">Destination</label><input id="proposal_destination" name="destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><button class="btn" type="submit">Evaluate proposal — no transfer</button></form><details id="security-test" class="disclosure"${securityOpen ? ' open' : ''}><summary>Adversarial payment test</summary><p>Simulate a prompt-injected agent trying to exceed the owner cap and pay an unapproved destination. The policy gate should block it before any signing or transfer.</p><button id="redTeamPaymentButton" class="btn btn-danger-solid" type="button">Run adversarial payment test</button></details><h3 class="subhead">Proposal history</h3>${history}<p class="meta check-note">A passing proposal is not approval. No funds move. A wallet signature, if you add one, is only for the audit record.</p>${renderPaymentDecision(record)}${renderAnchor(record)}`;
+  return `<h3 class="card-title">Payment protection</h3><p class="meta">Simulation only. The policy starts disabled. Set an exact approved destination and a spending cap. OUTCOME never approves, signs or submits a transfer.</p><form id="policyForm" autocomplete="off"><label class="check"><input name="enabled" type="checkbox" ${checked(policy.enabled)}> Enable policy checks</label><div class="field"><label for="max_amount">Maximum permitted amount</label><input id="max_amount" name="max_amount" type="number" min=".01" step="any" value="${esc(policy.max_amount)}" required></div><div class="field"><label for="allowed_destination">Exact approved destination</label><input id="allowed_destination" name="allowed_destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><label class="check"><input name="require_full_delivery" type="checkbox" ${checked(policy.require_full_delivery)}> Require the agreed obligation to be fully recorded</label><label class="check"><input name="require_invoice_match" type="checkbox" ${checked(policy.require_invoice_match)}> Require the claimed amount to match</label><label class="check"><input name="require_verified_evidence" type="checkbox" ${checked(policy.require_verified_evidence)}> Require latest evidence to be reviewed and verified</label><label class="check"><input name="allow_partial_payments" type="checkbox" ${checked(policy.allow_partial_payments)}> Allow partial payment proposals</label><button class="btn" type="submit">Save payment policy</button></form><h3 class="subhead">Evaluate a proposal</h3><form id="proposalForm" autocomplete="off"><div class="row"><div class="field"><label for="proposal_amount">Proposed amount</label><input id="proposal_amount" name="amount" type="number" min=".01" step="any" value="${esc(commitment.amount)}" required></div><div class="field"><label for="proposal_currency">Currency</label><input id="proposal_currency" name="currency" value="${esc(commitment.currency)}" required minlength="3" maxlength="8"></div></div><div class="field"><label for="proposal_destination">Destination</label><input id="proposal_destination" name="destination" value="${esc(policy.allowed_destination)}" required maxlength="200"></div><button class="btn" type="submit">Evaluate proposal — no transfer</button></form><details id="security-test" class="disclosure"${securityOpen ? ' open' : ''}><summary>Adversarial payment test</summary><p>Simulate a prompt-injected agent trying to exceed the owner cap and pay an unapproved destination. The policy gate should block it before any signing or transfer.</p><button id="redTeamPaymentButton" class="btn btn-danger-solid" type="button">Run adversarial payment test</button></details><h3 class="subhead">Proposal history</h3>${history}<p class="meta check-note">A passing proposal is not approval. No funds move. A wallet signature, if you add one, is only for the audit record.</p>${renderPaymentDecision(record)}${renderAnchor(record)}`;
 }
 function renderDetail(){
   const record = state.record;
@@ -947,7 +956,7 @@ function renderDetail(){
   const tab = TABS.includes(detailTab) ? detailTab : 'decision';
   detailTab = tab;
   const panel = tab === 'timeline' ? renderTimeline(record) : tab === 'amendments' ? renderAmendments(record) : tab === 'payments' ? renderPayments(record) : renderDecision(record);
-  $('#detail').innerHTML = `<button type="button" class="btn btn-ghost back-mobile" id="backToList">${ico('arrow', 16)} Back to commitments</button><div class="detail-top"><div><p class="kicker">Commitment</p><h2 id="detail-title" tabindex="-1">${esc(commitment.supplier)}</h2><p class="lede">${esc(commitment.description)}</p></div><div>${badge(assessment.status)}</div></div><dl class="facts"><div><dt>Quantity</dt><dd>${esc(num(commitment.quantity))} ${esc(commitment.unit)}</dd></div><div><dt>Amount</dt><dd>${esc(cash(commitment.amount, commitment.currency))}</dd></div><div><dt>Due</dt><dd>${esc(formatDate(commitment.due_date))}</dd></div><div><dt>Condition</dt><dd>${esc(commitment.payment_condition)}</dd></div></dl>${latest ? `<button type="button" class="jump" data-goto-tab="payments">Latest payment proposal ${badge(latest.status)}</button>` : ''}<div class="tabs" role="tablist" aria-label="Commitment sections">${TABS.map(name => `<button type="button" role="tab" id="tab-${name}" data-tab="${name}" aria-controls="commitment-panel" aria-selected="${name===tab ? 'true' : 'false'}" tabindex="${name===tab ? '0' : '-1'}">${name === 'decision' ? 'Decision' : name === 'timeline' ? 'Timeline' : name === 'amendments' ? 'Amendments' : 'Payments'}</button>`).join('')}</div><div id="commitment-panel" role="tabpanel" aria-labelledby="tab-${tab}">${panel}</div>`;
+  $('#detail').innerHTML = `<button type="button" class="btn btn-ghost back-mobile" id="backToList">${ico('arrow', 16)} Back to commitments</button><div class="detail-top"><div><p class="kicker">${esc(pretty(commitment.commitment_kind || 'general'))}</p><h2 id="detail-title" tabindex="-1">${esc(commitment.counterparty || commitment.supplier)}</h2><p class="lede">${esc(commitment.description)}</p></div><div>${badge(assessment.status)}</div></div><dl class="facts"><div><dt>Obligation</dt><dd>${esc(num(commitment.quantity))} ${esc(commitment.unit)}</dd></div><div><dt>Amount</dt><dd>${esc(cash(commitment.amount, commitment.currency))}</dd></div><div><dt>Due</dt><dd>${esc(formatDate(commitment.due_date))}</dd></div><div><dt>Condition</dt><dd>${esc(commitment.payment_condition)}</dd></div></dl>${latest ? `<button type="button" class="jump" data-goto-tab="payments">Latest payment proposal ${badge(latest.status)}</button>` : ''}<div class="tabs" role="tablist" aria-label="Commitment sections">${TABS.map(name => `<button type="button" role="tab" id="tab-${name}" data-tab="${name}" aria-controls="commitment-panel" aria-selected="${name===tab ? 'true' : 'false'}" tabindex="${name===tab ? '0' : '-1'}">${name === 'decision' ? 'Decision' : name === 'timeline' ? 'Timeline' : name === 'amendments' ? 'Amendments' : 'Payments'}</button>`).join('')}</div><div id="commitment-panel" role="tabpanel" aria-labelledby="tab-${tab}">${panel}</div>`;
   syncEvidenceValue();
   $('#commit-layout')?.classList.toggle('has-selection', true);
 }
@@ -978,6 +987,14 @@ async function showDetail(id, options={}){
     if (token !== detailToken || selected !== id) return;
     state.record = record;
     state.ai = ai;
+    state.anchorPolicy = 'owner_only';
+    try {
+      const contractId = (state.session && state.session.near && state.session.near.contract_id) || 'thewordweaver.testnet';
+      const policy = await nearView(contractId, 'get_anchor_policy');
+      if (token !== detailToken || selected !== id) return;
+      if (policy === 'any_account') state.anchorPolicy = 'any_account';
+    } catch { state.anchorPolicy = 'owner_only'; }
+    if (token !== detailToken || selected !== id) return;
     renderDetail();
     if (options.focus) $('#detail-title')?.focus();
   } catch (error) {
@@ -1102,7 +1119,7 @@ async function saveEvidence(form){
   const kind = data.get('kind');
   const raw = data.get('value');
   if (kind !== 'note' && (raw == null || raw === '' || Number.isNaN(Number(raw)))){
-    setFieldError(form.elements.value, 'Enter a quantity or invoice amount for this evidence.');
+    setFieldError(form.elements.value, 'Enter the fulfilled amount or the claimed amount for this evidence.');
     form.elements.value.focus();
     return;
   }
@@ -1309,13 +1326,13 @@ async function createPersonalWorkspace(button){
     }
   });
 }
-async function nearView(contractId, method){
+async function nearView(contractId, method, args={}){
   const response = await fetch('https://rpc.testnet.near.org', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       jsonrpc: '2.0', id: 'outcome', method: 'query',
-      params: { request_type: 'call_function', account_id: contractId, method_name: method, args_base64: btoa('{}'), finality: 'final' },
+      params: { request_type: 'call_function', account_id: contractId, method_name: method, args_base64: btoa(JSON.stringify(args)), finality: 'final' },
     }),
   });
   const body = await response.json();
@@ -1329,6 +1346,10 @@ async function nearView(contractId, method){
 async function signAnchor(button){
   const record = state.record;
   if (!record) return;
+  if (state.anchorPolicy !== 'any_account') {
+    toast('The live contract does not accept a tester signature yet.', 'warn');
+    return;
+  }
   if (!state.session || !state.session.authenticated) {
     toast('Connect your NEAR testnet wallet before signing an audit record.', 'warn');
     showLanding();
@@ -1341,22 +1362,28 @@ async function signAnchor(button){
       renderDetail();
       let previous = '';
       try { previous = await nearView(contractId, 'get_latest_hash'); } catch (error) { throw Error('Could not read the testnet contract. ' + error.message); }
-      let policy = 'owner_only_until_upgrade';
-      try { policy = await nearView(contractId, 'get_anchor_policy'); } catch { policy = 'owner_only_until_upgrade'; }
-      if (policy !== 'any_account' && state.session.account_id !== 'thewordweaver.testnet') {
-        state.anchorStatus = 'The contract on testnet still accepts new records only from thewordweaver.testnet. You can still sign; another account is rejected until the contract owner upgrades it.';
-      } else {
-        state.anchorStatus = 'Waiting for your wallet to sign the audit record.';
+      if (state.anchorPolicy !== 'any_account') {
+        state.anchorStatus = 'The live contract does not accept a tester signature yet.';
+        renderDetail();
+        return;
       }
+      state.anchorStatus = 'Waiting for your wallet to sign the storage deposit and the audit record.';
       renderDetail();
       const anchor = record.audit_anchor;
+      const deposit = await nearView(contractId, 'get_required_storage_deposit', {
+        commitment_id: anchor.commitment_id,
+        event_type: anchor.event_type,
+        payload_hash: anchor.payload_hash,
+        previous_hash: previous,
+        actor_account_id: state.session.account_id,
+      });
       const wallet = await whenWallet(item => item);
       const result = await wallet.signAndSendRecordEvent(contractId, {
         commitment_id: anchor.commitment_id,
         event_type: anchor.event_type,
         payload_hash: anchor.payload_hash,
         previous_hash: previous,
-      });
+      }, String(deposit));
       const txHash = result && result.transaction && result.transaction.hash;
       if (!txHash) throw Error('The wallet did not return a transaction hash.');
       state.anchorStatus = 'Submitted. Checking the testnet transaction.';

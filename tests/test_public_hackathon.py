@@ -209,15 +209,44 @@ def test_payment_block_human_approval_and_resolution_on_the_demo(tmp_path, monke
         assert outcome['transaction_hash'] is None
         assert outcome['sandbox_executed'] is False
         assert outcome['official_network'] == 'mainnet'
+        saved = client.get(f'/api/commitments/{cid}').json()
+        latest = saved['payment_proposals'][-1]
+        assert latest['status'] == 'APPROVED_NOT_SUBMITTED'
+        assert latest['proposal']['transfer_executed'] is False
+        assert latest['proposal']['transaction_hash'] is None
+        short_proof = client.post(f'/api/actions/{action_id}/events', json={
+            'event_type': 'EXECUTION_REPORTED', 'actor': 'Owner', 'note': 'Supplier was asked for the rest.',
+        })
+        assert short_proof.status_code == 201
+        still_short = client.post(f'/api/actions/{action_id}/events', json={
+            'event_type': 'OUTCOME_VERIFIED', 'actor': 'Owner',
+            'evidence_id': first['evidence'][0]['id'],
+        })
+        assert still_short.status_code == 422
+        covered = client.post(f'/api/actions/{action_id}/events', json={
+            'event_type': 'OUTCOME_VERIFIED', 'actor': 'Owner',
+            'evidence_id': evidence['id'],
+        })
+        assert covered.status_code == 201, covered.text
 
 
-def anchor_tx(sender, anchor, method='record_event', receiver='thewordweaver.testnet', deposit='0', payload_hash=None):
+def anchor_tx(sender, anchor, method='record_event', receiver='thewordweaver.testnet', deposit=None, payload_hash=None):
     args = {
         'commitment_id': anchor['commitment_id'],
         'event_type': anchor['event_type'],
         'payload_hash': payload_hash or anchor['payload_hash'],
         'previous_hash': '',
     }
+    if deposit is None and method == 'record_event':
+        deposit = str(anchors.required_storage_deposit_yocto(
+            commitment_id=args['commitment_id'],
+            event_type=args['event_type'],
+            payload_hash=args['payload_hash'],
+            previous_hash=args['previous_hash'],
+            actor_account_id=sender,
+        ))
+    if deposit is None:
+        deposit = '0'
     return {
         'final_execution_status': 'FINAL',
         'status': {'SuccessValue': ''},
@@ -276,6 +305,12 @@ def test_user_signed_anchor_is_verified_and_unauthorised_anchors_are_refused(tmp
         stored['E' * 44] = anchor_tx('alice.testnet', anchor, payload_hash='ab' * 32)
         mismatch = alice.post(f'/api/commitments/{cid}/audit-receipts', json={'transaction_hash': 'E' * 44})
         assert mismatch.status_code == 422
+        stored['0' * 44] = anchor_tx('alice.testnet', anchor, deposit='0')
+        zero = alice.post(f'/api/commitments/{cid}/audit-receipts', json={'transaction_hash': '0' * 44})
+        assert zero.status_code == 422
+        stored['1' * 44] = anchor_tx('alice.testnet', anchor, deposit='1')
+        odd = alice.post(f'/api/commitments/{cid}/audit-receipts', json={'transaction_hash': '1' * 44})
+        assert odd.status_code == 422
         stored['F' * 44] = anchor_tx('alice.testnet', anchor)
         saved = alice.post(f'/api/commitments/{cid}/audit-receipts', json={'transaction_hash': 'F' * 44})
         assert saved.status_code == 201, saved.text
@@ -360,10 +395,39 @@ def test_official_intents_network_document_is_mainnet():
     assert observed == 'mainnet'
 
 
+def test_storage_deposit_matches_the_sandbox_measurement():
+    tester = anchors.storage_bytes_for_event(
+        commitment_id='tester-event-2',
+        event_type='TESTER_RECORD',
+        payload_hash='cd' * 32,
+        previous_hash='ab' * 32,
+        actor_account_id='tester.sandbox',
+        last_hash_len=64,
+    )
+    owner = anchors.storage_bytes_for_event(
+        commitment_id='owner-event-1',
+        event_type='OWNER_RECORD',
+        payload_hash='ab' * 32,
+        previous_hash='',
+        actor_account_id='sandbox',
+        last_hash_len=0,
+    )
+    assert tester == 290
+    assert owner == 281
+    assert anchors.required_storage_deposit_yocto(
+        commitment_id='tester-event-2',
+        event_type='TESTER_RECORD',
+        payload_hash='cd' * 32,
+        previous_hash='ab' * 32,
+        actor_account_id='tester.sandbox',
+    ) == 290 * 10 ** 19
+
+
 def test_contract_interface_allows_user_anchors_and_keeps_admin_probe_private():
     source = Path('near/contract/src/lib.rs').read_text()
     record = source.split('pub fn record_event', 1)[1].split('pub fn admin_probe', 1)[0]
     assert 'Only the configured owner account may append' not in record
+    assert 'Insufficient storage deposit' in record
     assert 'get_anchor_policy' in source
     assert 'any_account' in source
     admin = source.split('pub fn admin_probe', 1)[1]

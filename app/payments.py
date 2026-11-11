@@ -36,29 +36,29 @@ def evaluate_payment_proposal(
     if not approved_destination or destination.strip() != approved_destination:
         reasons.append({"code": "DESTINATION_NOT_ALLOWED", "message": "Destination does not exactly match the owner-approved destination."})
 
-    def latest(kind: str):
-        records = [e for e in evidence if e.get("kind") == kind and e.get("value") is not None]
+    def latest_of(kinds: tuple[str, ...]):
+        records = [e for e in evidence if e.get("kind") in kinds and e.get("value") is not None]
         return records[-1] if records else None
 
     if policy.get("require_full_delivery", True):
-        qty_record = latest("quantity_received")
+        qty_record = latest_of(("quantity_received", "obligation_fulfilled"))
         if not qty_record:
-            reasons.append({"code": "DELIVERY_NOT_EVIDENCED", "message": "No receiving quantity evidence is recorded."})
+            reasons.append({"code": "DELIVERY_NOT_EVIDENCED", "message": "No fulfilment evidence is recorded for the agreed obligation."})
         elif policy.get("require_verified_evidence", True) and qty_record.get("review_status") != "VERIFIED":
-            reasons.append({"code": "DELIVERY_NOT_VERIFIED", "message": "The latest receiving evidence has not been verified by an authorized reviewer."})
+            reasons.append({"code": "DELIVERY_NOT_VERIFIED", "message": "The latest fulfilment evidence has not been verified by an authorized reviewer."})
         elif float(qty_record["value"]) < float(commitment["quantity"]):
-            reasons.append({"code": "DELIVERY_SHORTFALL", "message": "Verified delivery is below the committed quantity."})
+            reasons.append({"code": "DELIVERY_SHORTFALL", "message": "Verified fulfilment is below the agreed obligation."})
         elif float(qty_record["value"]) > float(commitment["quantity"]):
-            reasons.append({"code": "DELIVERY_REQUIRES_REVIEW", "message": "Verified delivery exceeds the commitment and needs human review."})
+            reasons.append({"code": "DELIVERY_REQUIRES_REVIEW", "message": "Verified fulfilment exceeds the agreement and needs human review."})
 
     if policy.get("require_invoice_match", True):
-        invoice_record = latest("invoice_amount")
+        invoice_record = latest_of(("invoice_amount", "amount_claimed"))
         if not invoice_record:
-            reasons.append({"code": "INVOICE_NOT_EVIDENCED", "message": "No invoice amount evidence is recorded."})
+            reasons.append({"code": "INVOICE_NOT_EVIDENCED", "message": "No claimed amount is recorded."})
         elif policy.get("require_verified_evidence", True) and invoice_record.get("review_status") != "VERIFIED":
-            reasons.append({"code": "INVOICE_NOT_VERIFIED", "message": "The latest invoice evidence has not been verified by an authorized reviewer."})
+            reasons.append({"code": "INVOICE_NOT_VERIFIED", "message": "The latest claimed amount has not been verified by an authorized reviewer."})
         elif round(float(invoice_record["value"]), 2) != round(float(commitment["amount"]), 2):
-            reasons.append({"code": "INVOICE_MISMATCH", "message": "Latest verified invoice amount does not exactly match the recorded commitment."})
+            reasons.append({"code": "INVOICE_MISMATCH", "message": "Latest verified claimed amount does not exactly match the recorded commitment."})
 
     blocked = bool(reasons)
     return {

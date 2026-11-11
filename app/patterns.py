@@ -8,7 +8,11 @@ def detect_supplier_patterns(
     evidence_by_commitment: dict[str, list[dict[str, Any]]],
     today: date | None = None,
 ) -> list[dict[str, Any]]:
-    """Surface repeated, evidence-backed supplier signals without inferring intent."""
+    """Surface repeated, evidence-backed signals for the same other party.
+
+    A supplier delivery and any other obligation use the same comparison.
+    The signal does not infer intent.
+    """
     today = today or datetime.now(timezone.utc).date()
     groups: dict[str, dict[str, Any]] = {}
     for commitment in commitments:
@@ -34,16 +38,22 @@ def detect_supplier_patterns(
             incidents: list[dict[str, Any]] = []
             for commitment in rows:
                 cid = commitment["id"]
+                accepted = {
+                    "quantity_received": {"quantity_received", "obligation_fulfilled"},
+                    "invoice_amount": {"invoice_amount", "amount_claimed"},
+                }[evidence_kind]
                 records = [
                     item for item in evidence_by_commitment.get(cid, [])
-                    if item.get("kind") == evidence_kind and item.get("value") is not None
+                    if item.get("kind") in accepted and item.get("value") is not None
                 ]
-                if not records:
+                verified = [
+                    item for item in records
+                    if item.get("review_status") == "VERIFIED"
+                ]
+                # A newer unreviewed quantity must not hide a verified shortfall.
+                if not verified:
                     continue
-                latest = records[-1]
-                # Never count unreviewed or rejected evidence as a pattern signal.
-                if latest.get("review_status") != "VERIFIED":
-                    continue
+                latest = verified[-1]
                 observed.append(commitment)
                 value = float(latest["value"])
                 if pattern_type == "REPEATED_SHORT_DELIVERY" and value < float(commitment["quantity"]):
@@ -65,6 +75,7 @@ def detect_supplier_patterns(
             rate = len(incidents) / sample_size if sample_size else 0
             output.append({
                 "supplier": supplier,
+                "counterparty": supplier,
                 "pattern_type": pattern_type,
                 "occurrences": len(incidents),
                 "observed_commitments": sample_size,

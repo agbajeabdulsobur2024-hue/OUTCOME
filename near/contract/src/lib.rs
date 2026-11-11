@@ -1,6 +1,6 @@
-use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
+use near_sdk::borsh::BorshSerialize;
 use near_sdk::store::LookupMap;
-use near_sdk::{env, near, AccountId, BorshStorageKey, PanicOnDefault};
+use near_sdk::{env, near, AccountId, BorshStorageKey, NearToken, PanicOnDefault, Promise};
 
 #[near(serializers = [json, borsh])]
 #[derive(Clone)]
@@ -47,12 +47,11 @@ impl Contract {
 
     /// Append a hash-only commitment event.
     ///
-    /// Any predecessor may append. The stored actor is that account, so a
-    /// tester can sign `record_event` with their own testnet wallet. This is
-    /// not yet the code deployed at `thewordweaver.testnet`; that deployment
-    /// still accepts the call only from its owner until the account owner
-    /// upgrades it. `admin_probe` stays owner-only. A function-call key can
-    /// still be scoped to this method alone.
+    /// The owner may attach zero deposit; storage stays on the contract account.
+    /// Every other account must attach at least the storage this write adds.
+    /// Any surplus is refunded. This payable method is not the code currently
+    /// deployed at `thewordweaver.testnet`. `admin_probe` stays owner-only.
+    #[payable]
     pub fn record_event(
         &mut self,
         commitment_id: String,
@@ -65,7 +64,10 @@ impl Contract {
         assert!(!event_type.trim().is_empty(), "event_type is required");
         assert!(event_type.len() <= 48, "event_type is too long");
         assert!(is_sha256_hex(&payload_hash), "payload_hash must be 32-byte SHA-256 hex");
-        assert_eq!(previous_hash, self.last_hash, "Audit chain predecessor does not match latest event");
+        assert_eq!(
+            previous_hash, self.last_hash,
+            "Audit chain predecessor does not match latest event"
+        );
 
         let sequence = self.next_sequence;
         let actor = env::predecessor_account_id();
@@ -83,6 +85,14 @@ impl Contract {
             block_timestamp_ns
         );
         let event_hash = to_hex(&env::sha256(canonical.as_bytes()));
+        let used = estimate_new_event_bytes(
+            self.last_hash.as_str(),
+            commitment_id.as_str(),
+            event_type.as_str(),
+            &payload_hash.to_lowercase(),
+            previous_hash.as_str(),
+            actor.as_str(),
+        );
         let event = AuditEvent {
             sequence,
             commitment_id,
@@ -90,15 +100,63 @@ impl Contract {
             payload_hash: payload_hash.to_lowercase(),
             previous_hash,
             event_hash: event_hash.clone(),
-            actor,
+            actor: actor.clone(),
             block_height,
             block_timestamp_ns,
         };
         self.events.insert(sequence, event);
+        self.events.flush();
         self.next_sequence += 1;
         self.last_hash = event_hash;
-        env::log_str(&format!("OUTCOME_AUDIT_EVENT:{}:{}", sequence, self.last_hash));
+        let required = env::storage_byte_cost().saturating_mul(u128::from(used));
+        let attached = env::attached_deposit();
+        let is_owner = actor == self.owner_id;
+        if !is_owner {
+            assert!(
+                attached >= required,
+                "Insufficient storage deposit: need {} yoctoNEAR",
+                required.as_yoctonear()
+            );
+        }
+        let refund = if is_owner {
+            attached
+        } else {
+            attached.saturating_sub(required)
+        };
+        if refund > NearToken::from_yoctonear(0) {
+            Promise::new(env::predecessor_account_id()).transfer(refund);
+        }
+        env::log_str(&format!(
+            "OUTCOME_AUDIT_EVENT:{}:{}:{}",
+            sequence,
+            self.last_hash,
+            used
+        ));
         sequence
+    }
+
+    /// YoctoNEAR a non-owner must attach for these arguments.
+    /// The owner may attach zero. This does not write state.
+    pub fn get_required_storage_deposit(
+        &self,
+        commitment_id: String,
+        event_type: String,
+        payload_hash: String,
+        previous_hash: String,
+        actor_account_id: String,
+    ) -> String {
+        let bytes = estimate_new_event_bytes(
+            &self.last_hash,
+            &commitment_id,
+            &event_type,
+            &payload_hash,
+            &previous_hash,
+            &actor_account_id,
+        );
+        env::storage_byte_cost()
+            .saturating_mul(u128::from(bytes))
+            .as_yoctonear()
+            .to_string()
     }
 
     /// This state-changing method is intentionally excluded from the agent
@@ -147,6 +205,43 @@ impl Contract {
     pub fn get_anchor_policy(&self) -> String {
         "any_account".to_string()
     }
+}
+
+fn estimate_new_event_bytes(
+    last_hash: &str,
+    commitment_id: &str,
+    event_type: &str,
+    payload_hash: &str,
+    previous_hash: &str,
+    actor_account_id: &str,
+) -> u64 {
+    let actor = AccountId::try_from(actor_account_id.to_string())
+        .unwrap_or_else(|_| env::panic_str("actor account id is invalid"));
+    let event = AuditEvent {
+        sequence: 0,
+        commitment_id: commitment_id.to_string(),
+        event_type: event_type.to_string(),
+        payload_hash: payload_hash.to_string(),
+        previous_hash: previous_hash.to_string(),
+        event_hash: "0".repeat(64),
+        actor,
+        block_height: 0,
+        block_timestamp_ns: 0,
+    };
+    let value_len = borsh::to_vec(&event)
+        .unwrap_or_else(|_| env::panic_str("could not measure event storage"))
+        .len() as u64;
+    let mut key = borsh::to_vec(&StorageKey::Events)
+        .unwrap_or_else(|_| env::panic_str("could not measure storage key"));
+    key.extend(
+        borsh::to_vec(&0u64).unwrap_or_else(|_| env::panic_str("could not measure sequence key")),
+    );
+    let mut total = value_len + key.len() as u64;
+    // Root contract state grows when last_hash becomes the 64-character event hash.
+    if last_hash.len() < 64 {
+        total += (64 - last_hash.len()) as u64;
+    }
+    total
 }
 
 fn is_sha256_hex(value: &str) -> bool {

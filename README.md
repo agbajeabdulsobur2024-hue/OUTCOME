@@ -1,21 +1,23 @@
 # OUTCOME
 
-Before you pay a supplier, know whether they delivered what you agreed to pay for.
+Know what was agreed. Verify what happened. Control what happens next.
 
-OUTCOME is an operations app for commitments, evidence, and follow-through.
+OUTCOME is general-purpose financial accountability. A person records a commitment, the evidence of what happened, and the decision that follows. The same lifecycle covers supplier and procurement orders, contractor and service agreements, repayments, reimbursements, milestones, expenses, escrow-style release conditions, and other obligations. One scenario does not get its own workflow.
 
-The first workflow protects supplier payments by comparing what was agreed with what the evidence shows.
+Actions still respect the workspace, the evidence rules, and a person’s authorisation. OUTCOME does not move money. An approval is recorded as approved and not submitted unless a real transfer exists, and this build does not submit one.
 
-- Repeated supplier patterns are shown only when at least two latest evidence records are verified. Small samples are labelled early signals.
+- Repeated signals appear only when at least two verified records for the same other party show the same kind of gap. Small samples are labelled early signals.
 - OUTCOME does not infer fraud or intent.
 - Follow-through (approval, execution report, and evidence-backed outcome) is recorded. OUTCOME does not perform the external action.
-- The latest applicable evidence must be verified before a proposal can pass. A passing proposal still needs human approval.
+- The latest applicable evidence must be verified before a proposal can pass. A newer unreviewed record does not clear a verified shortfall. A passing proposal still needs a person.
 
 ## Demo
 
-A business agrees to buy 50 cartons of printer paper. Receiving evidence shows 42. OUTCOME explains the shortfall and the exposure, recommends holding payment, and will not treat that evidence as proof the order was fulfilled. A person has to authorise the next step. A second order from the same supplier shows the same kind of gap, so the repeated signal appears. No money moves.
+The Acme printer-paper orders are a synthetic demonstration, not the product boundary.
 
-The hosted app at [outcome-puce.vercel.app](https://outcome-puce.vercel.app) does not yet include isolated workspaces or wallet sign-in. Those land when this work is deployed. Use synthetic data only.
+A business agrees to buy 50 cartons of printer paper for USD 250. Verified evidence shows 42 received, so the estimated exposure is USD 40. OUTCOME explains the shortfall, recommends holding the release, and will not treat that evidence as proof the order was fulfilled. The USD 250 proposal cannot be approved. A second order from the same supplier shows the same kind of gap, so the repeated signal appears. No money moves.
+
+The hosted app at [outcome-puce.vercel.app](https://outcome-puce.vercel.app) serves version 0.4.0, including the work merged in pull request 9. The honesty fixes and the storage-bounded contract upgrade in this branch are not deployed. Use synthetic data only.
 
 ## NEAR
 
@@ -27,13 +29,13 @@ Completed on testnet account `thewordweaver.testnet`. The contract stores hash-o
 - `record_event` accepted and stored, FINAL: [`3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj`](https://testnet.nearblocks.io/txns/3N8VVzFr3QLm6iJKvS2twM4VxCWZyrec9FfqP2zNb2kj).
 - Restricted key limited to `record_event`. `admin_probe` rejected with `MethodNameMismatch`: [`7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk`](https://testnet.nearblocks.io/txns/7KKsCtXwApgXPtQ79KWG6T9PVKTsYYRdoLvSeebgHERk). That rejection is not indexed, which is expected on this nearcore version.
 
-The deployed contract still accepts `record_event` only from its owner. The source here lets any testnet account append a hash-only event. That upgrade is not on chain. A visitor can connect their own testnet wallet with HOT Connect and sign an anchor. Payment does not move funds. Setup: [near/README.md](near/README.md). Full status: [NEAR hackathon integration](docs/NEAR_HACKATHON_INTEGRATION.md).
+The deployed contract still accepts `record_event` only from its owner. `get_anchor_policy` is not on that deployment. The app does not ask a tester to sign an anchor until a live view returns `any_account`. The source in this repository prepares a storage-backed upgrade and does not deploy it. A visitor can connect a testnet wallet for a personal workspace. That connection does not authorise a payment. Setup: [near/README.md](near/README.md). The upgrade review is [CONTRACT_UPGRADE_REVIEW.md](CONTRACT_UPGRADE_REVIEW.md). Full status: [NEAR hackathon integration](docs/NEAR_HACKATHON_INTEGRATION.md).
 
 ### NEAR AI Cloud
 
 When a server-side `NEARAI_API_KEY` is set, a person can ask for a brief. The model does not change commitment status, payment eligibility, or approvals. A brief is stored only after the cryptographic checks pass. If those checks fail, nothing is shown as verified.
 
-A live call on 11 November 2026 to [`cloud-api.near.ai/v1`](https://cloud-api.near.ai/v1) for `Qwen/Qwen3.6-35B-A3B-FP8` succeeded. Provider signature (`signature_kind` `provider_tee`, ECDSA/EIP-191) and Intel TDX attestation verified. Fail-closed held when evidence was tampered or missing. Pull request 6, merged as `fa6eb02`, returns that brief when verification passes. The hosted app does not serve briefs: no API key is configured there. NVIDIA JWT signatures, Sigstore, and TLS binding of the completion connection are not in OUTCOME. The checks do not prove which machine served the model, that the connection was bound to the quote, or that a brief cannot be replayed. Details: [AI integration](docs/AI_INTEGRATION.md).
+A live call on 11 November 2026 to [`cloud-api.near.ai/v1`](https://cloud-api.near.ai/v1) for `Qwen/Qwen3.6-35B-A3B-FP8` succeeded. Provider signature (`signature_kind` `provider_tee`, ECDSA/EIP-191) and Intel TDX attestation verified. Fail-closed held when evidence was tampered or missing. Pull request 6, merged as `fa6eb02`, returns that brief when verification passes. On 11 November 2026, `GET https://outcome-puce.vercel.app/api/ai/status` reported `configured: true`. This repository does not contain that key. A brief is still withheld unless the cryptographic checks pass. NVIDIA JWT signatures, Sigstore, and TLS binding of the completion connection are not in OUTCOME. The checks do not prove which machine served the model, that the connection was bound to the quote, or that a brief cannot be replayed. Details: [AI integration](docs/AI_INTEGRATION.md).
 
 NEAR Intents and Chain Signatures are not connected. See the safety boundary and the [integration status](docs/NEAR_HACKATHON_INTEGRATION.md).
 

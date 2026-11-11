@@ -76,9 +76,12 @@ async function signMessage(params) {
   });
 }
 
-async function signAndSendRecordEvent(contractId, args) {
+async function signAndSendRecordEvent(contractId, args, deposit) {
   if (!String(contractId).endsWith('.testnet')) {
     throw new Error('Refusing to sign anything except a testnet contract.');
+  }
+  if (!/^[0-9]+$/.test(String(deposit || ''))) {
+    throw new Error('Refusing to sign without the exact storage deposit.');
   }
   const wallet = await connector.wallet();
   return wallet.signAndSendTransaction({
@@ -90,7 +93,7 @@ async function signAndSendRecordEvent(contractId, args) {
         methodName: 'record_event',
         args,
         gas: '100000000000000',
-        deposit: '0',
+        deposit: String(deposit),
       },
     }],
   });

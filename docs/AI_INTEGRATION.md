@@ -1,7 +1,7 @@
 # Optional NEAR AI Cloud Reasoning
 
 ## Purpose
-OUTCOME can request a plain-language operational brief for a supplier commitment. The model explains the deterministic assessment, highlights uncertainty and suggests questions for the owner. It does not calculate or override commitment status, change payment eligibility, approve payments or execute actions.
+OUTCOME can request a plain-language operational brief for a recorded financial commitment. The model explains the deterministic assessment, highlights uncertainty and suggests questions for the owner. It does not calculate or override commitment status, change payment eligibility, approve payments or execute actions.
 
 ## Provider
 - Endpoint: https://cloud-api.near.ai/v1/chat/completions

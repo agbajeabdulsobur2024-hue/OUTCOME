@@ -1,5 +1,7 @@
 # OUTCOME — 3-Minute Demo Script
 
+This walkthrough is the synthetic Acme supplier trial. It demonstrates the product. It is not the only commitment OUTCOME can record. A person can open **New commitment** and enter a different obligation, such as a milestone or a repayment, and the same checks run.
+
 ## Setup
 Run the FastAPI app and open the local UI. The landing page is the start. Click **Explore Demo**. No wallet is required. Each visitor gets a separate synthetic copy, so one person’s changes do not alter the next person’s demo or anyone’s personal workspace. The old shared seed still refuses to overwrite commitments that are already in that shared area.
 

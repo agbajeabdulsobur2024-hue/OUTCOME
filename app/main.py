@@ -11,7 +11,7 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.engine import assess_commitment
 from app.payments import evaluate_payment_proposal
@@ -159,6 +159,8 @@ def init_db():
         commitment_columns = {row['name'] for row in db.execute('PRAGMA table_info(commitments)').fetchall()}
         if 'workspace_id' not in commitment_columns:
             db.execute('ALTER TABLE commitments ADD COLUMN workspace_id TEXT')
+        if 'commitment_kind' not in commitment_columns:
+            db.execute("ALTER TABLE commitments ADD COLUMN commitment_kind TEXT NOT NULL DEFAULT 'general'")
         db.execute('CREATE INDEX IF NOT EXISTS idx_commitments_workspace ON commitments(workspace_id)')
         policy_columns = {row['name'] for row in db.execute('PRAGMA table_info(payment_policies)').fetchall()}
         if 'require_verified_evidence' not in policy_columns:
@@ -175,7 +177,7 @@ async def lifespan(app):
 
 app = FastAPI(
     title='OUTCOME',
-    description='Supplier commitment intelligence: compare what was agreed with what the evidence shows.',
+    description='General-purpose financial accountability: compare what was agreed with what the evidence shows, for any commitment a person records.',
     version='0.4.0',
     lifespan=lifespan,
 )
@@ -211,18 +213,42 @@ async def guard_public_requests(request: Request, call_next):
 
 
 class CommitmentCreate(BaseModel):
-    supplier: str = Field(min_length=1, max_length=120)
+    supplier: str | None = Field(default=None, max_length=120)
+    counterparty: str | None = Field(default=None, max_length=120)
+    commitment_kind: str = Field(default='general', min_length=1, max_length=48)
     description: str = Field(min_length=1, max_length=500)
     quantity: float = Field(gt=0, allow_inf_nan=False)
     unit: str = Field(default='units', min_length=1, max_length=40)
     amount: float = Field(gt=0, allow_inf_nan=False)
     currency: str = Field(default='USD', min_length=3, max_length=8)
     due_date: str
-    payment_condition: str = Field(default='Pay after verified delivery', max_length=300)
+    payment_condition: str = Field(
+        default='Release only after the agreed obligation is verified', max_length=300,
+    )
+
+    @model_validator(mode='after')
+    def name_the_other_party(self):
+        left = (self.supplier or '').strip()
+        right = (self.counterparty or '').strip()
+        if left and right and left != right:
+            raise ValueError('counterparty and supplier must name the same party')
+        party = right or left
+        if not party:
+            raise ValueError('Name the other party on this commitment')
+        kind = self.commitment_kind.strip()
+        if not kind:
+            raise ValueError('commitment_kind cannot be blank')
+        self.supplier = party
+        self.counterparty = party
+        self.commitment_kind = kind
+        return self
 
 
 class EvidenceCreate(BaseModel):
-    kind: Literal['quantity_received', 'invoice_amount', 'note']
+    kind: Literal[
+        'quantity_received', 'obligation_fulfilled',
+        'invoice_amount', 'amount_claimed', 'note',
+    ]
     value: float | None = Field(default=None, allow_inf_nan=False)
     note: str = Field(default='', max_length=1000)
     source: str = Field(default='manual', max_length=100)
@@ -252,7 +278,10 @@ class EvidenceReviewCreate(BaseModel):
 
 
 class CommitmentActionCreate(BaseModel):
-    action_type: Literal['CONTACT_SUPPLIER', 'REQUEST_EVIDENCE', 'HOLD_PAYMENT', 'RECONCILE_DELIVERY', 'OTHER']
+    action_type: Literal[
+        'CONFIRM_OBLIGATION', 'CONTACT_SUPPLIER', 'REQUEST_EVIDENCE',
+        'HOLD_PAYMENT', 'RECONCILE_DELIVERY', 'OTHER',
+    ]
     description: str = Field(min_length=3, max_length=1000)
 
 
@@ -272,6 +301,8 @@ class CommitmentAmendment(BaseModel):
     currency: str | None = Field(default=None, min_length=3, max_length=8)
     due_date: str | None = None
     payment_condition: str | None = Field(default=None, max_length=300)
+    commitment_kind: str | None = Field(default=None, min_length=1, max_length=48)
+    counterparty: str | None = Field(default=None, min_length=1, max_length=120)
 
 
 def get_record(cid: str):
@@ -280,6 +311,8 @@ def get_record(cid: str):
         if not c or not tenancy.same_workspace(c['workspace_id']):
             raise HTTPException(404, 'Commitment not found')
         commitment = dict(c)
+        commitment['counterparty'] = commitment.get('supplier')
+        commitment['commitment_kind'] = commitment.get('commitment_kind') or 'general'
         evidence = [dict(row) for row in db.execute(
             '''SELECT e.*,
                 COALESCE((SELECT r.status FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1), 'UNREVIEWED') AS review_status,
@@ -551,11 +584,11 @@ def create_commitment(payload: CommitmentCreate):
         db.execute(
             '''INSERT INTO commitments
                (id, supplier, description, quantity, unit, amount, currency, due_date,
-                payment_condition, created_at, workspace_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-            (cid, payload.supplier.strip(), payload.description.strip(), payload.quantity, payload.unit,
+                payment_condition, created_at, workspace_id, commitment_kind)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+            (cid, payload.supplier, payload.description.strip(), payload.quantity, payload.unit,
              payload.amount, terms['currency'], terms['due_date'], payload.payment_condition, now,
-             tenancy.current_workspace_id())
+             tenancy.current_workspace_id(), payload.commitment_kind)
         )
     save_initial_version(cid, terms)
     save_assessment_snapshot(cid)
@@ -575,7 +608,9 @@ def read_assessment(cid: str):
 @app.post('/api/commitments/{cid}/evidence', status_code=201)
 def add_evidence(cid: str, payload: EvidenceCreate):
     get_record(cid)
-    if payload.kind in ('quantity_received', 'invoice_amount') and payload.value is None:
+    if payload.kind in (
+        'quantity_received', 'obligation_fulfilled', 'invoice_amount', 'amount_claimed',
+    ) and payload.value is None:
         raise HTTPException(422, 'A numeric value is required for this evidence type')
     if payload.kind == 'note' and payload.value is not None:
         raise HTTPException(422, 'Note evidence must not include a numeric value')
@@ -642,6 +677,15 @@ def amend_commitment(cid: str, payload: CommitmentAmendment):
             changes['due_date'] = datetime.fromisoformat(changes['due_date']).date().isoformat()
         except ValueError:
             raise HTTPException(422, 'due_date must be an ISO date, e.g. 2026-11-14')
+    if 'counterparty' in changes:
+        party = changes.pop('counterparty').strip()
+        if not party:
+            raise HTTPException(422, 'counterparty cannot be blank')
+        changes['supplier'] = party
+    if 'commitment_kind' in changes:
+        changes['commitment_kind'] = changes['commitment_kind'].strip()
+        if not changes['commitment_kind']:
+            raise HTTPException(422, 'commitment_kind cannot be blank')
     if 'currency' in changes:
         changes['currency'] = changes['currency'].strip().upper()
         if not changes['currency']:
@@ -656,18 +700,20 @@ def amend_commitment(cid: str, payload: CommitmentAmendment):
         'supplier', 'description', 'quantity', 'unit', 'amount',
         'currency', 'due_date', 'payment_condition'
     )}
+    new_terms['commitment_kind'] = old_terms.get('commitment_kind') or 'general'
     new_terms.update(changes)
+    new_terms['counterparty'] = new_terms['supplier']
     policy = current['payment_policy']
     if policy.get('configured') and float(policy['max_amount']) > float(new_terms['amount']):
         raise HTTPException(409, 'Existing payment-policy cap exceeds the amended commitment value. Lower the policy cap before amending the amount.')
     version = len(current['commitment_versions']) + 1
     now = utc_now()
     with connect() as db:
-        db.execute('''UPDATE commitments SET description=?, quantity=?, unit=?,
-            amount=?, currency=?, due_date=?, payment_condition=? WHERE id=?''',
-            (new_terms['description'], new_terms['quantity'], new_terms['unit'],
+        db.execute('''UPDATE commitments SET supplier=?, description=?, quantity=?, unit=?,
+            amount=?, currency=?, due_date=?, payment_condition=?, commitment_kind=? WHERE id=?''',
+            (new_terms['supplier'], new_terms['description'], new_terms['quantity'], new_terms['unit'],
              new_terms['amount'], new_terms['currency'], new_terms['due_date'],
-             new_terms['payment_condition'], cid))
+             new_terms['payment_condition'], new_terms['commitment_kind'], cid))
         db.execute('''INSERT INTO commitment_versions
             (id, commitment_id, version, terms_json, reason, created_at)
             VALUES (?, ?, ?, ?, ?, ?)''',
@@ -786,6 +832,12 @@ def decide_payment(cid: str, payload: PaymentDecisionCreate):
         raise HTTPException(409, str(exc))
     decision_id = str(uuid.uuid4())
     created_at = utc_now()
+    proposal_status = 'APPROVED_NOT_SUBMITTED' if payload.decision == 'APPROVED' else 'REJECTED_BY_HUMAN'
+    stored_proposal = dict(proposal['proposal'])
+    stored_proposal['status'] = proposal_status
+    stored_proposal['transfer_executed'] = False
+    stored_proposal['transaction_hash'] = None
+    stored_proposal['financial_action'] = outcome['financial_action']
     with connect() as db:
         db.execute(
             '''INSERT INTO payment_decisions
@@ -794,8 +846,12 @@ def decide_payment(cid: str, payload: PaymentDecisionCreate):
             (decision_id, payload.proposal_id, cid, payload.decision, payload.actor.strip(),
              json.dumps(outcome, sort_keys=True), created_at),
         )
+        db.execute(
+            'UPDATE payment_proposals SET status=?, proposal_json=? WHERE id=? AND commitment_id=?',
+            (proposal_status, json.dumps(stored_proposal, sort_keys=True), payload.proposal_id, cid),
+        )
     return {'id': decision_id, 'commitment_id': cid, 'proposal_id': payload.proposal_id,
-            'created_at': created_at, 'outcome': outcome}
+            'proposal_status': proposal_status, 'created_at': created_at, 'outcome': outcome}
 
 
 @app.get('/api/commitments/{cid}/payment-proposals')
@@ -858,7 +914,7 @@ def record_action_event(action_id: str, payload: ActionEventCreate):
             raise HTTPException(422, 'Verified outcome must reference verified evidence')
         if payload.evidence_id:
             evidence = db.execute(
-                'SELECT id FROM evidence WHERE id=? AND commitment_id=?',
+                'SELECT id, kind, value FROM evidence WHERE id=? AND commitment_id=?',
                 (payload.evidence_id, action['commitment_id'])
             ).fetchone()
             if not evidence:
@@ -870,6 +926,18 @@ def record_action_event(action_id: str, payload: ActionEventCreate):
                 ).fetchone()
                 if not review or review['status'] != 'VERIFIED':
                     raise HTTPException(422, 'Outcome evidence must be marked VERIFIED before outcome verification')
+                agreed = db.execute(
+                    'SELECT quantity FROM commitments WHERE id=?',
+                    (action['commitment_id'],),
+                ).fetchone()
+                covers_agreement = (
+                    evidence['kind'] in ('quantity_received', 'obligation_fulfilled')
+                    and evidence['value'] is not None
+                    and agreed is not None
+                    and float(evidence['value']) >= float(agreed['quantity'])
+                )
+                if not covers_agreement:
+                    raise HTTPException(422, 'Verified outcome must cite a received quantity that covers the agreed amount. The original short count does not prove fulfilment.')
         event_id = str(uuid.uuid4())
         created_at = utc_now()
         db.execute('''INSERT INTO action_events
@@ -1027,11 +1095,13 @@ def populate_synthetic_demo():
         supplier='Acme Supplies', description='Printer paper — purchase order PO-104',
         quantity=50, unit='cartons', amount=250, currency='USD',
         due_date='2026-12-01', payment_condition='Pay after verified full delivery',
+        commitment_kind='supplier_delivery',
     ))
     second = create_commitment(CommitmentCreate(
         supplier='Acme Supplies', description='Printer paper — purchase order PO-109',
         quantity=20, unit='cartons', amount=100, currency='USD',
         due_date='2026-12-05', payment_condition='Pay after verified full delivery',
+        commitment_kind='supplier_delivery',
     ))
     for record, received, invoice in ((first, 42, 250), (second, 16, 100)):
         cid = record['commitment']['id']
