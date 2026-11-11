@@ -16,7 +16,10 @@ from pydantic import BaseModel, Field
 from app.engine import assess_commitment
 from app.payments import evaluate_payment_proposal
 from app.patterns import detect_supplier_patterns
-from app.ai import AIConfigurationError, AIProviderError, generate_operational_brief, is_configured
+from app.ai import (
+    AIConfigurationError, AIProviderError, brief_is_displayable,
+    generate_operational_brief, is_configured, public_ai_brief_entry,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv('OUTCOME_DATA_DIR', ROOT / 'data'))
@@ -323,13 +326,25 @@ def get_record(cid: str):
                 'created_at': event['created_at'],
                 'details': event['actor'] + ((' · ' + event['note']) if event['note'] else ''),
             })
+    published_briefs = []
     for row in ai_briefs:
-        ai_result = json.loads(row['brief_json'])
+        try:
+            stored = json.loads(row['brief_json'])
+        except (TypeError, ValueError):
+            stored = None
+        shown = public_ai_brief_entry(
+            row['id'], row['provider'], row['model'], row['created_at'], stored,
+        )
+        published_briefs.append(shown)
         timeline.append({
             'event_type': 'AI_BRIEF_GENERATED',
-            'title': 'AI operational brief generated',
+            'title': 'AI operational brief generated' if shown['displayable'] else 'AI operational brief withheld',
             'created_at': row['created_at'],
-            'details': ai_result.get('brief', {}).get('summary', ''),
+            'details': (
+                shown['brief'].get('brief', {}).get('summary', '')
+                if shown['displayable'] else
+                'Brief withheld because cryptographic verification is incomplete.'
+            ),
         })
     timeline.sort(key=lambda item: item['created_at'])
     return {
@@ -366,11 +381,7 @@ def get_record(cid: str):
             for row in proposals
         ],
         'actions': actions,
-        'ai_brief_history': [
-            {'id': row['id'], 'provider': row['provider'], 'model': row['model'],
-             'brief': json.loads(row['brief_json']), 'created_at': row['created_at']}
-            for row in ai_briefs
-        ],
+        'ai_brief_history': published_briefs,
         'timeline': timeline,
     }
 
@@ -709,7 +720,7 @@ def read_ai_status():
         'privacy_tier': 'TEE model',
         'attestation_verification_required': True,
         'attestation_verified_by_outcome': None,
-        'verification_method': 'Preflight UpToDate Intel TDX quote (MRCONFIGID, RTMR3, debug bit) plus ECDSA response signature; NVIDIA NRAS boolean verdict for provider-TEE signatures',
+        'verification_method': 'Preflight UpToDate Intel TDX quote (debug bit, MRCONFIGID, RTMR3) plus exact-byte EIP-191 ECDSA signature; NVIDIA NRAS boolean true and eat_nonce for provider-TEE signatures. HTTPS is not attestation.',
     }
 
 
@@ -740,6 +751,8 @@ def create_ai_brief(cid: str, request: Request):
         )
     try:
         result = generate_operational_brief(record)
+        if not brief_is_displayable(result):
+            raise AIProviderError('NEAR AI response did not pass cryptographic verification.')
     except AIConfigurationError as exc:
         raise HTTPException(503, str(exc))
     except AIProviderError as exc:

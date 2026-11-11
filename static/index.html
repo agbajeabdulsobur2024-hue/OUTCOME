@@ -745,20 +745,50 @@ function listHtml(items){
   if (!rows.length) return '';
   return `<ul class="actions">${rows.map(item => `<li>${esc(item)}</li>`).join('')}</ul>`;
 }
+function briefMayBeShown(entry){
+  const stored = entry && entry.brief;
+  const verification = stored && stored.verification;
+  if (!entry || entry.displayable !== true || !stored || !verification) return false;
+  if (verification.verified !== true || verification.signing_algo !== 'ecdsa') return false;
+  if (verification.tdx_status !== 'UpToDate' || verification.tdx_quote_verified !== true) return false;
+  if (verification.tdx_debug_rejected !== true || verification.signer_bound_to_quote !== true) return false;
+  if (verification.fresh_nonce_bound_to_quote !== true) return false;
+  if (verification.mr_config_id_matches_app_compose !== true || verification.rtmr3_matches_event_log !== true) return false;
+  if (verification.request_hash_verified !== true || verification.response_hash_verified !== true) return false;
+  if (verification.tls_peer_certificate_compared === true || verification.gpu_jwt_signature_verified_locally === true) return false;
+  const flags = ['gpu_attestation_checked', 'gpu_nras_verdict', 'gpu_nonce_matches', 'gpu_eat_nonce_matches'];
+  if (verification.signature_kind === 'provider_tee') {
+    return flags.every(flag => verification[flag] === true)
+      && stored.attestation_status === 'PROVIDER_TEE_SIGNATURE_AND_MODEL_TDX_VERIFIED';
+  }
+  if (verification.signature_kind === 'gateway') {
+    if (stored.attestation_status !== 'GATEWAY_SIGNATURE_AND_GATEWAY_TDX_VERIFIED') return false;
+    if (Object.prototype.hasOwnProperty.call(verification, 'gpu_nras_verdict') && verification.gpu_nras_verdict !== true) return false;
+    if (verification.gpu_nras_verdict === true && verification.gpu_attestation_checked !== true) return false;
+    return true;
+  }
+  return false;
+}
 function renderBrief(entry){
-  const brief = entry.brief && entry.brief.brief ? entry.brief.brief : {};
-  const verification = entry.brief && entry.brief.verification;
-  const limitations = verification && Array.isArray(verification.limitations) ? verification.limitations : [];
+  if (!briefMayBeShown(entry)) {
+    const reason = entry && entry.withheld_reason
+      ? entry.withheld_reason
+      : 'This brief is withheld because cryptographic verification is missing or incomplete.';
+    return `<article class="record brief"><h3>Brief withheld</h3><p class="meta">${esc(reason)}</p></article>`;
+  }
+  const brief = entry.brief.brief || {};
+  const verification = entry.brief.verification;
+  const limitations = Array.isArray(verification.limitations) ? verification.limitations : [];
   const meta = [
     entry.provider, entry.model, formatStamp(entry.created_at),
-    entry.brief && entry.brief.attestation_status ? `verification ${entry.brief.attestation_status}` : '',
-    verification ? (verification.signature_kind || 'unclassified') : '',
-    verification ? `TDX ${verification.tdx_status || 'verified'}` : ''
+    `verification ${entry.brief.attestation_status}`,
+    verification.signature_kind,
+    `TDX ${verification.tdx_status}`
   ].filter(Boolean).join(' · ');
-  return `<article class="record brief"><h3>${esc(brief.summary || 'Operational brief')}</h3><p>${esc(brief.why_it_matters || '')}</p><h4>Recommended actions</h4>${listHtml(brief.recommended_actions) || '<p class="meta">None recorded.</p>'}<h4>Uncertainties</h4>${listHtml(brief.uncertainties) || '<p class="meta">None recorded.</p>'}<h4>Questions for the owner</h4>${listHtml(brief.questions_for_owner) || '<p class="meta">None recorded.</p>'}${entry.brief && entry.brief.disclaimer ? `<p class="meta">${esc(entry.brief.disclaimer)}</p>` : ''}<p class="meta">${esc(meta)}</p>${limitations.length ? `<p class="meta">${limitations.map(item => esc(item)).join(' ')}</p>` : ''}</article>`;
+  return `<article class="record brief"><h3>${esc(brief.summary || 'Operational brief')}</h3><p>${esc(brief.why_it_matters || '')}</p><h4>Recommended actions</h4>${listHtml(brief.recommended_actions) || '<p class="meta">None recorded.</p>'}<h4>Uncertainties</h4>${listHtml(brief.uncertainties) || '<p class="meta">None recorded.</p>'}<h4>Questions for the owner</h4>${listHtml(brief.questions_for_owner) || '<p class="meta">None recorded.</p>'}${entry.brief.disclaimer ? `<p class="meta">${esc(entry.brief.disclaimer)}</p>` : ''}<p class="meta">${esc(meta)}</p>${limitations.length ? `<p class="meta">${limitations.map(item => esc(item)).join(' ')}</p>` : ''}</article>`;
 }
 function verificationNote(){
-  return `<details class="disclosure"><summary>How a brief is checked</summary><p>Before a brief is shown, OUTCOME preflights an UpToDate Intel TDX quote (debug bit clear, signing address and nonce bound, MRCONFIGID and RTMR3 checked) and then checks the ECDSA signature over the exact response bytes. A provider-TEE signature also requires an NVIDIA NRAS verdict of true. A gateway signature is labelled separately and does not claim the model quote signed those bytes. Verification fails closed. Deterministic checks and human approval remain authoritative.</p></details>`;
+  return `<details class="disclosure"><summary>How a brief is checked</summary><p>Before a brief is shown, OUTCOME preflights an UpToDate Intel TDX quote (debug bit clear, signing address and nonce bound, MRCONFIGID and RTMR3 checked) and then checks the EIP-191 ECDSA signature over the exact response bytes. A provider-TEE signature also requires an NVIDIA NRAS verdict of boolean true and a matching eat_nonce. A gateway signature is labelled separately and does not claim the model quote signed those bytes. Verification fails closed. HTTPS is not attestation. The NRAS JWT signature, Sigstore provenance, and the live TLS peer certificate are not verified here. Deterministic checks and human approval remain authoritative.</p></details>`;
 }
 function renderAi(record){
   const history = record.ai_brief_history || [];

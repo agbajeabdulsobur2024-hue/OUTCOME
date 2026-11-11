@@ -131,7 +131,7 @@ def test_provider_signature_rejects_wrong_model():
     try:
         _verify_signature_payload(request_body, response_text, payload, "different-model")
     except VerificationError as exc:
-        assert "model identifier" in str(exc)
+        assert "does not match" in str(exc)
     else:
         raise AssertionError("wrong model must be rejected")
 
@@ -141,7 +141,7 @@ def test_signed_response_rejects_tampered_response():
     try:
         _verify_signature_payload(request_body, response_text + " ", payload, "test-model")
     except VerificationError as exc:
-        assert "response hash" in str(exc)
+        assert "does not match" in str(exc)
     else:
         raise AssertionError("tampered response must be rejected")
 
@@ -237,7 +237,7 @@ def _jwt(claims):
 def test_nvidia_boolean_true_and_eat_nonce_are_accepted(monkeypatch):
     nonce = "ab" * 32
 
-    def fake_post(url, json=None, timeout=None):
+    def fake_post(url, json=None, timeout=None, headers=None):
         assert url.endswith("/v3/attest/gpu")
         token = _jwt({"x-nvidia-overall-att-result": True, "eat_nonce": nonce})
         return SimpleNamespace(status_code=200, json=lambda: [["JWT", token]])
@@ -257,7 +257,7 @@ def test_nvidia_boolean_true_and_eat_nonce_are_accepted(monkeypatch):
 def test_nvidia_true_with_wrong_eat_nonce_is_rejected(monkeypatch):
     nonce = "ab" * 32
 
-    def fake_post(url, json=None, timeout=None):
+    def fake_post(url, json=None, timeout=None, headers=None):
         token = _jwt({"x-nvidia-overall-att-result": True, "eat_nonce": "cd" * 32})
         return SimpleNamespace(status_code=200, json=lambda: [["JWT", token]])
 
@@ -278,7 +278,7 @@ def test_nvidia_true_with_wrong_eat_nonce_is_rejected(monkeypatch):
 def test_nvidia_string_pass_is_not_accepted(monkeypatch):
     nonce = "ab" * 32
 
-    def fake_post(url, json=None, timeout=None):
+    def fake_post(url, json=None, timeout=None, headers=None):
         token = _jwt({"x-nvidia-overall-att-result": "PASS", "eat_nonce": nonce})
         return SimpleNamespace(status_code=200, json=lambda: [["JWT", token]])
 
@@ -323,3 +323,95 @@ def test_provider_signature_must_match_exactly_one_model_report():
     preflight["models"].pop()
     matched = _select_preflight_match(preflight, signer, "ecdsa", "provider_tee")
     assert matched["signing_address"] == signer
+
+
+def test_signature_kind_is_not_inferred_from_colon_count():
+    request_body, response_text, _, payload = signed_fixture()
+    del payload["signature_kind"]
+    try:
+        _verify_signature_payload(request_body, response_text, payload, "test-model")
+    except VerificationError as exc:
+        assert "signature_kind" in str(exc)
+    else:
+        raise AssertionError("colon-shaped text must not imply signature_kind")
+    payload["signature_kind"] = "gateway"
+    try:
+        _verify_signature_payload(request_body, response_text, payload, "test-model")
+    except VerificationError as exc:
+        assert "does not match" in str(exc)
+    else:
+        raise AssertionError("gateway kind must not accept provider-shaped text")
+
+
+def test_missing_signing_algo_is_rejected():
+    request_body, response_text, _, payload = signed_fixture(kind="gateway")
+    del payload["signing_algo"]
+    try:
+        _verify_signature_payload(request_body, response_text, payload, "test-model")
+    except VerificationError as exc:
+        assert "signing_algo" in str(exc)
+    else:
+        raise AssertionError("missing signing_algo must be rejected")
+
+
+def test_tdx_quote_rejects_out_of_date_status(monkeypatch):
+    signer = Account.create().address
+    nonce = "ab" * 32
+    attestation, fake_verify = _td10_attestation(signer, nonce)
+    original = fake_verify
+
+    async def out_of_date(quote):
+        result = await original(quote)
+        result.status = "OutOfDate"
+        return result
+
+    _install_quote(monkeypatch, out_of_date)
+    try:
+        _verify_tdx_and_binding(attestation, nonce)
+    except VerificationError as exc:
+        assert "UpToDate" in str(exc)
+        assert "OutOfDate" in str(exc)
+    else:
+        raise AssertionError("OutOfDate TCB status must be rejected")
+
+
+def test_gateway_quote_requires_echoed_report_data(monkeypatch):
+    signer = Account.create().address
+    nonce = "ab" * 32
+    attestation, fake_verify = _td10_attestation(signer, nonce)
+    _install_quote(monkeypatch, fake_verify)
+    try:
+        _verify_tdx_and_binding(attestation, nonce, require_echoed_report_data=True)
+    except VerificationError as exc:
+        assert "report_data" in str(exc)
+    else:
+        raise AssertionError("gateway quote without echoed report_data must be rejected")
+
+
+def test_preflight_sends_no_aliasing_header(monkeypatch):
+    from app import near_verification as nv
+    seen = {}
+
+    class Response:
+        status_code = 200
+
+        def json(self):
+            return {}
+
+    def fake_get(url, params=None, headers=None, timeout=None, allow_redirects=None):
+        seen["headers"] = headers
+        seen["params"] = params
+        return Response()
+
+    monkeypatch.setattr(nv.requests, "get", fake_get)
+    try:
+        nv.preflight_near_ai_evidence(base_url="https://cloud-api.near.ai", api_key="k", model="m")
+    except nv.VerificationError:
+        pass
+    else:
+        raise AssertionError("empty attestation report must fail closed")
+    assert seen["headers"]["x-no-aliasing"] == "true"
+    assert seen["headers"]["Accept-Encoding"] == "identity"
+    assert seen["params"]["provider"] == "near"
+    assert seen["params"]["signing_algo"] == "ecdsa"
+    assert seen["params"]["include_tls_fingerprint"] == "false"
