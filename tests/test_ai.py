@@ -167,6 +167,46 @@ def test_ai_request_disables_reasoning_and_rejects_empty_content(monkeypatch):
     assert captured["body"]["chat_template_kwargs"] == {"enable_thinking": False}
 
 
+def test_extraction_uses_the_same_model_and_fails_closed(monkeypatch):
+    monkeypatch.setenv("NEARAI_API_KEY", "test-key")
+    content = {
+        "commitment": {"counterparty": "Bright Labs", "quantity": 3, "amount": 3000},
+        "evidence": [],
+        "ambiguities": [],
+    }
+    captured = {}
+
+    def fake_post(url, **kwargs):
+        captured["url"] = url
+        captured["headers"] = kwargs["headers"]
+        captured["body"] = json.loads(kwargs["content"])
+        return httpx.Response(
+            200, request=httpx.Request("POST", url), json=completion(json.dumps(content)),
+        )
+
+    monkeypatch.setattr(ai, "preflight_near_ai_evidence", lambda **kwargs: {"nonce": "ab" * 32})
+    monkeypatch.setattr(ai.httpx, "post", fake_post)
+    monkeypatch.setattr(ai, "verify_near_ai_response", lambda **kwargs: verified_provider_result())
+    result = ai.extract_business_event("Bright Labs, 3 milestones, USD 3000", [])
+    assert result["provider"] == "NEAR AI Cloud"
+    assert result["model"] == ai.NEAR_AI_MODEL
+    assert result["attestation_status"] == "PROVIDER_TEE_SIGNATURE_AND_MODEL_TDX_VERIFIED"
+    assert result["extraction"]["commitment"]["counterparty"] == "Bright Labs"
+    assert captured["url"] == ai.NEAR_AI_URL
+    assert captured["headers"]["x-no-aliasing"] == "true"
+    assert captured["body"]["model"] == ai.NEAR_AI_MODEL
+    assert captured["body"]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert captured["body"]["max_tokens"] == 900
+    assert "Never invent" in captured["body"]["messages"][0]["content"]
+    assert "quantity_received" in captured["body"]["messages"][0]["content"]
+
+    monkeypatch.setattr(ai, "verify_near_ai_response", lambda **kwargs: (_ for _ in ()).throw(
+        VerificationError("bad signature")
+    ))
+    with pytest.raises(ai.AIProviderError, match="failed closed"):
+        ai.extract_business_event("Bright Labs, 3 milestones, USD 3000", [])
+
+
 def test_incomplete_verification_does_not_return_a_valid_brief(monkeypatch):
     monkeypatch.setenv("NEARAI_API_KEY", "test-key")
     monkeypatch.setattr(ai, "preflight_near_ai_evidence", lambda **kwargs: {"nonce": "ab" * 32})

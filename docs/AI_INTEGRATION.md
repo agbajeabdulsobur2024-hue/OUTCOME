@@ -11,7 +11,7 @@ OUTCOME can request a plain-language operational brief for a recorded financial 
 - Published price at implementation time: USD 0.17 per million input tokens and USD 1.10 per million output tokens; pay-as-you-go with no minimums. Check the current catalogue before use.
 
 ## Data boundary
-The request is sent only when a user explicitly clicks **Generate AI brief** and the server has an API key. The adapter sends:
+An operational brief is sent when a person clicks **Generate AI brief**, and after they explicitly confirm an intake proposal. It is not sent in the background. The brief adapter sends:
 - Commitment terms and ID.
 - Deterministic assessment status, issues and next actions.
 - Up to the latest 10 evidence records, excluding free-text evidence notes and review-history details.
@@ -42,7 +42,16 @@ A separate live run on 11 Nov 2026 (01:09–01:14 Africa/Lagos), against `https:
 - Output is validated against a fixed JSON shape before display.
 - Malformed responses, missing signatures, hash mismatches, signer mismatches, failed TDX verification and attestation-binding failures all fail closed; no AI-generated action is automatically created.
 - AI briefs are stored as advisory history linked to the commitment.
-- Requests are rate-limited per client IP (default five per hour; configurable with OUTCOME_AI_RATE_LIMIT_PER_HOUR) to limit accidental key spend.
+- Requests are rate-limited per client IP (default five per hour; configurable with OUTCOME_AI_RATE_LIMIT_PER_HOUR) to limit accidental key spend. Intake review and a brief generated after confirmation share this limit.
+
+## Business intake
+A person can describe a commitment or a piece of evidence in ordinary language from the same page as the manual form. OUTCOME sends that text to the same NEAR AI Cloud model and endpoint. The model is instructed to return JSON using only existing commitment and evidence fields, with nulls where the text does not support a value.
+
+Before anything is shown, the response goes through the same preflight quote and exact-byte signature checks as a brief. If those checks fail, the proposal is not shown and nothing is saved. After the checks, OUTCOME drops any value the text does not support, including dates, amounts, currencies, and parties the model added. It asks a question only for a missing or ambiguous field that the existing record requires. It matches a description to an existing commitment only when the text identifies one record, and it does not save a second copy of the same evidence.
+
+Nothing is written until the person confirms the proposal. Confirmation saves commitment and evidence rows through the existing models, then runs the deterministic assessment. Evidence recorded this way stays unreviewed until a person reviews it. The operational brief is requested after that assessment and is stored only when its own checks pass. A failed brief does not change the assessment and is not labelled verified.
+
+Intake does not approve, submit, or complete a payment. The manual forms remain available when the API key is absent.
 
 ## Enable
-Set NEARAI_API_KEY in the server environment and restart OUTCOME. The UI will enable the AI brief button. No API key is sent to the browser. Do not commit the key or place it in documentation examples.
+Set NEARAI_API_KEY in the server environment and restart OUTCOME. The UI will enable the AI brief button and ordinary-language intake. No API key is sent to the browser. Do not commit the key or place it in documentation examples.

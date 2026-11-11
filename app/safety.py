@@ -69,6 +69,7 @@ def blocks_shared_write(scope: dict, path: str) -> bool:
         or path.startswith('/api/evidence')
         or path.startswith('/api/actions')
         or path == '/api/demo/seed'
+        or path.startswith('/api/intake')
     )
     if not domain:
         return False

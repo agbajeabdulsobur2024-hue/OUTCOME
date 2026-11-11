@@ -76,11 +76,126 @@ def public_ai_brief_entry(
     }
 
 
-def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
+EXTRACTION_SYSTEM = (
+    "You extract financial accountability records for OUTCOME. "
+    "Return only JSON with keys commitment, evidence, and ambiguities. "
+    "commitment uses only these keys: counterparty, commitment_kind, description, quantity, unit, "
+    "amount, currency, due_date, payment_condition. "
+    "evidence is an array of objects with kind, value, note, and source. "
+    "kind is one of quantity_received, obligation_fulfilled, invoice_amount, amount_claimed, note. "
+    "Use null for every value the text does not explicitly support. "
+    "Never invent a party, description, quantity, unit, amount, currency, date, payment condition, "
+    "or evidence value. Never copy a value from an existing record unless the text states it. "
+    "Do not approve, submit, or mark a payment. Do not set a review status. "
+    "due_date must be YYYY-MM-DD only when the text states that date. "
+    "currency must be an ISO code only when the text names that currency. "
+    "If a number could be either the agreed amount or an invoice, leave both null and say so in ambiguities. "
+    "ambiguities is an array of short strings and is empty when nothing is missing or ambiguous. "
+    "Do not guess which existing id a description belongs to."
+)
+
+
+def _complete_json(*, system: str, user_content: str, max_tokens: int, temperature: float = 0.2) -> tuple[Any, dict[str, Any]]:
+    """Call NEAR AI Cloud and return parsed JSON only after the same checks as a brief."""
     api_key = os.getenv("NEARAI_API_KEY") or os.getenv("NEAR_AI_KEY")
     if not api_key:
         raise AIConfigurationError("Set NEARAI_API_KEY to enable optional NEAR AI Cloud briefs.")
 
+    request_body = {
+        "model": NEAR_AI_MODEL,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user_content},
+        ],
+        "stream": False,
+        # Qwen3.6 reasons by default. Reasoning tokens count toward max_tokens and
+        # left the brief content null in the 11 Nov 2026 live run. The caller needs
+        # the final JSON. This does not skip signature or attestation checks.
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+    request_body_text = json.dumps(request_body, separators=(",", ":"), ensure_ascii=False)
+    base_url = NEAR_AI_URL.rsplit("/v1/", 1)[0]
+    try:
+        # Quotes are verified before the completion. The signature is checked
+        # against that preflight evidence, not against a quote fetched afterwards.
+        try:
+            preflight = preflight_near_ai_evidence(
+                base_url=base_url,
+                api_key=api_key,
+                model=NEAR_AI_MODEL,
+                timeout=30.0,
+            )
+        except Exception as exc:
+            raise AIProviderError(
+                f"NEAR AI preflight verification failed closed ({type(exc).__name__})."
+            ) from exc
+        response = httpx.post(
+            NEAR_AI_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Accept-Encoding": "identity",
+                "x-no-aliasing": "true",
+            },
+            content=request_body_text,
+            timeout=30.0,
+        )
+        if response.status_code < 200 or response.status_code >= 300:
+            raise AIProviderError(f"NEAR AI Cloud returned HTTP {response.status_code}.")
+        try:
+            body = response.json()
+        except ValueError as exc:
+            raise AIProviderError("NEAR AI Cloud returned invalid JSON.") from exc
+        chat_id = body.get("id") if isinstance(body, dict) else None
+        if not isinstance(chat_id, str) or not chat_id:
+            raise AIProviderError("NEAR AI Cloud response omitted its chat ID.")
+        # Fail closed: do not parse the model JSON until the exact response
+        # bytes match a signer already verified in preflight.
+        try:
+            verification = verify_near_ai_response(
+                base_url=base_url,
+                api_key=api_key,
+                chat_id=chat_id,
+                model=NEAR_AI_MODEL,
+                request_body=request_body_text,
+                response_body=response.content,
+                preflight=preflight,
+                timeout=30.0,
+            )
+        except Exception as exc:
+            raise AIProviderError(
+                f"NEAR AI response verification failed closed ({type(exc).__name__})."
+            ) from exc
+        if not verification_is_complete(verification):
+            raise AIProviderError("NEAR AI response did not pass cryptographic verification.")
+        if body.get("model") != NEAR_AI_MODEL:
+            raise AIProviderError("NEAR AI Cloud response model does not match the configured model.")
+        try:
+            choice = body["choices"][0]
+            message = choice["message"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise AIProviderError("NEAR AI Cloud returned an incomplete completion.") from exc
+        content = message.get("content") if isinstance(message, dict) else None
+        finish_reason = choice.get("finish_reason") if isinstance(choice, dict) else None
+        if not isinstance(content, str) or not content.strip():
+            raise AIProviderError(
+                "NEAR AI Cloud returned no final content "
+                f"(finish_reason={finish_reason!r})."
+            )
+        if content.startswith(chr(96) * 3):
+            content = content.split(chr(10), 1)[-1].rsplit(chr(96) * 3, 1)[0].strip()
+        parsed = json.loads(content)
+    except AIProviderError:
+        raise
+    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
+        raise AIProviderError(f"NEAR AI Cloud brief could not be generated: {exc}") from exc
+    return parsed, verification
+
+
+def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
     commitment = record["commitment"]
     evidence = [
         {
@@ -127,98 +242,11 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
         "why_it_matters (string), recommended_actions (array of strings), "
         "uncertainties (array of strings), questions_for_owner (array of strings)."
     )
-    request_body = {
-        "model": NEAR_AI_MODEL,
-        "temperature": 0.2,
-        "max_tokens": 700,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": json.dumps(context, separators=(",", ":"), default=str)},
-        ],
-        "stream": False,
-        # Qwen3.6 reasons by default. Reasoning tokens count toward max_tokens and
-        # left the brief content null in the 11 Nov 2026 live run. The brief needs
-        # the final JSON. This does not skip signature or attestation checks.
-        "chat_template_kwargs": {"enable_thinking": False},
-    }
-    request_body_text = json.dumps(request_body, separators=(",", ":"), ensure_ascii=False)
-    base_url = NEAR_AI_URL.rsplit("/v1/", 1)[0]
-    try:
-        # Quotes are verified before the completion. The signature is checked
-        # against that preflight evidence, not against a quote fetched afterwards.
-        try:
-            preflight = preflight_near_ai_evidence(
-                base_url=base_url,
-                api_key=api_key,
-                model=NEAR_AI_MODEL,
-                timeout=30.0,
-            )
-        except Exception as exc:
-            raise AIProviderError(
-                f"NEAR AI preflight verification failed closed ({type(exc).__name__})."
-            ) from exc
-        response = httpx.post(
-            NEAR_AI_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "Accept-Encoding": "identity",
-                "x-no-aliasing": "true",
-            },
-            content=request_body_text,
-            timeout=30.0,
-        )
-        if response.status_code < 200 or response.status_code >= 300:
-            raise AIProviderError(f"NEAR AI Cloud returned HTTP {response.status_code}.")
-        try:
-            body = response.json()
-        except ValueError as exc:
-            raise AIProviderError("NEAR AI Cloud returned invalid JSON.") from exc
-        chat_id = body.get("id") if isinstance(body, dict) else None
-        if not isinstance(chat_id, str) or not chat_id:
-            raise AIProviderError("NEAR AI Cloud response omitted its chat ID.")
-        # Fail closed: do not parse the model brief until the exact response
-        # bytes match a signer already verified in preflight.
-        try:
-            verification = verify_near_ai_response(
-                base_url=base_url,
-                api_key=api_key,
-                chat_id=chat_id,
-                model=NEAR_AI_MODEL,
-                request_body=request_body_text,
-                response_body=response.content,
-                preflight=preflight,
-                timeout=30.0,
-            )
-        except Exception as exc:
-            raise AIProviderError(
-                f"NEAR AI response verification failed closed ({type(exc).__name__})."
-            ) from exc
-        if not verification_is_complete(verification):
-            raise AIProviderError("NEAR AI response did not pass cryptographic verification.")
-        if body.get("model") != NEAR_AI_MODEL:
-            raise AIProviderError("NEAR AI Cloud response model does not match the configured model.")
-        try:
-            choice = body["choices"][0]
-            message = choice["message"]
-        except (KeyError, IndexError, TypeError) as exc:
-            raise AIProviderError("NEAR AI Cloud returned an incomplete completion.") from exc
-        content = message.get("content") if isinstance(message, dict) else None
-        finish_reason = choice.get("finish_reason") if isinstance(choice, dict) else None
-        if not isinstance(content, str) or not content.strip():
-            raise AIProviderError(
-                "NEAR AI Cloud returned no final content "
-                f"(finish_reason={finish_reason!r})."
-            )
-        if content.startswith(chr(96) * 3):
-            content = content.split(chr(10), 1)[-1].rsplit(chr(96) * 3, 1)[0].strip()
-        brief = json.loads(content)
-    except AIProviderError:
-        raise
-    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
-        raise AIProviderError(f"NEAR AI Cloud brief could not be generated: {exc}") from exc
-
+    brief, verification = _complete_json(
+        system=system,
+        user_content=json.dumps(context, separators=(",", ":"), default=str),
+        max_tokens=700,
+    )
     required = ("summary", "why_it_matters", "recommended_actions", "uncertainties", "questions_for_owner")
     if not isinstance(brief, dict) or any(key not in brief for key in required):
         raise AIProviderError("NEAR AI Cloud returned an incomplete operational brief.")
@@ -248,3 +276,24 @@ def generate_operational_brief(record: dict[str, Any]) -> dict[str, Any]:
     if not brief_is_displayable(result):
         raise AIProviderError("NEAR AI response did not pass cryptographic verification.")
     return result
+
+
+def extract_business_event(text: str, catalogue: list[dict[str, Any]]) -> dict[str, Any]:
+    """Extract commitment and evidence JSON. Unverified output is not returned."""
+    parsed, verification = _complete_json(
+        system=EXTRACTION_SYSTEM,
+        user_content=json.dumps({"text": text, "existing_records": catalogue}, separators=(",", ":"), default=str),
+        max_tokens=900,
+        temperature=0,
+    )
+    if not isinstance(parsed, dict):
+        raise AIProviderError("NEAR AI Cloud returned an invalid extraction.")
+    if not verification_is_complete(verification):
+        raise AIProviderError("NEAR AI response did not pass cryptographic verification.")
+    return {
+        "provider": "NEAR AI Cloud",
+        "model": NEAR_AI_MODEL,
+        "attestation_status": _attestation_label(verification.get("signature_kind")),
+        "verification": verification,
+        "extraction": parsed,
+    }
