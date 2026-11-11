@@ -41,9 +41,9 @@ async function connect() {
     const accounts = await wallet.getAccounts();
     state.accountId = accounts[0] ? accounts[0].accountId : '';
     state.connected = Boolean(state.accountId);
-    if (!state.connected) throw new Error('The wallet did not return a testnet account.');
+    if (!state.connected) throw new Error('The wallet did not return an account.');
     if (!state.accountId.endsWith('.testnet') && !/^[0-9a-f]{64}$/.test(state.accountId)) {
-      throw new Error('Connect a NEAR testnet account. Mainnet accounts are not used here.');
+      throw new Error('This preview only accepts a testnet account. A mainnet account was not connected, and nothing was paid.');
     }
     emit();
     return state.accountId;

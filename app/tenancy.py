@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Request
 
 from app.auth_near import read_session_token
+from app.onboarding import read_progress
 
 _workspace_id: ContextVar[str | None] = ContextVar('outcome_workspace_id', default=None)
 _user: ContextVar[dict | None] = ContextVar('outcome_user', default=None)
@@ -138,6 +139,7 @@ def session_view(db, request: Request) -> dict:
             'availability': 'configured' if configured else 'unavailable',
         },
         'near': public_contract(),
+        'onboarding': read_progress(db, user['user_id'] if user else None),
     }
 
 

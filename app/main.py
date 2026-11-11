@@ -21,7 +21,7 @@ from app.ai import (
     extract_business_event, generate_operational_brief, is_configured, public_ai_brief_entry,
 )
 from app.intake import IntakeRejection, accept_confirmation, model_catalogue, prepare_intake
-from app import anchors, auth_near, finance, safety, tenancy
+from app import anchors, auth_near, finance, onboarding, safety, tenancy
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv('OUTCOME_DATA_DIR', ROOT / 'data'))
@@ -156,6 +156,9 @@ def init_db():
         db.execute('''CREATE TABLE IF NOT EXISTS request_limits (
             id TEXT PRIMARY KEY, client_ip TEXT NOT NULL, bucket TEXT NOT NULL,
             created_at TEXT NOT NULL)''')
+        db.execute('''CREATE TABLE IF NOT EXISTS account_onboarding (
+            user_id TEXT PRIMARY KEY, status TEXT NOT NULL, step INTEGER NOT NULL,
+            updated_at TEXT NOT NULL)''')
         db.execute('CREATE INDEX IF NOT EXISTS idx_request_limits_lookup ON request_limits(bucket, client_ip, created_at)')
         commitment_columns = {row['name'] for row in db.execute('PRAGMA table_info(commitments)').fetchall()}
         if 'workspace_id' not in commitment_columns:
@@ -1490,6 +1493,21 @@ def create_auth_session(payload: SessionCreate, request: Request, response: Resp
 def logout(response: Response):
     response.delete_cookie(tenancy.SESSION_COOKIE, path='/')
     return {'authenticated': False}
+
+
+class OnboardingUpdate(BaseModel):
+    status: Literal['in_progress', 'completed', 'dismissed']
+    step: int = Field(ge=0, le=onboarding.STEP_COUNT - 1)
+
+
+@app.put('/api/onboarding')
+def save_onboarding(payload: OnboardingUpdate):
+    user = tenancy.current_user()
+    if not user:
+        raise HTTPException(401, 'Sign in before saving the introduction.')
+    with connect() as db:
+        saved = onboarding.write_progress(db, user['user_id'], payload.status, payload.step)
+    return saved
 
 
 @app.post('/api/workspaces', status_code=201)
