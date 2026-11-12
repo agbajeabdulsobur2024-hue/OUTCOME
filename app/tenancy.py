@@ -19,10 +19,18 @@ SESSION_COOKIE = 'outcome_session'
 
 
 def activate(scope: dict):
+    kind = scope.get('kind') or 'global'
+    workspace_id = scope.get('workspace_id')
+    # The hosted global scope is a quarantine, not a shared workspace.
+    # A non-null sentinel makes existing workspace-scoped SQL return no rows
+    # without changing local-development legacy behavior. Hosted writes are
+    # independently blocked by safety.blocks_shared_write().
+    if os.getenv('VERCEL') == '1' and kind == 'global' and workspace_id is None:
+        workspace_id = '__outcome_global_scope_quarantine__'
     return (
-        _workspace_id.set(scope.get('workspace_id')),
+        _workspace_id.set(workspace_id),
         _user.set(scope.get('user')),
-        _kind.set(scope.get('kind') or 'global'),
+        _kind.set(kind),
     )
 
 
