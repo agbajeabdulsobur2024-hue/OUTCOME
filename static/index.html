@@ -1147,7 +1147,7 @@ async function load(){
   }
   paint();
 }
-let trustReturn = sessionStorage.getItem('outcome-security-return') || 'landing';
+let trustReturn = localStorage.getItem('outcome-security-return') || sessionStorage.getItem('outcome-security-return') || 'landing';
 function showLanding(){
   $('#landing').hidden = false;
   $('.app-shell').hidden = true;
@@ -1840,6 +1840,7 @@ async function disconnectWallet(button){
       closeWelcomeLayer();
       if (!state.session.personal.active && state.scope === null) {
         sessionStorage.removeItem('outcome-open');
+        localStorage.removeItem('outcome-open');
         showLanding();
       }
       toast('Signed out. Your records stay in place.', 'ok');
