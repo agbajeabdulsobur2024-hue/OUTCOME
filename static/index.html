@@ -423,6 +423,7 @@ let view = 'overview';
 let detailTab = 'decision';
 let detailToken = 0;
 let securityOpen = false;
+let trustPageOpen = false;
 let loadError = '';
 const RANK = { DISCREPANCY: 0, OVERDUE: 1, REVIEW_REQUIRED: 2, AWAITING_EVIDENCE: 3, ON_TRACK: 4 };
 const TABS = ['decision', 'timeline', 'amendments', 'payments'];
@@ -1158,11 +1159,11 @@ function showApp(){
   if (security) security.hidden = true;
 }
 function showTrust(options = {}){
-  if (!securityOpen){
+  if (!trustPageOpen){
     trustReturn = $('.app-shell') && !$('.app-shell').hidden ? 'app' : 'landing';
     sessionStorage.setItem('outcome-security-return', trustReturn);
   }
-  securityOpen = true;
+  trustPageOpen = true;
   sessionStorage.setItem('outcome-security-open', '1');
   if (selected) sessionStorage.setItem('outcome-security-commitment', selected);
   if (!options.fromHistory && location.hash !== '#security') history.pushState({ security: true, returnTo: trustReturn }, '', '#security');
@@ -1174,7 +1175,7 @@ function showTrust(options = {}){
   window.scrollTo(0, 0);
 }
 function hideTrust(options = {}){
-  securityOpen = false;
+  trustPageOpen = false;
   sessionStorage.removeItem('outcome-security-open');
   sessionStorage.removeItem('outcome-security-return');
   if (!options.fromHistory && location.hash === '#security') history.replaceState({ view }, '', '#' + HASH_FOR[view]);
@@ -2065,7 +2066,7 @@ $('#detail').addEventListener('toggle', event => {
 }, true);
 function syncFromHistory(){
   if (location.hash === '#security') { showTrust({ fromHistory: true }); return; }
-  if (securityOpen) hideTrust({ fromHistory: true });
+  if (trustPageOpen) hideTrust({ fromHistory: true });
   const next = viewFromHash();
   if (next === view) return;
   view = next;
