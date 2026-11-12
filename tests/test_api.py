@@ -53,3 +53,32 @@ def test_note_evidence_rejects_numeric_value(tmp_path, monkeypatch):
             'kind': 'note', 'value': 3, 'note': 'Should be text only'
         })
         assert response.status_code == 422
+
+
+
+def test_hosted_global_scope_quarantines_legacy_null_workspace_records(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, 'DATA_DIR', tmp_path)
+    monkeypatch.setattr(main, 'DB_PATH', tmp_path / 'test.db')
+    monkeypatch.setenv('OUTCOME_DB_BACKEND', 'sqlite')
+    monkeypatch.setenv('VERCEL', '1')
+
+    with TestClient(main.app) as client:
+        # Simulate a legacy record without changing or deleting production data.
+        with main.connect() as db:
+            db.execute(
+                '''INSERT INTO commitments
+                   (id, supplier, description, quantity, unit, amount, currency,
+                    due_date, payment_condition, created_at, workspace_id)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)''',
+                ('legacy-global-1', 'Legacy supplier', 'Legacy sample', 1, 'unit',
+                 10, 'USD', '2026-12-01', 'After verification', main.utc_now()),
+            )
+
+        assert client.get('/api/commitments').status_code == 200
+        assert client.get('/api/commitments').json() == []
+        assert client.get('/api/commitments/legacy-global-1').status_code == 404
+
+        # The quarantine is scoped to the unowned global workspace only.
+        demo = client.post('/api/demo/trials')
+        assert demo.status_code in (200, 201)
+        assert demo.cookies.get('outcome_demo')
