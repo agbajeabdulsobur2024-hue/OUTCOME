@@ -59,7 +59,7 @@ function main() {
   assert(!/no non-owner record/i.test(html), "the page says no non-owner record exists");
   assert(html.includes("RECORDED ON-CHAIN"), "the page cannot display a verified current receipt state");
   assert(html.includes("NOT RECORDED"), "the page cannot distinguish a missing current receipt");
-  assert(html.includes("claim.offer ?"), "the sign button is not gated on the live policy");
+  assert(html.includes("!currentReceipt && claim.offer"), "the sign button is not gated on the live policy and current receipt state");
   assert(html.includes("RECORDED ON-CHAIN"), "the page cannot show a matching verified receipt");
   assert(html.includes("alreadyAnchored"), "the signing handler does not prevent a duplicate anchor");
   assert(html.includes("let trustPageOpen = false"), "the trust-page state is not independent from payment disclosures");
