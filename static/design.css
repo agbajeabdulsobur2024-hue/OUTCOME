@@ -1056,7 +1056,14 @@ body.is-guided .app-shell { grid-template-columns: 248px minmax(0, 1fr) minmax(3
 body.welcome-open { overflow: hidden; }
 
 /* Motion for view changes */
-section[data-view]:not([hidden]) { animation: rise .32s ease; }
+section[data-view]:not([hidden]) { animation: view-settle .14s ease-out; }
+@keyframes view-settle {
+  from { opacity: .94; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  section[data-view]:not([hidden]) { animation: none; }
+}
 
 @media (max-width: 1099px) {
   :root { --header-offset: 76px; }
