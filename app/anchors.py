@@ -42,8 +42,6 @@ def public_contract() -> dict:
         'owner_account_id': OWNER_ACCOUNT_ID,
         'owner_event_id': 'OUTCOME-DEMO-PO-104',
         'upgrade_transaction': 'FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc',
-        'tester_signature_recorded': False,
-        'app_wallet_signature_recorded': False,
         'non_owner_event': {
             'account_id': 'nocgykc7.thewordweaver.testnet',
             'sequence': 2,
