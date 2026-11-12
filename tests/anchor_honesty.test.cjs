@@ -60,6 +60,11 @@ function main() {
   assert(html.includes("RECORDED ON-CHAIN"), "the page cannot display a verified current receipt state");
   assert(html.includes("NOT RECORDED"), "the page cannot distinguish a missing current receipt");
   assert(html.includes("claim.offer ?"), "the sign button is not gated on the live policy");
+  assert(html.includes("RECORDED ON-CHAIN"), "the page cannot show a matching verified receipt");
+  assert(html.includes("alreadyAnchored"), "the signing handler does not prevent a duplicate anchor");
+  assert(html.includes("let trustPageOpen = false"), "the trust-page state is not independent from payment disclosures");
+  assert(html.includes("sessionStorage.setItem('outcome-security-open', '1')"), "the security route is not persisted across refresh");
+  assert(html.includes("location.hash !== '#security'"), "the security route is overwritten during startup");
   assert(html.includes('src="/static/anchor-copy.js"'), "the page does not load the audit copy");
 
   console.log("audit copy matches the live upgrade and stays fail-closed");
