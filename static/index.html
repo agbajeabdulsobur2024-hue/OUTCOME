@@ -1877,6 +1877,16 @@ async function nearView(contractId, method, args={}){
 async function signAnchor(button){
   const record = state.record;
   if (!record) return;
+  const currentDigest = record.audit_anchor && record.audit_anchor.payload_hash;
+  const alreadyAnchored = (record.audit_receipts || []).some(item =>
+    item.payload_hash === currentDigest && ['FINAL','FINAL_SUCCESS'].includes(item.execution_status)
+  );
+  if (alreadyAnchored){
+    state.anchorStatus = 'This exact commitment state already has a finalised receipt. No second record was submitted.';
+    paintTrustDetail();
+    toast('This commitment state is already anchored. Nothing was submitted.', 'warn');
+    return;
+  }
   if (state.anchorPolicy !== 'any_account') {
     toast(anchorClaim(state.anchorPolicy).policyLine, 'warn');
     return;
