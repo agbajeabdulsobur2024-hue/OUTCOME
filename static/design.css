@@ -1195,3 +1195,36 @@ section[data-view]:not([hidden]) { animation: none; }
   .stage, .welcome { box-shadow: none; }
   .skeleton-row { animation: none; background: #eeeae2; }
 }
+
+/* Landing-page clarity and responsive finish */
+.audience-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:24px; }
+.audience-card { min-width:0; padding:20px; border:1px solid var(--line); border-radius:18px; background:var(--paper); }
+.audience-card > span { color:var(--sage); font-size:12px; font-weight:750; letter-spacing:.07em; }
+.audience-card h3 { margin:12px 0 6px; font-family:var(--display); font-size:23px; font-weight:560; line-height:1.12; }
+.audience-card p,.difference-grid p { margin:0; color:var(--muted); font-size:15px; line-height:1.55; }
+.difference-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; margin-top:24px; }
+.difference-grid article { padding:16px 0 0; border-top:1px solid var(--line-strong); }
+.difference-grid b { display:block; margin-bottom:7px; font-family:var(--display); font-size:20px; font-weight:560; }
+.landing-footer { display:grid; grid-template-columns:1fr auto; gap:8px 24px; align-items:start; margin-top:72px; padding-top:24px; border-top:1px solid var(--line-strong); }
+.landing-footer > div p { margin:4px 0 0; color:var(--muted); font-size:14px; }
+.landing-footer nav { display:flex; flex-wrap:wrap; gap:4px 18px; }
+.landing-footer .text-btn { min-height:36px; }
+.landing-disclaimer { grid-column:1 / -1; margin:8px 0 0; color:var(--faint); font-size:13px; line-height:1.5; }
+@media (max-width:1099px) { .audience-grid,.difference-grid { grid-template-columns:1fr 1fr; } }
+@media (max-width:759px) {
+ .audience-grid,.difference-grid { grid-template-columns:1fr; gap:10px; }
+ .audience-card { padding:16px; }
+ .story { padding-top:44px; }
+ .landing-footer { grid-template-columns:1fr; gap:12px; margin-top:48px; }
+ .landing-footer nav { display:grid; grid-template-columns:1fr 1fr; justify-items:start; }
+ .landing-disclaimer { grid-column:auto; }
+ .landing-actions { display:grid; grid-template-columns:1fr 1fr; }
+ .landing-actions #getStarted { grid-column:1 / -1; width:100%; }
+ .landing-actions #seeHow { width:100%; }
+ .landing-actions #exploreDemo { justify-self:start; }
+}
+@media (max-width:360px) {
+ .landing-actions { grid-template-columns:1fr; }
+ .landing-actions #getStarted { grid-column:auto; }
+ .landing-actions #seeHow { width:100%; }
+}
