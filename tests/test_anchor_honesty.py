@@ -19,8 +19,8 @@ def test_public_contract_reports_the_deployed_upgrade():
     assert facts["upgrade_transaction"] == "FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc"
     assert facts["owner_account_id"] == "thewordweaver.testnet"
     assert facts["owner_event_id"] == "OUTCOME-DEMO-PO-104"
-    assert facts["tester_signature_recorded"] is False
-    assert facts["app_wallet_signature_recorded"] is False
+    assert "tester_signature_recorded" not in facts
+    assert "app_wallet_signature_recorded" not in facts
     non_owner = facts["non_owner_event"]
     assert non_owner["account_id"] == "nocgykc7.thewordweaver.testnet"
     assert non_owner["sequence"] == 2
