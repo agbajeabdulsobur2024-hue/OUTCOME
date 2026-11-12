@@ -78,7 +78,29 @@ def test_hosted_global_scope_quarantines_legacy_null_workspace_records(tmp_path,
         assert client.get('/api/commitments').json() == []
         assert client.get('/api/commitments/legacy-global-1').status_code == 404
 
+        payload = {
+            'supplier': 'New supplier', 'description': 'Test order',
+            'quantity': 2, 'unit': 'boxes', 'amount': 20,
+            'currency': 'USD', 'due_date': '2026-12-10',
+            'payment_condition': 'Pay after verified delivery',
+        }
+        blocked = client.post('/api/commitments', json=payload)
+        assert blocked.status_code == 409
+        assert client.get('/api/commitments').json() == []
+
         # The quarantine is scoped to the unowned global workspace only.
         demo = client.post('/api/demo/trials')
-        assert demo.status_code in (200, 201)
+        assert demo.status_code == 201
         assert demo.cookies.get('outcome_demo')
+        assert demo.json()['synthetic_data'] is True
+        assert len(demo.json()['commitments']) == 2
+        assert len(client.get('/api/commitments').json()) == 2
+
+        created = client.post('/api/commitments', json=payload)
+        assert created.status_code == 201
+        assert len(client.get('/api/commitments').json()) == 3
+
+        # Removing the demo cookie returns to the empty quarantine scope.
+        client.cookies.delete('outcome_demo')
+        assert client.get('/api/commitments').json() == []
+        assert client.get('/api/commitments/legacy-global-1').status_code == 404
