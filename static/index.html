@@ -807,6 +807,7 @@ function goTo(next, scroll = 'restore'){
 function closeDetail(){
   const id = selected;
   selected = null;
+  sessionStorage.removeItem('outcome-selected-commitment');
   state.record = null;
   detailTab = 'decision';
   renderEmptyDetail();
@@ -1108,6 +1109,7 @@ async function openCommitment(id, options={}){
   if (options.tab && TABS.includes(options.tab)) detailTab = options.tab;
   else if (selected !== id) detailTab = 'decision';
   selected = id;
+  sessionStorage.setItem('outcome-selected-commitment', id);
   sessionStorage.setItem('outcome-security-commitment', id);
   if (view !== 'commitments') goTo('commitments', options.scroll || 'top');
   else $('#commit-layout')?.classList.add('has-selection');
@@ -2245,6 +2247,48 @@ async function boot(){
       }).catch(error => setLandingStatus(error.message));
     }
   })).catch(() => {});
+  const open = sessionStorage.getItem('outcome-open');
+  const explicitRoute = location.hash === '#security' || Boolean(location.hash && location.hash !== '#');
+  const hasWorkspaceIntent = Boolean(open && (open === 'demo' || open === 'personal'));
+  const shouldRestoreWorkspace = explicitRoute || hasWorkspaceIntent;
+
+  // Restore an existing workspace and deep link before presenting onboarding.
+  // A reload must not turn a workspace URL into the public landing page.
+  if (shouldRestoreWorkspace) {
+    if (open === 'demo') {
+      try {
+        const trial = await enterSample();
+        await enterWorkspace('demo', trial);
+      } catch (error) {
+        showLanding();
+        setLandingStatus(error.message);
+      }
+    } else if (open === 'personal' && state.session && state.session.personal && state.session.personal.active) {
+      try { await enterWorkspace('personal'); }
+      catch (error) { showLanding(); setLandingStatus(error.message); }
+    } else if (explicitRoute && location.hash === '#security' && state.session && state.session.personal && state.session.personal.active) {
+      try { await enterWorkspace('personal'); }
+      catch (error) { showLanding(); setLandingStatus(error.message); }
+    } else {
+      showLanding();
+      if (open) setLandingStatus('Your previous workspace is no longer available. Sign in again to continue.');
+    }
+    renderGuide();
+    const targetView = viewFromHash();
+    if (location.hash !== '#security') {
+      view = targetView;
+      paint();
+    }
+    const commitmentId = sessionStorage.getItem('outcome-selected-commitment') || sessionStorage.getItem('outcome-security-commitment');
+    if (commitmentId && state.scope) {
+      try { await openCommitment(commitmentId, { focus:false, scroll:'none' }); }
+      catch (error) { sessionStorage.removeItem('outcome-selected-commitment'); }
+    }
+    const restoreSecurity = sessionStorage.getItem('outcome-security-open') === '1' || location.hash === '#security';
+    if (restoreSecurity) showTrust({ fromRestore:true });
+    return;
+  }
+
   const firstVisit = welcomeState();
   if (firstVisit && OutcomeWelcome.shouldAutoPresent(firstVisit)){
     const personal = state.session && state.session.personal && state.session.personal.active;
@@ -2272,20 +2316,9 @@ async function boot(){
     }
     return;
   }
-  const open = sessionStorage.getItem('outcome-open');
-  if (mode === 'quiet' && open === 'demo' && state.session && state.session.demo && state.session.demo.active) await enterWorkspace('demo');
-  else if (mode === 'quiet' && open === 'personal' && state.session && state.session.personal && state.session.personal.active) await enterWorkspace('personal');
-  else showLanding();
+  showLanding();
   renderGuide();
-  const restoreSecurity = sessionStorage.getItem('outcome-security-open') === '1' || location.hash === '#security';
-  if (restoreSecurity){
-    const commitmentId = sessionStorage.getItem('outcome-security-commitment');
-    if (commitmentId && state.scope) {
-      try { await openCommitment(commitmentId, { focus:false, scroll:'none' }); }
-      catch (error) { setLandingStatus('Could not restore the selected commitment: ' + error.message); }
-    }
-    showTrust({ fromRestore:true });
-  }
+  if (location.hash === '#security') showTrust({ fromRestore:true });
 }
 boot().catch(error => setLandingStatus(error.message));
 </script>
