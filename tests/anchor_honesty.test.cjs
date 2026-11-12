@@ -22,13 +22,13 @@ function main() {
   const offered = anchor.claim("any_account");
   assert(offered.offer === true, "a live any_account policy did not offer a signature");
   assert(offered.policyLine.includes("does not authorise a payment"), "signing was described as a payment");
-  assert(offered.policyLine.includes("No tester signature has been written"), "a tester signature was claimed through the app");
+  assert(offered.policyLine.includes("Earlier test records shown above were not filed through this app sign flow"), "historical test records were not distinguished from the current app flow");
   assert(offered.nonOwnerLine.includes("nocgykc7.thewordweaver.testnet"), "the non-owner record was omitted");
   assert(offered.nonOwnerLine.includes("not filed through the app sign button"), "the non-owner record was described as an app signature");
   assert(offered.nonOwnerTx === "7ZXWXUjPtWFQiYG6FKH91WimEmQWMwibSRoxifeweHk3", "the sequence 2 transaction was missing");
   assert(!/not offered/i.test(offered.policyLine), "the offered signature also said it was not offered");
   assert(!/owner-only/i.test(offered.policyLine), "the live policy was still described as owner-only");
-  assert(offered.digestLine.includes("not on chain"), "an unwritten digest was described as on chain");
+  assert(offered.digestLine.includes("ledger status is shown below"), "the digest status copy is not receipt-aware");
   assert(offered.codeHash === "5UNnZ4KvwoCxHt5ADhJnkCchP2h1xR6fnCXPP8c1rgpr", "the live code hash was stale");
   assert(offered.upgradeTx === "FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc", "the upgrade transaction was missing");
   assert(offered.ownerEventId === "OUTCOME-DEMO-PO-104", "the surviving owner event was dropped");
@@ -52,11 +52,13 @@ function main() {
   assert(html.includes("5UNnZ4KvwoCxHt5ADhJnkCchP2h1xR6fnCXPP8c1rgpr"), "the landing does not show the live code hash");
   assert(html.includes("FNzw1EPWRwepL2Bni1XH9Wz2nWJyqxeV4tPCpS5joXrc"), "the landing does not show the upgrade transaction");
   assert(html.includes("OUTCOME-DEMO-PO-104"), "the surviving owner event is missing");
-  assert(html.includes("No tester signature has been written through the app wallet flow"), "the page claims an app wallet signature was written");
+  assert(!html.includes("No tester signature has been written through the app wallet flow"), "the page retains a stale tester-signature claim");
+  assert(html.includes("selected commitment’s receipt appears below only after OUTCOME verifies a matching transaction payload"), "the page does not explain current receipt verification");
   assert(html.includes("nocgykc7.thewordweaver.testnet"), "the non-owner account was omitted");
   assert(html.includes("7ZXWXUjPtWFQiYG6FKH91WimEmQWMwibSRoxifeweHk3"), "the sequence 2 transaction was omitted");
   assert(!/no non-owner record/i.test(html), "the page says no non-owner record exists");
-  assert(html.includes("not written on chain"), "a digest that is not on chain is no longer described that way");
+  assert(html.includes("RECORDED ON-CHAIN"), "the page cannot display a verified current receipt state");
+  assert(html.includes("NOT RECORDED"), "the page cannot distinguish a missing current receipt");
   assert(html.includes("claim.offer ?"), "the sign button is not gated on the live policy");
   assert(html.includes('src="/static/anchor-copy.js"'), "the page does not load the audit copy");
 
