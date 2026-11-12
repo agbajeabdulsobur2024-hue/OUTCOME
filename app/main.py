@@ -479,6 +479,12 @@ def get_record(cid: str, db=None):
             ),
         })
     timeline.sort(key=lambda item: item['created_at'])
+    latest_operational_change = max(
+        (item['created_at'] for item in timeline if item['event_type'] != 'AI_BRIEF_GENERATED'),
+        default=commitment['created_at'],
+    )
+    for brief_entry in published_briefs:
+        brief_entry['is_stale'] = brief_entry['created_at'] < latest_operational_change
     record = {
         'commitment': commitment,
         'evidence': evidence,
@@ -662,34 +668,48 @@ def add_evidence(cid: str, payload: EvidenceCreate):
 
 @app.post('/api/evidence/{evidence_id}/reviews', status_code=201)
 def review_evidence(evidence_id: str, payload: EvidenceReviewCreate):
+    reviewer = payload.reviewer.strip()
+    if not reviewer:
+        raise HTTPException(422, 'Reviewer identity is required')
     with connect() as db:
         workspace_id = tenancy.current_workspace_id()
         if workspace_id is None:
             exists = db.execute(
-                '''SELECT e.id FROM evidence e JOIN commitments c ON c.id=e.commitment_id
+                '''SELECT e.id, e.commitment_id FROM evidence e JOIN commitments c ON c.id=e.commitment_id
                    WHERE e.id=? AND c.workspace_id IS NULL''',
                 (evidence_id,),
             ).fetchone()
         else:
             exists = db.execute(
-                '''SELECT e.id FROM evidence e JOIN commitments c ON c.id=e.commitment_id
+                '''SELECT e.id, e.commitment_id FROM evidence e JOIN commitments c ON c.id=e.commitment_id
                    WHERE e.id=? AND c.workspace_id=?''',
                 (evidence_id, workspace_id),
             ).fetchone()
         if not exists:
             raise HTTPException(404, 'Evidence record not found')
+        latest = db.execute(
+            '''SELECT id, status, reviewer, note, created_at FROM evidence_reviews
+               WHERE evidence_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1''',
+            (evidence_id,),
+        ).fetchone()
+        # Repeated taps/retries must not create duplicate review events.
+        if latest and latest['status'] == payload.status and latest['reviewer'] == reviewer:
+            return {'id': latest['id'], 'evidence_id': evidence_id, 'status': latest['status'],
+                    'reviewer': latest['reviewer'], 'note': latest['note'],
+                    'created_at': latest['created_at'], 'duplicate': True}
         review_id = str(uuid.uuid4())
         created_at = utc_now()
         db.execute('''INSERT INTO evidence_reviews
             (id, evidence_id, status, reviewer, note, created_at)
             VALUES (?, ?, ?, ?, ?, ?)''',
-            (review_id, evidence_id, payload.status, payload.reviewer.strip(),
-             payload.note.strip(), created_at))
-        if not payload.reviewer.strip():
-            raise HTTPException(422, 'Reviewer identity is required')
+            (review_id, evidence_id, payload.status, reviewer, payload.note.strip(), created_at))
+        commitment_id = exists['commitment_id']
+    # Evidence review changes the governing evidence and therefore requires a
+    # fresh persisted assessment snapshot, not just a new review timeline row.
+    save_assessment_snapshot(commitment_id)
     return {'id': review_id, 'evidence_id': evidence_id, 'status': payload.status,
-            'reviewer': payload.reviewer.strip(), 'note': payload.note.strip(),
-            'created_at': created_at}
+            'reviewer': reviewer, 'note': payload.note.strip(),
+            'created_at': created_at, 'duplicate': False}
 
 
 @app.post('/api/commitments/{cid}/amendments', status_code=201)

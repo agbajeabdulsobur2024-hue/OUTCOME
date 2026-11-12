@@ -125,7 +125,9 @@ def _complete_json(*, system: str, user_content: str, max_tokens: int, temperatu
                 base_url=base_url,
                 api_key=api_key,
                 model=NEAR_AI_MODEL,
-                timeout=30.0,
+                # Keep the attestation phase bounded inside Vercel's 60s
+                # function window. Cryptographic checks are unchanged.
+                timeout=8.0,
             )
         except Exception as exc:
             raise AIProviderError(
@@ -141,7 +143,8 @@ def _complete_json(*, system: str, user_content: str, max_tokens: int, temperatu
                 "x-no-aliasing": "true",
             },
             content=request_body_text,
-            timeout=30.0,
+            # Reserve time for independent signature/attestation verification.
+            timeout=18.0,
         )
         if response.status_code < 200 or response.status_code >= 300:
             raise AIProviderError(f"NEAR AI Cloud returned HTTP {response.status_code}.")
@@ -163,7 +166,9 @@ def _complete_json(*, system: str, user_content: str, max_tokens: int, temperatu
                 request_body=request_body_text,
                 response_body=response.content,
                 preflight=preflight,
-                timeout=30.0,
+                # Verification gets its own bounded budget; never skip it to
+                # make a slow response appear successful.
+                timeout=8.0,
             )
         except Exception as exc:
             raise AIProviderError(

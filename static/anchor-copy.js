@@ -12,7 +12,7 @@
     var offer = policy === "any_account";
     var policyLine;
     if (offer) {
-      policyLine = "The live contract accepts a record from any account. No tester signature has been written through the app wallet flow. A non-owner record is already on chain and was not filed through this sign button. Connecting a wallet to sign is for this audit record only and does not authorise a payment.";
+      policyLine = "The live contract accepts a record from any account. Earlier test records shown above were not filed through this app sign flow. The selected commitment’s receipt is displayed below only after OUTCOME verifies the transaction payload. Signing writes an audit record only; it does not authorise a payment.";
     } else if (policy === "pending") {
       policyLine = "Checking the live audit policy. A signature is offered only when that view returns any account.";
     } else if (!policy) {
@@ -23,7 +23,7 @@
     return {
       offer: offer,
       policyLine: policyLine,
-      digestLine: "This order’s digest is not on chain.",
+      digestLine: "The selected commitment digest is calculated from its recorded state. Its ledger status is shown below when OUTCOME has verified a matching receipt.",
       ownerLine: "The existing on-chain record is still an owner event, stored id " + OWNER_EVENT_ID + ". It is not this order’s digest.",
       nonOwnerLine: "A later non-owner record_event from " + NON_OWNER_ACCOUNT + " is FINAL as sequence 2. It was not filed through the app sign button and is not this order’s digest.",
       codeHash: CODE_HASH,
