@@ -863,7 +863,7 @@ function renderBrief(entry){
     return `<article class="record brief"><h3>Brief withheld</h3><p class="meta">${esc(reason)}</p></article>`;
   }
   const brief = entry.brief.brief || {};
-  return `<article class="record brief"><p class="kind-note">AI interpretation</p><h3>${esc(brief.summary || 'Operational brief')}</h3><p>${esc(brief.why_it_matters || '')}</p><h4>Recommended actions</h4>${listHtml(brief.recommended_actions) || '<p class="meta">None recorded.</p>'}<h4>Uncertainties</h4>${listHtml(brief.uncertainties) || '<p class="meta">None recorded.</p>'}<h4>Questions for the owner</h4>${listHtml(brief.questions_for_owner) || '<p class="meta">None recorded.</p>'}${entry.brief.disclaimer ? `<p class="meta">${esc(entry.brief.disclaimer)}</p>` : ''}<p class="meta">Shown because the checks passed. This is not a verified business fact and not an approval.</p></article>`;
+  return `<article class="record brief">${entry.is_stale ? '<p class="meta">Historical snapshot — later commitment activity has occurred. Generate a fresh explanation before relying on this brief.</p>' : ''}<p class="kind-note">AI interpretation</p><h3>${esc(brief.summary || 'Operational brief')}</h3><p>${esc(brief.why_it_matters || '')}</p><h4>Recommended actions</h4>${listHtml(brief.recommended_actions) || '<p class="meta">None recorded.</p>'}<h4>Uncertainties</h4>${listHtml(brief.uncertainties) || '<p class="meta">None recorded.</p>'}<h4>Questions for the owner</h4>${listHtml(brief.questions_for_owner) || '<p class="meta">None recorded.</p>'}${entry.brief.disclaimer ? `<p class="meta">${esc(entry.brief.disclaimer)}</p>` : ''}<p class="meta">Shown because the checks passed. This is not a verified business fact and not an approval.</p></article>`;
 }
 function verificationNote(){
   return `<p class="meta">An explanation is an interpretation. It appears only after its checks pass, and it does not approve a payment. <button type="button" class="text-btn" data-open-trust>How checks work</button></p>`;
@@ -1019,24 +1019,40 @@ function paintTrustDetail(){
   if (status) status.textContent = state.anchorStatus || '';
   const recordSlot = $('#trustRecord');
   const record = state.record;
-  if (recordSlot){
-    if (!record){
-      recordSlot.textContent = 'A digest that is not on chain is described as not written on chain. Open a commitment to see that order’s digest.';
-    } else {
-      const anchor = record.audit_anchor || {};
-      const receipts = record.audit_receipts || [];
-      const receiptLine = receipts.length
-        ? receipts.map(item => `${item.execution_status} · ${item.transaction_hash}${item.explorer_url ? ' · ' + item.explorer_url : ''}`).join(' ')
-        : 'No receipt is stored for this order.';
-      recordSlot.textContent = `${anchorClaim(state.anchorPolicy).digestLine} Digest for this order, not written on chain: ${anchor.payload_hash || 'unavailable'}. ${receiptLine}`;
-    }
-  }
   const actions = $('#trustActions');
+  if (!record){
+    if (recordSlot) recordSlot.innerHTML = '<p class="meta">Open a commitment to inspect its digest and audit receipt.</p>';
+    if (actions) actions.innerHTML = '';
+    return;
+  }
+  const anchor = record.audit_anchor || {};
+  const receipts = record.audit_receipts || [];
+  const matching = receipts.filter(item =>
+    item.payload_hash === anchor.payload_hash &&
+    ['FINAL','FINAL_SUCCESS'].includes(item.execution_status) &&
+    item.independently_verified === true
+  );
+  const currentReceipt = matching[matching.length - 1];
+  const olderReceipts = receipts.filter(item => item.payload_hash !== anchor.payload_hash);
+  const digest = esc(anchor.payload_hash || 'Unavailable');
+  const commitmentRef = esc(anchor.commitment_id || 'Unavailable');
+  let receiptHtml = '';
+  if (currentReceipt){
+    receiptHtml = `<section class="record"><div class="record-top"><h3>Audit status</h3><span class="badge ON_TRACK">RECORDED ON-CHAIN</span></div><p><b>Commitment reference</b><br><code>${commitmentRef}</code></p><p><b>Digest</b><br><code>${digest}</code></p><p><b>Network</b><br>NEAR Testnet</p><p><b>Signer</b><br><code>${esc(currentReceipt.signer_account_id || 'Unavailable')}</code></p><p><b>Transaction</b><br><code>${esc(currentReceipt.transaction_hash)}</code></p><p><b>Execution</b><br>${esc(currentReceipt.execution_status)} · verified by OUTCOME when submitted</p><p><a href="${esc(currentReceipt.explorer_url)}" target="_blank" rel="noopener noreferrer">View verified transaction on NearBlocks</a></p></section>`;
+  } else {
+    receiptHtml = `<section class="record"><div class="record-top"><h3>Audit status</h3><span class="badge REVIEW_REQUIRED">NOT RECORDED</span></div><p>This commitment state digest has no matching, independently verified finalised receipt stored by OUTCOME.</p><p><b>Commitment reference</b><br><code>${commitmentRef}</code></p><p><b>Digest</b><br><code>${digest}</code></p></section>`;
+  }
+  if (olderReceipts.length){
+    receiptHtml += `<p class="meta">There ${olderReceipts.length === 1 ? 'is' : 'are'} ${olderReceipts.length} earlier receipt(s) for a different commitment state. They do not prove the current state is anchored.</p>`;
+  }
+  if (recordSlot) recordSlot.innerHTML = receiptHtml;
   if (!actions) return;
   const claim = anchorClaim(state.anchorPolicy);
   const signedIn = Boolean(state.session && state.session.authenticated);
-  const signButton = claim.offer ? `<div class="btn-row"><button id="anchorRecord" class="btn" type="button">${signedIn ? 'Sign the audit record' : 'Sign in to record this audit'}</button></div><p class="meta">Signing writes an audit record only. It does not authorise a payment.</p>` : '';
-  actions.innerHTML = state.record ? signButton : '';
+  const signButton = !currentReceipt && claim.offer
+    ? `<div class="btn-row"><button id="anchorRecord" class="btn" type="button" ${signedIn ? '' : 'disabled'}>${signedIn ? 'Sign the audit record' : 'Sign in to record this audit'}</button></div><p class="meta">Signing writes this commitment-state digest only. It does not approve or authorise a payment.</p>`
+    : (currentReceipt ? '<p class="meta">This exact commitment state already has a verified finalised receipt. Do not sign it again.</p>' : '');
+  actions.innerHTML = signButton;
 }
 function cachedRecord(id){
   if (state.record && state.record.commitment && state.record.commitment.id === id) return state.record;
@@ -1091,6 +1107,7 @@ async function openCommitment(id, options={}){
   if (options.tab && TABS.includes(options.tab)) detailTab = options.tab;
   else if (selected !== id) detailTab = 'decision';
   selected = id;
+  sessionStorage.setItem('outcome-security-commitment', id);
   if (view !== 'commitments') goTo('commitments', options.scroll || 'top');
   else $('#commit-layout')?.classList.add('has-selection');
   markActive();
@@ -1127,7 +1144,7 @@ async function load(){
   }
   paint();
 }
-let trustReturn = 'landing';
+let trustReturn = sessionStorage.getItem('outcome-security-return') || 'landing';
 function showLanding(){
   $('#landing').hidden = false;
   $('.app-shell').hidden = true;
@@ -1140,8 +1157,15 @@ function showApp(){
   const security = $('#security');
   if (security) security.hidden = true;
 }
-function showTrust(){
-  trustReturn = $('.app-shell') && !$('.app-shell').hidden ? 'app' : 'landing';
+function showTrust(options = {}){
+  if (!securityOpen){
+    trustReturn = $('.app-shell') && !$('.app-shell').hidden ? 'app' : 'landing';
+    sessionStorage.setItem('outcome-security-return', trustReturn);
+  }
+  securityOpen = true;
+  sessionStorage.setItem('outcome-security-open', '1');
+  if (selected) sessionStorage.setItem('outcome-security-commitment', selected);
+  if (!options.fromHistory && location.hash !== '#security') history.pushState({ security: true, returnTo: trustReturn }, '', '#security');
   $('#landing').hidden = true;
   $('.app-shell').hidden = true;
   const security = $('#security');
@@ -1149,7 +1173,11 @@ function showTrust(){
   paintTrustDetail();
   window.scrollTo(0, 0);
 }
-function hideTrust(){
+function hideTrust(options = {}){
+  securityOpen = false;
+  sessionStorage.removeItem('outcome-security-open');
+  sessionStorage.removeItem('outcome-security-return');
+  if (!options.fromHistory && location.hash === '#security') history.replaceState({ view }, '', '#' + HASH_FOR[view]);
   if (trustReturn === 'app') showApp();
   else showLanding();
 }
@@ -2036,6 +2064,8 @@ $('#detail').addEventListener('toggle', event => {
   if (event.target.id === 'security-test') securityOpen = event.target.open;
 }, true);
 function syncFromHistory(){
+  if (location.hash === '#security') { showTrust({ fromHistory: true }); return; }
+  if (securityOpen) hideTrust({ fromHistory: true });
   const next = viewFromHash();
   if (next === view) return;
   view = next;
@@ -2050,7 +2080,7 @@ window.matchMedia('(max-width: 759px)').addEventListener('change', event => {
 });
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 view = viewFromHash();
-if (location.hash !== '#' + HASH_FOR[view]) history.replaceState({ view }, '', '#' + HASH_FOR[view]);
+if (location.hash !== '#security' && location.hash !== '#' + HASH_FOR[view]) history.replaceState({ view }, '', '#' + HASH_FOR[view]);
 paint();
 let welcomeReturnFocus = null;
 function welcomeState(){
@@ -2236,6 +2266,15 @@ async function boot(){
   else if (mode === 'quiet' && open === 'personal' && state.session && state.session.personal && state.session.personal.active) await enterWorkspace('personal');
   else showLanding();
   renderGuide();
+  const restoreSecurity = sessionStorage.getItem('outcome-security-open') === '1' || location.hash === '#security';
+  if (restoreSecurity){
+    const commitmentId = sessionStorage.getItem('outcome-security-commitment');
+    if (commitmentId && state.scope) {
+      try { await openCommitment(commitmentId, { focus:false, scroll:'none' }); }
+      catch (error) { setLandingStatus('Could not restore the selected commitment: ' + error.message); }
+    }
+    showTrust({ fromRestore:true });
+  }
 }
 boot().catch(error => setLandingStatus(error.message));
 </script>
