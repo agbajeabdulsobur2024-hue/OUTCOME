@@ -43,7 +43,7 @@
   background: var(--ivory);
   font-family: var(--sans);
   font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  text-rendering: auto;
 }
 
 * { box-sizing: border-box; }
@@ -340,8 +340,8 @@ form .btn { margin-top: 18px; }
   gap: 12px;
   padding: 0 clamp(20px, 4vw, 48px);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--ivory) 88%, transparent);
-  backdrop-filter: blur(16px);
+  background: var(--ivory);
+  backdrop-filter: none;
 }
 .crumb {
   min-width: 0;
@@ -394,7 +394,7 @@ form .btn { margin-top: 18px; }
   gap: 4px;
   padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
-  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  background: var(--paper);
   backdrop-filter: blur(16px);
 }
 .tabbar a {
@@ -621,9 +621,9 @@ input::placeholder, textarea::placeholder { color: #8d978f; }
 .skeleton-row {
   height: 76px;
   border-radius: 16px;
-  background: linear-gradient(90deg, #e7e2d8 0%, #f7f4ee 48%, #e7e2d8 100%);
-  background-size: 200% 100%;
-  animation: skeleton 1.3s ease-in-out infinite;
+  background: #eeeae2;
+  background-size: auto;
+  animation: none;
 }
 .skeleton-row.short { height: 28px; width: 42%; border-radius: 8px; }
 @keyframes skeleton { from { background-position: 100% 0; } to { background-position: -100% 0; } }
@@ -854,7 +854,7 @@ body.is-guided .app-shell { grid-template-columns: 248px minmax(0, 1fr) minmax(3
   letter-spacing: -.03em;
 }
 .stage-copy p { margin: 0; max-width: 34ch; color: #d5e4db; font-size: 16.5px; line-height: 1.5; }
-.stage-copy.is-in, .welcome-copy.is-in { animation: rise .4s cubic-bezier(.2, .7, .2, 1); }
+.stage-copy.is-in, .welcome-copy.is-in { animation: none; }
 .stage-sketch { margin: 8px 0 4px; }
 .stage-actions { display: grid; gap: 4px; }
 .stage .btn-stage {
@@ -876,7 +876,7 @@ body.is-guided .app-shell { grid-template-columns: 248px minmax(0, 1fr) minmax(3
   box-shadow: 0 0 0 1px #1f7a54, 0 0 0 8px #1f7a5418;
   scroll-margin-top: calc(var(--header-offset, 72px) + 16px);
   scroll-margin-bottom: calc(var(--stage-space, 0px) + 24px);
-  animation: guideSettle .55s ease;
+  animation: none;
 }
 @keyframes guideSettle {
   from { box-shadow: 0 0 0 0 transparent; }
@@ -1056,7 +1056,7 @@ body.is-guided .app-shell { grid-template-columns: 248px minmax(0, 1fr) minmax(3
 body.welcome-open { overflow: hidden; }
 
 /* Motion for view changes */
-section[data-view]:not([hidden]) { animation: view-settle .14s ease-out; }
+section[data-view]:not([hidden]) { animation: none; }
 @keyframes view-settle {
   from { opacity: .94; }
   to { opacity: 1; }
@@ -1181,4 +1181,17 @@ section[data-view]:not([hidden]) { animation: view-settle .14s ease-out; }
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Mobile performance: avoid costly blur, large shadows and decorative motion. */
+@media (max-width: 759px) {
+  :root { text-rendering: auto; }
+  .topbar, .tabbar { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .panel, .landing-card, .metric-card, .signal-card, .rail-card,
+  .product-preview, .welcome-card { box-shadow: var(--shadow-tight); }
+  .btn, .nav a, .tabbar a, .item, input:not([type=checkbox]), select, textarea {
+    transition-duration: .1s;
+  }
+  .stage, .welcome { box-shadow: none; }
+  .skeleton-row { animation: none; background: #eeeae2; }
 }
