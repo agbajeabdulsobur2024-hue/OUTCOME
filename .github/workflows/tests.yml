@@ -12,5 +12,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: python -m pip install -r requirements.txt
       - run: PYTHONPATH=. pytest -q
+      - name: Run browser-state and trust-boundary tests
+        run: |
+          set -e
+          for test_file in tests/*.test.cjs; do
+            echo "Running $test_file"
+            node "$test_file"
+          done
