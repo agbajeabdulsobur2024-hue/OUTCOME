@@ -1065,11 +1065,8 @@ async function showDetail(id, options={}){
   const cached = cachedRecord(id);
   if (options.fresh === false && cached){
     state.record = cached;
-    if (options.policy){
-      state.anchorPolicy = 'pending';
-      await readAnchorPolicy();
-      if (token !== detailToken || selected !== id) return;
-    }
+    if (options.policy && !state.anchorChecked) await readAnchorPolicy();
+    if (token !== detailToken || selected !== id) return;
     renderDetail();
     if (options.focus) $('#detail-title')?.focus();
     return;
@@ -1079,22 +1076,18 @@ async function showDetail(id, options={}){
     $('#commit-layout')?.classList.add('has-selection');
   }
   try {
-    const record = await api('/api/commitments/' + encodeURIComponent(id));
-    let ai = { configured:false, unknown:true };
-    try { ai = await api('/api/ai/status'); } catch { ai = { configured:false, unknown:true }; }
+    // Fetch independent detail dependencies together; serial round trips made
+    // opening a record feel needlessly slow, especially on mobile networks.
+    const [record, ai, policy] = await Promise.all([
+      api('/api/commitments/' + encodeURIComponent(id)),
+      api('/api/ai/status').catch(() => ({ configured:false, unknown:true })),
+      state.anchorChecked ? Promise.resolve(state.anchorPolicy) : readAnchorPolicy(),
+    ]);
     if (token !== detailToken || selected !== id) return;
     state.record = record;
     state.ai = ai;
-    state.anchorPolicy = 'pending';
-    try {
-      await readAnchorPolicy();
-      if (token !== detailToken || selected !== id) return;
-    } catch {
-      if (token !== detailToken || selected !== id) return;
-      state.anchorPolicy = '';
-      state.anchorChecked = true;
-    }
-    if (token !== detailToken || selected !== id) return;
+    state.anchorPolicy = policy;
+    state.anchorChecked = true;
     renderDetail();
     if (options.focus) $('#detail-title')?.focus();
   } catch (error) {
