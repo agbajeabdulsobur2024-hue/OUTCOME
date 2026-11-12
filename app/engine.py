@@ -35,7 +35,7 @@ def assess_commitment(commitment: dict[str, Any], evidence: list[dict[str, Any]]
         if actual < expected_qty:
             shortfall = expected_qty - actual
             quantity_exposure = round(expected_amount * shortfall / expected_qty, 2) if expected_qty else 0.0
-            issues.append({'code':'QUANTITY_SHORTFALL','severity':'high','message':f'Recorded fulfilment is {actual:g} of {expected_qty:g} {unit} ({shortfall:g} short).','expected':expected_qty,'observed':actual,'financial_exposure_estimate':quantity_exposure,'currency':currency})
+            issues.append({'code':'QUANTITY_SHORTFALL','severity':'high','message':f'Recorded fulfilment is {actual:g} of {expected_qty:g} {unit} ({shortfall:g} short).','expected':expected_qty,'observed':actual,'financial_exposure_estimate':quantity_exposure,'financial_exposure_estimate_basis':'Proportional estimate: agreed amount × unfulfilled quantity ÷ agreed quantity. It is not an invoice, verified loss, or amount payable.','currency':currency})
             actions.extend(['Hold payment approval until the shortfall is reconciled.', f'Ask {party} to complete the remaining {shortfall:g} {unit} or correct the amount.', 'Confirm the recorded fulfilment before any release.'])
         elif actual > expected_qty:
             issues.append({'code':'QUANTITY_OVER_DELIVERY','severity':'medium','message':f'Recorded fulfilment is {actual:g} {unit}, above the agreed {expected_qty:g}.','expected':expected_qty,'observed':actual})
@@ -102,6 +102,7 @@ def assess_commitment(commitment: dict[str, Any], evidence: list[dict[str, Any]]
         'status': status, 'summary': summaries[status], 'issues': issues,
         'exposure_estimates': {'quantity_shortfall': quantity_exposure, 'invoice_overcharge': invoice_variance, 'currency': currency, 'may_overlap': True},
         'financial_exposure': max(quantity_exposure, invoice_variance),
+        'financial_exposure_basis': 'Quantity shortfall estimates are proportional to the recorded agreement value; invoice variance is based on the recorded claimed amount. Neither is a verified loss or amount payable.',
         'currency': currency, 'next_actions': list(dict.fromkeys(actions)),
         'evidence_count': len(evidence),
         'assessment_basis': 'latest verified evidence by type when reviews exist; an unverified record does not clear a verified shortfall',
