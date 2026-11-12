@@ -104,3 +104,69 @@ def test_hosted_global_scope_quarantines_legacy_null_workspace_records(tmp_path,
         client.cookies.delete('outcome_demo')
         assert client.get('/api/commitments').json() == []
         assert client.get('/api/commitments/legacy-global-1').status_code == 404
+
+
+
+def test_evidence_review_reassesses_and_duplicate_taps_do_not_duplicate_history(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, 'DATA_DIR', tmp_path)
+    monkeypatch.setattr(main, 'DB_PATH', tmp_path / 'test.db')
+
+    with TestClient(main.app) as client:
+        created = client.post('/api/commitments', json={
+            'supplier': 'Northwind Supplies',
+            'description': 'Delivery of boxes',
+            'quantity': 10,
+            'unit': 'boxes',
+            'amount': 80,
+            'currency': 'USD',
+            'due_date': '2026-12-20',
+            'payment_condition': 'Complete and verify delivery before payment',
+        })
+        assert created.status_code == 201
+        cid = created.json()['commitment']['id']
+
+        evidence = client.post(f'/api/commitments/{cid}/evidence', json={
+            'kind': 'quantity_received', 'value': 8,
+            'note': 'Eight boxes received', 'source': 'manual',
+        })
+        assert evidence.status_code == 201
+        evidence_id = evidence.json()['evidence'][0]['id']
+        assert evidence.json()['assessment']['status'] == 'DISCREPANCY'
+        assert len(evidence.json()['assessment_history']) == 2
+
+        review_payload = {
+            'status': 'VERIFIED',
+            'reviewer': 'Business owner',
+            'note': 'Manually checked',
+        }
+        verified = client.post(f'/api/evidence/{evidence_id}/reviews', json=review_payload)
+        assert verified.status_code == 201
+        after_review = client.get(f'/api/commitments/{cid}').json()
+        assert len(after_review['assessment_history']) == 3
+        assert after_review['assessment_history'][-1]['status'] == 'DISCREPANCY'
+
+        repeated = client.post(f'/api/evidence/{evidence_id}/reviews', json=review_payload)
+        assert repeated.status_code == 201
+        assert repeated.json()['duplicate'] is True
+        unchanged = client.get(f'/api/commitments/{cid}').json()
+        assert len(unchanged['assessment_history']) == 3
+        assert len(unchanged['evidence'][0]['review_history']) == 1
+
+        # A newer unverified observation cannot clear the verified shortfall.
+        newer = client.post(f'/api/commitments/{cid}/evidence', json={
+            'kind': 'quantity_received', 'value': 10,
+            'note': 'Supplier says remaining boxes arrived', 'source': 'manual',
+        })
+        assert newer.status_code == 201
+        assert newer.json()['assessment']['status'] == 'DISCREPANCY'
+
+        # Only verification of the newer observation changes the governing result.
+        newer_id = newer.json()['evidence'][-1]['id']
+        final_review = client.post(
+            f'/api/evidence/{newer_id}/reviews',
+            json={'status': 'VERIFIED', 'reviewer': 'Business owner', 'note': 'Checked delivery'},
+        )
+        assert final_review.status_code == 201
+        final_record = client.get(f'/api/commitments/{cid}').json()
+        assert final_record['assessment']['status'] == 'ON_TRACK'
+        assert final_record['assessment_history'][-1]['status'] == 'ON_TRACK'
