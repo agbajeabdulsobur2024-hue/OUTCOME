@@ -1109,6 +1109,7 @@ async function openCommitment(id, options={}){
   else if (selected !== id) detailTab = 'decision';
   selected = id;
   sessionStorage.setItem('outcome-security-commitment', id);
+  localStorage.setItem('outcome-security-commitment', id);
   if (view !== 'commitments') goTo('commitments', options.scroll || 'top');
   else $('#commit-layout')?.classList.add('has-selection');
   markActive();
@@ -1167,6 +1168,7 @@ function showTrust(options = {}){
   }
   trustPageOpen = true;
   sessionStorage.setItem('outcome-security-open', '1');
+  localStorage.setItem('outcome-security-open', '1');
   if (selected) {
     sessionStorage.setItem('outcome-security-commitment', selected);
     localStorage.setItem('outcome-security-commitment', selected);
@@ -1182,6 +1184,7 @@ function showTrust(options = {}){
 function hideTrust(options = {}){
   trustPageOpen = false;
   sessionStorage.removeItem('outcome-security-open');
+  localStorage.removeItem('outcome-security-open');
   sessionStorage.removeItem('outcome-security-return');
   localStorage.removeItem('outcome-security-return');
   if (!options.fromHistory && location.hash === '#security') history.replaceState({ view }, '', '#' + HASH_FOR[view]);
