@@ -1109,6 +1109,7 @@ async function openCommitment(id, options={}){
   else if (selected !== id) detailTab = 'decision';
   selected = id;
   sessionStorage.setItem('outcome-security-commitment', id);
+  localStorage.setItem('outcome-security-commitment', id);
   if (view !== 'commitments') goTo('commitments', options.scroll || 'top');
   else $('#commit-layout')?.classList.add('has-selection');
   markActive();
@@ -1125,6 +1126,7 @@ async function load(){
     if (/expired/i.test(error.message)) {
       state.scope = null;
       sessionStorage.removeItem('outcome-open');
+      localStorage.removeItem('outcome-open');
       showLanding();
       setLandingStatus(error.message);
       return;
@@ -1145,7 +1147,7 @@ async function load(){
   }
   paint();
 }
-let trustReturn = sessionStorage.getItem('outcome-security-return') || 'landing';
+let trustReturn = localStorage.getItem('outcome-security-return') || sessionStorage.getItem('outcome-security-return') || 'landing';
 function showLanding(){
   $('#landing').hidden = false;
   $('.app-shell').hidden = true;
@@ -1162,10 +1164,15 @@ function showTrust(options = {}){
   if (!trustPageOpen){
     trustReturn = $('.app-shell') && !$('.app-shell').hidden ? 'app' : 'landing';
     sessionStorage.setItem('outcome-security-return', trustReturn);
+    localStorage.setItem('outcome-security-return', trustReturn);
   }
   trustPageOpen = true;
   sessionStorage.setItem('outcome-security-open', '1');
-  if (selected) sessionStorage.setItem('outcome-security-commitment', selected);
+  localStorage.setItem('outcome-security-open', '1');
+  if (selected) {
+    sessionStorage.setItem('outcome-security-commitment', selected);
+    localStorage.setItem('outcome-security-commitment', selected);
+  }
   if (!options.fromHistory && location.hash !== '#security') history.pushState({ security: true, returnTo: trustReturn }, '', '#security');
   $('#landing').hidden = true;
   $('.app-shell').hidden = true;
@@ -1177,7 +1184,9 @@ function showTrust(options = {}){
 function hideTrust(options = {}){
   trustPageOpen = false;
   sessionStorage.removeItem('outcome-security-open');
+  localStorage.removeItem('outcome-security-open');
   sessionStorage.removeItem('outcome-security-return');
+  localStorage.removeItem('outcome-security-return');
   if (!options.fromHistory && location.hash === '#security') history.replaceState({ view }, '', '#' + HASH_FOR[view]);
   if (trustReturn === 'app') showApp();
   else showLanding();
@@ -1494,6 +1503,7 @@ function showWorkspaceSkeleton(){
 async function enterWorkspace(scope, seeded){
   state.scope = scope;
   sessionStorage.setItem('outcome-open', scope);
+  localStorage.setItem('outcome-open', scope);
   selected = null;
   state.record = null;
   if (seeded && Array.isArray(seeded.commitments)){
@@ -1830,6 +1840,7 @@ async function disconnectWallet(button){
       closeWelcomeLayer();
       if (!state.session.personal.active && state.scope === null) {
         sessionStorage.removeItem('outcome-open');
+        localStorage.removeItem('outcome-open');
         showLanding();
       }
       toast('Signed out. Your records stay in place.', 'ok');
@@ -2241,21 +2252,67 @@ async function boot(){
       api('/api/auth/logout', { method:'POST' }).then(refreshSession).then(() => {
         closeWelcomeLayer();
         setLandingStatus('The signed-in account changed. Sign in again before opening a personal workspace.');
-        if (state.scope === 'personal') { state.scope = null; sessionStorage.removeItem('outcome-open'); showLanding(); }
+        if (state.scope === 'personal') {
+          state.scope = null;
+          sessionStorage.removeItem('outcome-open');
+          localStorage.removeItem('outcome-open');
+          showLanding();
+        }
       }).catch(error => setLandingStatus(error.message));
     }
   })).catch(() => {});
+
+  // Restore the user's last workspace before onboarding can redirect them.
+  // localStorage survives a tab/browser restart; sessionStorage remains a fallback.
+  const rememberedScope = localStorage.getItem('outcome-open') || sessionStorage.getItem('outcome-open');
+  const canRestoreDemo = rememberedScope === 'demo' && state.session && state.session.demo && state.session.demo.active;
+  const canRestorePersonal = rememberedScope === 'personal' && state.session && state.session.personal && state.session.personal.active;
+  const restoreSecurity = location.hash === '#security'
+    || sessionStorage.getItem('outcome-security-open') === '1'
+    || localStorage.getItem('outcome-security-open') === '1';
+  const hasRestorableWorkspace = canRestoreDemo || canRestorePersonal;
+
+  if (hasRestorableWorkspace) {
+    try {
+      await enterWorkspace(canRestoreDemo ? 'demo' : 'personal');
+      renderGuide();
+      const commitmentId = localStorage.getItem('outcome-security-commitment')
+        || sessionStorage.getItem('outcome-security-commitment');
+      const targetView = viewFromHash();
+      if (commitmentId && targetView === 'commitments') {
+        try { await openCommitment(commitmentId, { focus:false, scroll:'none' }); }
+        catch (error) { setLandingStatus('Could not restore the selected commitment: ' + error.message); }
+      } else if (targetView !== view) {
+        view = targetView;
+        paint({ scroll:'none' });
+      }
+      if (restoreSecurity) {
+        trustReturn = localStorage.getItem('outcome-security-return')
+          || sessionStorage.getItem('outcome-security-return') || 'app';
+        showTrust({ fromRestore:true });
+      }
+      return;
+    } catch (error) {
+      setLandingStatus('Your last workspace could not be restored. ' + error.message);
+    }
+  }
+
+  // A direct Security and trust URL is public and must not be hidden by onboarding.
+  if (restoreSecurity) {
+    trustReturn = 'landing';
+    showLanding();
+    showTrust({ fromRestore:true });
+    return;
+  }
+
   const firstVisit = welcomeState();
   if (firstVisit && OutcomeWelcome.shouldAutoPresent(firstVisit)){
-    const personal = state.session && state.session.personal && state.session.personal.active;
-    if (personal){
-      try { await enterWorkspace('personal'); }
-      catch (error) { showLanding(); setLandingStatus(error.message); }
-    } else showLanding();
+    showLanding();
     try { await presentWelcome(firstVisit); }
     catch (error) { setLandingStatus(error.message); }
     return;
   }
+
   const guideState = OutcomeOnboarding.read(localStorage);
   const mode = OutcomeOnboarding.presentation(guideState);
   if (mode === 'resume'){
@@ -2272,20 +2329,8 @@ async function boot(){
     }
     return;
   }
-  const open = sessionStorage.getItem('outcome-open');
-  if (mode === 'quiet' && open === 'demo' && state.session && state.session.demo && state.session.demo.active) await enterWorkspace('demo');
-  else if (mode === 'quiet' && open === 'personal' && state.session && state.session.personal && state.session.personal.active) await enterWorkspace('personal');
-  else showLanding();
+  showLanding();
   renderGuide();
-  const restoreSecurity = sessionStorage.getItem('outcome-security-open') === '1' || location.hash === '#security';
-  if (restoreSecurity){
-    const commitmentId = sessionStorage.getItem('outcome-security-commitment');
-    if (commitmentId && state.scope) {
-      try { await openCommitment(commitmentId, { focus:false, scroll:'none' }); }
-      catch (error) { setLandingStatus('Could not restore the selected commitment: ' + error.message); }
-    }
-    showTrust({ fromRestore:true });
-  }
 }
 boot().catch(error => setLandingStatus(error.message));
 </script>
