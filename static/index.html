@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <title>OUTCOME — Financial Accountability</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#101d1a">
-<meta name="description" content="OUTCOME keeps agreements, evidence and decisions connected. Spot discrepancies, understand exposure and keep consequential financial actions under human control.">
+<meta name="theme-color" content="#10271d">
+<meta name="description" content="OUTCOME helps businesses track commitments, verify evidence, identify discrepancies and make better-informed financial decisions.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="OUTCOME">
 <meta property="og:title" content="OUTCOME — Know what was agreed. Verify what happened.">
@@ -19,6 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/design.css">
+<link rel="stylesheet" href="/static/premium.css">
 
 </head>
 <body>
@@ -630,11 +631,13 @@ async function withBusy(button, work){
     if (button.dataset.busy === '1') return;
     button.dataset.busy = '1';
     button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
   }
   try { await work(); }
   finally {
     if (button?.isConnected){
       button.disabled = false;
+      button.removeAttribute('aria-busy');
       delete button.dataset.busy;
     }
   }
@@ -1420,7 +1423,10 @@ let guideMoving = false;
 async function guidePrimary(button){
   if (guideMoving) return;
   guideMoving = true;
-  if (button) button.disabled = true;
+  if (button) {
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+  }
   try {
   const stored = OutcomeOnboarding.read(localStorage);
   const step = OutcomeOnboarding.STEPS[stored.step];
@@ -1428,7 +1434,7 @@ async function guidePrimary(button){
   if (step.action === 'enter-sample'){
     await withBusy(button, async () => {
       try {
-        setLandingStatus('Opening the labelled sample.');
+        setLandingStatus('Opening the sample…');
         const trial = await enterSample();
         await enterWorkspace('demo', trial);
         setLandingStatus('');
@@ -1451,7 +1457,10 @@ async function guidePrimary(button){
   }
   } finally {
     guideMoving = false;
-    if (button && button.isConnected) button.disabled = false;
+    if (button && button.isConnected) {
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+    }
   }
 }
 async function guideBack(){
@@ -1472,12 +1481,13 @@ async function revisitGuide(button){
   await guidePrimary(button || $('#guidePrimary'));
 }
 async function getStarted(button){
+  setLandingStatus('Opening the sample…');
   let stored = OutcomeOnboarding.read(localStorage);
   if (stored.status === 'new' || stored.status === 'completed' || stored.status === 'dismissed') stored = OutcomeOnboarding.begin(localStorage);
   if (stored.step <= 0){ await guidePrimary(button); return; }
   await withBusy(button, async () => {
     try {
-      setLandingStatus('Opening the labelled sample.');
+      setLandingStatus('Opening the sample…');
       const trial = await enterSample();
       await enterWorkspace('demo', trial);
       setLandingStatus('');
@@ -1545,11 +1555,14 @@ async function enterWorkspace(scope, seeded){
   await load();
 }
 async function seedDemo(button){
+  setLandingStatus('Opening the sample…');
   await withBusy(button, async () => {
     try {
-      setLandingStatus('Opening the labelled sample.');
-      state.scope = null;
-      const trial = await openTrial();
+      // Reuse the loaded sample when returning to it; do not issue another
+      // trial-creation request for data already held in this page session.
+      const trial = state.scope === 'demo' && state.commitments.length
+        ? { commitments: state.commitments, patterns: state.patterns, status: 'cached' }
+        : await openTrial();
       await enterWorkspace('demo', trial);
       if (view !== 'overview') goTo('overview', 'top');
       toast('Sample ready. These records are synthetic.', 'ok');
