@@ -1228,3 +1228,98 @@ section[data-view]:not([hidden]) { animation: none; }
  .landing-actions #getStarted { grid-column:auto; }
  .landing-actions #seeHow { width:100%; }
 }
+
+
+/* Mobile interaction hardening: keep guided actions reachable and overlays usable. */
+@media (max-width: 759px) {
+  html {
+    scroll-padding-top: calc(var(--header-offset, 72px) + 12px);
+    scroll-padding-bottom: calc(var(--tab-space, 76px) + env(safe-area-inset-bottom) + 16px);
+  }
+
+  body, .app-shell, .content, .detail-pane, .panel, .form-card {
+    min-width: 0;
+  }
+
+  .welcome {
+    min-height: 100vh;
+    min-height: 100dvh;
+    overscroll-behavior: contain;
+  }
+
+  .welcome-card {
+    height: 100%;
+    max-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .welcome-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    min-width: 0;
+  }
+
+  .welcome-visual,
+  .welcome-copy {
+    min-width: 0;
+  }
+
+  .welcome-actions {
+    position: sticky;
+    z-index: 2;
+    bottom: 0;
+    padding: 12px 0 calc(8px + env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, var(--paper) 24%);
+  }
+
+  body.is-guided .stage {
+    max-height: min(44vh, 360px);
+    max-height: min(44dvh, 360px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  body.is-guided .stage-actions {
+    position: sticky;
+    bottom: 0;
+    padding-top: 8px;
+    background: linear-gradient(transparent, var(--forest-deep) 22%);
+  }
+
+  .stage .btn-stage,
+  .tabbar a,
+  .welcome-actions .btn {
+    min-height: 48px;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 360px) {
+  .welcome-card {
+    padding: 14px;
+  }
+
+  .stage {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .tabbar {
+    gap: 2px;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .tabbar a {
+    font-size: 11.5px;
+  }
+}
