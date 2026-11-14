@@ -59,11 +59,52 @@ def enforce_write_limits(db, request: Request) -> None:
     now = datetime.now(timezone.utc)
     cutoff = (now - timedelta(hours=1)).isoformat()
     cleanup = (now - timedelta(days=1)).isoformat()
+    buckets = buckets_for(request.url.path)
+
+    # Turso is an HTTP database. Batch the cleanup, resume check and counters
+    # instead of serial DELETE/SELECT/COUNT calls on every public write.
+    if callable(getattr(db, 'batch', None)):
+        commands = [('DELETE FROM request_limits WHERE created_at < ?', (cleanup,))]
+        cookie = request.cookies.get('outcome_demo', '')
+        if request.url.path == '/api/demo/trials' and not cookie:
+            claim = sample_claim.valid_claim(request.headers.get(sample_claim.CLAIM_HEADER))
+            cookie = sample_claim.workspace_id_for(claim) if claim else ''
+        resume_index = None
+        if request.url.path == '/api/demo/trials' and cookie:
+            resume_index = len(commands)
+            commands.append(("SELECT expires_at FROM workspaces WHERE id=? AND kind='demo'", (cookie,)))
+        count_indexes = []
+        for bucket, _ in buckets:
+            count_indexes.append((bucket, len(commands)))
+            commands.append((
+                'SELECT COUNT(*) FROM request_limits WHERE client_ip=? AND bucket=? AND created_at>=?',
+                (ip, bucket, cutoff),
+            ))
+        results = db.batch(commands)
+        resumes_live = False
+        if resume_index is not None:
+            rows = results[resume_index].rows
+            resumes_live = bool(rows and rows[0][0] and rows[0][0] >= now.isoformat())
+        inserts = []
+        for bucket, index in count_indexes:
+            if bucket == 'demo' and resumes_live:
+                continue
+            rows = results[index].rows
+            recent = int(rows[0][0]) if rows else 0
+            limit = next(value for name, value in buckets if name == bucket)
+            if recent >= limit:
+                raise HTTPException(429, 'Too many requests from this network. Wait a little, then try again.')
+            inserts.append((
+                'INSERT INTO request_limits (id, client_ip, bucket, created_at) VALUES (?, ?, ?, ?)',
+                (str(uuid.uuid4()), ip, bucket, now.isoformat()),
+            ))
+        if inserts:
+            db.batch(inserts)
+        return
+
     db.execute('DELETE FROM request_limits WHERE created_at < ?', (cleanup,))
-    for bucket, limit in buckets_for(request.url.path):
+    for bucket, limit in buckets:
         if bucket == 'demo' and _resumes_live_demo(db, request, now):
-            # Reopening a sample the browser already holds creates nothing, so a
-            # refresh or a second tap must not spend a shared network's allowance.
             continue
         recent = db.execute(
             'SELECT COUNT(*) FROM request_limits WHERE client_ip=? AND bucket=? AND created_at>=?',
