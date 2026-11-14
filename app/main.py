@@ -1638,10 +1638,11 @@ def create_demo_trial(request: Request, response: Response):
     try:
         with connect() as db:
             logging.getLogger('outcome.demo').info('demo request: database connected in %dms', (time.perf_counter() - started) * 1000)
-            stage = time.perf_counter()
-            tenancy.purge_expired_demos(db)
+            # Do not sweep every expired demo workspace during a user-facing
+            # sample-entry request. On hosted Turso this can fan out into many
+            # remote reads/deletes and exhaust the 60-second function deadline.
+            # Expired sample claims are renewed in place by ensure_claimed_demo_workspace.
             purged = time.perf_counter()
-            logging.getLogger('outcome.demo').info('demo expiry cleanup completed in %dms', (purged - stage) * 1000)
             body, workspace_id, expires_at, created = _demo_trial_body(db, request)
             built = time.perf_counter()
             logging.getLogger('outcome.demo').info('demo workspace prepared in %dms', (built - purged) * 1000)
