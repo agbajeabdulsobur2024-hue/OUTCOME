@@ -329,63 +329,127 @@ def get_record(cid: str, db=None):
     if db is None:
         with connect() as owned:
             return get_record(cid, owned)
-    c = db.execute('SELECT * FROM commitments WHERE id=?', (cid,)).fetchone()
+    events_by_action = {}
+    if callable(getattr(db, 'batch', None)):
+        # Turso is an HTTP database: fetch the whole record graph in one
+        # pipeline instead of making dozens of serial network round-trips.
+        results = db.batch([
+            ('SELECT * FROM commitments WHERE id=?', (cid,)),
+            ('''SELECT e.*,
+                COALESCE((SELECT r.status FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1), 'UNREVIEWED') AS review_status,
+                (SELECT r.reviewer FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewer,
+                (SELECT r.note FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS review_note,
+                (SELECT r.created_at FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewed_at
+                FROM evidence e WHERE e.commitment_id=? ORDER BY e.created_at, e.rowid''', (cid,)),
+            ('''SELECT evidence_id, status, reviewer, note, created_at FROM evidence_reviews
+                WHERE evidence_id IN (SELECT id FROM evidence WHERE commitment_id=?)
+                ORDER BY created_at, rowid''', (cid,)),
+            ('SELECT version, terms_json, reason, created_at FROM commitment_versions WHERE commitment_id=? ORDER BY version', (cid,)),
+            ('SELECT id, status, assessment_json, created_at FROM assessment_history WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)),
+            ('SELECT * FROM payment_policies WHERE commitment_id=?', (cid,)),
+            ('SELECT id, policy_json, created_at FROM payment_policy_history WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)),
+            ('SELECT id, status, proposal_json, created_at FROM payment_proposals WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)),
+            ('''SELECT id, proposal_id, decision, actor, outcome_json, created_at
+                FROM payment_decisions WHERE commitment_id=? ORDER BY created_at, rowid''', (cid,)),
+            ('SELECT id, action_type, description, created_at FROM commitment_actions WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)),
+            ('SELECT id, provider, model, brief_json, created_at FROM ai_briefs WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)),
+            ('''SELECT id, transaction_hash, signer_account_id, payload_hash, execution_status,
+                explorer_url, created_at FROM audit_receipts WHERE commitment_id=? ORDER BY created_at, rowid''', (cid,)),
+            ('''SELECT ev.id, ev.action_id, ev.event_type, ev.actor, ev.note, ev.evidence_id, ev.created_at
+                FROM action_events ev JOIN commitment_actions ac ON ac.id=ev.action_id
+                WHERE ac.commitment_id=? ORDER BY ev.created_at, ev.rowid''', (cid,)),
+        ])
+        def batch_rows(index):
+            result = results[index]
+            columns = [item[0] for item in (result.description or ())]
+            return [dict(zip(columns, row)) for row in result.rows]
+        commitment_rows = batch_rows(0)
+        c = commitment_rows[0] if commitment_rows else None
+        evidence = batch_rows(1)
+        review_rows = batch_rows(2)
+        reviews_by_evidence = {}
+        for row in review_rows:
+            reviews_by_evidence.setdefault(row['evidence_id'], []).append({
+                'status': row['status'], 'reviewer': row['reviewer'],
+                'note': row['note'], 'created_at': row['created_at'],
+            })
+        for item in evidence:
+            item['review_history'] = reviews_by_evidence.get(item['id'], [])
+        versions = batch_rows(3)
+        history = batch_rows(4)
+        policy_rows = batch_rows(5)
+        policy_row = policy_rows[0] if policy_rows else None
+        policy_history = batch_rows(6)
+        proposals = batch_rows(7)
+        payment_decisions = batch_rows(8)
+        action_rows = batch_rows(9)
+        ai_briefs = batch_rows(10)
+        audit_receipts = batch_rows(11)
+        for event in batch_rows(12):
+            events_by_action.setdefault(event['action_id'], []).append({
+                'id': event['id'], 'event_type': event['event_type'], 'actor': event['actor'],
+                'note': event['note'], 'evidence_id': event['evidence_id'], 'created_at': event['created_at'],
+            })
+    else:
+        c = db.execute('SELECT * FROM commitments WHERE id=?', (cid,)).fetchone()
+        evidence = [dict(row) for row in db.execute(
+            '''SELECT e.*,
+                COALESCE((SELECT r.status FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1), 'UNREVIEWED') AS review_status,
+                (SELECT r.reviewer FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewer,
+                (SELECT r.note FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS review_note,
+                (SELECT r.created_at FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewed_at
+                FROM evidence e WHERE e.commitment_id=? ORDER BY e.created_at, e.rowid''', (cid,)
+        ).fetchall()]
+        for evidence_record in evidence:
+            evidence_record['review_history'] = [dict(row) for row in db.execute(
+                'SELECT status, reviewer, note, created_at FROM evidence_reviews WHERE evidence_id=? ORDER BY created_at, rowid',
+                (evidence_record['id'],)
+            ).fetchall()]
+        versions = [dict(row) for row in db.execute(
+            'SELECT version, terms_json, reason, created_at FROM commitment_versions WHERE commitment_id=? ORDER BY version', (cid,)
+        ).fetchall()]
+        history = [dict(row) for row in db.execute(
+            'SELECT id, status, assessment_json, created_at FROM assessment_history WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
+        ).fetchall()]
+        policy_row = db.execute('SELECT * FROM payment_policies WHERE commitment_id=?', (cid,)).fetchone()
+        policy_history = [dict(row) for row in db.execute(
+            'SELECT id, policy_json, created_at FROM payment_policy_history WHERE commitment_id=? ORDER BY created_at, rowid',
+            (cid,)
+        ).fetchall()]
+        proposals = [dict(row) for row in db.execute(
+            'SELECT id, status, proposal_json, created_at FROM payment_proposals WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
+        ).fetchall()]
+        payment_decisions = [dict(row) for row in db.execute(
+            '''SELECT id, proposal_id, decision, actor, outcome_json, created_at
+               FROM payment_decisions WHERE commitment_id=? ORDER BY created_at, rowid''',
+            (cid,),
+        ).fetchall()]
+        action_rows = [dict(row) for row in db.execute(
+            'SELECT id, action_type, description, created_at FROM commitment_actions WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
+        ).fetchall()]
+        ai_briefs = [dict(row) for row in db.execute(
+            'SELECT id, provider, model, brief_json, created_at FROM ai_briefs WHERE commitment_id=? ORDER BY created_at, rowid',
+            (cid,)
+        ).fetchall()]
+        audit_receipts = [dict(row) for row in db.execute(
+            '''SELECT id, transaction_hash, signer_account_id, payload_hash, execution_status,
+                      explorer_url, created_at
+               FROM audit_receipts WHERE commitment_id=? ORDER BY created_at, rowid''',
+            (cid,)
+        ).fetchall()]
     if not c or not tenancy.same_workspace(c['workspace_id']):
         raise HTTPException(404, 'Commitment not found')
     commitment = dict(c)
     commitment['counterparty'] = commitment.get('supplier')
     commitment['commitment_kind'] = commitment.get('commitment_kind') or 'general'
-    evidence = [dict(row) for row in db.execute(
-        '''SELECT e.*,
-            COALESCE((SELECT r.status FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1), 'UNREVIEWED') AS review_status,
-            (SELECT r.reviewer FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewer,
-            (SELECT r.note FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS review_note,
-            (SELECT r.created_at FROM evidence_reviews r WHERE r.evidence_id=e.id ORDER BY r.created_at DESC, r.rowid DESC LIMIT 1) AS reviewed_at
-            FROM evidence e WHERE e.commitment_id=? ORDER BY e.created_at, e.rowid''', (cid,)
-    ).fetchall()]
-    for evidence_record in evidence:
-        evidence_record['review_history'] = [dict(row) for row in db.execute(
-            'SELECT status, reviewer, note, created_at FROM evidence_reviews WHERE evidence_id=? ORDER BY created_at, rowid',
-            (evidence_record['id'],)
-        ).fetchall()]
-    versions = [dict(row) for row in db.execute(
-        'SELECT version, terms_json, reason, created_at FROM commitment_versions WHERE commitment_id=? ORDER BY version', (cid,)
-    ).fetchall()]
-    history = [dict(row) for row in db.execute(
-        'SELECT id, status, assessment_json, created_at FROM assessment_history WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
-    ).fetchall()]
-    policy_row = db.execute('SELECT * FROM payment_policies WHERE commitment_id=?', (cid,)).fetchone()
-    policy_history = [dict(row) for row in db.execute(
-        'SELECT id, policy_json, created_at FROM payment_policy_history WHERE commitment_id=? ORDER BY created_at, rowid',
-        (cid,)
-    ).fetchall()]
-    proposals = [dict(row) for row in db.execute(
-        'SELECT id, status, proposal_json, created_at FROM payment_proposals WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
-    ).fetchall()]
-    payment_decisions = [dict(row) for row in db.execute(
-        '''SELECT id, proposal_id, decision, actor, outcome_json, created_at
-           FROM payment_decisions WHERE commitment_id=? ORDER BY created_at, rowid''',
-        (cid,),
-    ).fetchall()]
-    action_rows = [dict(row) for row in db.execute(
-        'SELECT id, action_type, description, created_at FROM commitment_actions WHERE commitment_id=? ORDER BY created_at, rowid', (cid,)
-    ).fetchall()]
-    ai_briefs = [dict(row) for row in db.execute(
-        'SELECT id, provider, model, brief_json, created_at FROM ai_briefs WHERE commitment_id=? ORDER BY created_at, rowid',
-        (cid,)
-    ).fetchall()]
-    audit_receipts = [dict(row) for row in db.execute(
-        '''SELECT id, transaction_hash, signer_account_id, payload_hash, execution_status,
-                  explorer_url, created_at
-           FROM audit_receipts WHERE commitment_id=? ORDER BY created_at, rowid''',
-        (cid,),
-    ).fetchall()]
     actions = []
     for action in action_rows:
-        events = [dict(row) for row in db.execute(
-            'SELECT id, event_type, actor, note, evidence_id, created_at FROM action_events WHERE action_id=? ORDER BY created_at, rowid',
-            (action['id'],)
-        ).fetchall()]
+        events = events_by_action.get(action['id'], []) if callable(getattr(db, 'batch', None)) else [
+            dict(row) for row in db.execute(
+                'SELECT id, event_type, actor, note, evidence_id, created_at FROM action_events WHERE action_id=? ORDER BY created_at, rowid',
+                (action['id'],)
+            ).fetchall()
+        ]
         action['events'] = events
         action['status'] = events[-1]['event_type'] if events else 'PROPOSED'
         actions.append(action)
