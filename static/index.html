@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>document.documentElement.classList.add('outcome-booting');</script>
+<style>.outcome-booting #landing,.outcome-booting .app-shell{visibility:hidden!important}</style>
 <meta charset="utf-8">
 <title>OUTCOME — Financial Accountability</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1328,6 +1330,7 @@ function leaveSample(){
   detailTab = 'decision';
   detailNotice = null;
   ['outcome-open', 'outcome-selected-commitment', 'outcome-security-commitment'].forEach(key => sessionStorage.removeItem(key));
+  try { localStorage.removeItem('outcome-last-scope'); } catch (error) { /* storage unavailable */ }
   view = 'overview';
   try { updateMetrics([]); renderAttention(); renderPatterns(); renderList(); renderEmptyDetail(); } catch (error) { console.warn(error); }
   showLanding();
@@ -2897,7 +2900,7 @@ async function boot(){
     }
   })).catch(() => {});
   const open = sessionStorage.getItem('outcome-open');
-  const explicitRoute = location.hash === '#security' || Boolean(location.hash && location.hash !== '#');
+  const explicitRoute = Boolean(arrivalHash && arrivalHash !== '#');
   // '#overview' is what startup writes onto the landing page, so it never counts as a direct link.
   const openedWithRoute = /^#(commitments|patterns-section|new-commitment)(\/|$)/.test(arrivalHash);
   const hasWorkspaceIntent = Boolean(open && (open === 'demo' || open === 'personal'));
@@ -2918,8 +2921,9 @@ async function boot(){
     } else if (explicitRoute && location.hash === '#security' && state.session && state.session.personal && state.session.personal.active) {
       try { await enterWorkspace('personal'); }
       catch (error) { showLanding(); setLandingStatus(error.message); }
-    } else if (openedWithRoute && !open && location.hash !== '#security' && await enterFromExistingSession()) {
-      // A direct link opened in a new tab: the browser still holds a valid session.
+    } else if (explicitRoute && !open && location.hash !== '#security' && await enterFromExistingSession()) {
+      // Restore the last valid workspace for any explicit in-app route, including #overview.
+      // A direct link opened in a new tab may have no sessionStorage marker but still has its cookie.
     } else {
       showLanding();
       const kept = captureIntent(arrivalHash, Boolean(open));
@@ -2967,7 +2971,9 @@ async function boot(){
   renderGuide();
   if (location.hash === '#security') showTrust({ fromRestore:true });
 }
-boot().catch(error => setLandingStatus(error.message));
+boot().catch(error => { showLanding(); setLandingStatus(error.message); }).finally(() => {
+  document.documentElement.classList.remove('outcome-booting');
+});
 </script>
 </body>
 </html>
