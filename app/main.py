@@ -1407,13 +1407,13 @@ def populate_synthetic_demo(db=None):
             (cid, payload.supplier, payload.description.strip(), payload.quantity, payload.unit,
              payload.amount, terms['currency'], terms['due_date'], payload.payment_condition,
              now, workspace_id, payload.commitment_kind),
-        )
+        ))
         pending_writes.append((
             '''INSERT OR IGNORE INTO commitment_versions
                (id, commitment_id, version, terms_json, reason, created_at)
                VALUES (?, ?, 1, ?, ?, ?)''',
             (rid(f'{index}:version'), cid, json.dumps(terms, sort_keys=True), 'Original agreement', now),
-        )
+        ))
         evidence = []
         for kind, value, note in (
             ('quantity_received', sample['received'], 'Synthetic demo receiving record; not a real supplier document.'),
@@ -1423,14 +1423,14 @@ def populate_synthetic_demo(db=None):
             pending_writes.append((
                 'INSERT OR IGNORE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?)',
                 (evidence_id, cid, kind, value, note, 'demo_fixture', now),
-            )
+            ))
             pending_writes.append((
                 '''INSERT OR IGNORE INTO evidence_reviews
                    (id, evidence_id, status, reviewer, note, created_at)
                    VALUES (?, ?, ?, ?, ?, ?)''',
                 (rid(f'{index}:review:{kind}'), evidence_id, 'VERIFIED', 'DEMO_FIXTURE',
                  'Synthetic fixture pre-reviewed for demonstration only.', now),
-            )
+            ))
             evidence.append({
                 'id': evidence_id, 'kind': kind, 'value': value,
                 'review_status': 'VERIFIED', 'reviewed_at': now,
@@ -1447,7 +1447,7 @@ def populate_synthetic_demo(db=None):
                (id, commitment_id, status, assessment_json, created_at)
                VALUES (?, ?, ?, ?, ?)''',
             (rid(f'{index}:assessment'), cid, assessment['status'], json.dumps(assessment, sort_keys=True), now),
-        )
+        ))
         if not sample['policy']:
             continue
         destination = 'acme-demo-wallet.near'
@@ -1465,25 +1465,25 @@ def populate_synthetic_demo(db=None):
                 allow_partial_payments, updated_at)
                VALUES (?, 1, ?, ?, 1, 1, 1, 0, ?)''',
             (cid, sample['amount'], destination, now),
-        )
+        ))
         pending_writes.append((
             'INSERT OR IGNORE INTO payment_policy_history (id, commitment_id, policy_json, created_at) VALUES (?, ?, ?, ?)',
             (rid(f'{index}:policy-history'), cid, json.dumps(policy, sort_keys=True), now),
-        )
+        ))
         proposal = evaluate_payment_proposal(
             commitment, evidence, policy, sample['amount'], 'USD', destination,
         )
         pending_writes.append((
             'INSERT OR IGNORE INTO payment_proposals (id, commitment_id, status, proposal_json, created_at) VALUES (?, ?, ?, ?, ?)',
             (rid(f'{index}:proposal'), cid, proposal['status'], json.dumps(proposal, sort_keys=True), now),
-        )
+        ))
         pending_writes.append((
             '''INSERT OR IGNORE INTO commitment_actions
                (id, commitment_id, action_type, description, created_at)
                VALUES (?, ?, ?, ?, ?)''',
             (rid(f'{index}:action'), cid, 'RECONCILE_DELIVERY',
              'Ask the supplier to deliver the missing 8 cartons or issue a credit note.', now),
-        )
+        ))
     if pending_writes:
         if callable(getattr(db, 'batch', None)):
             # One atomic HTTP batch instead of many serial Turso round-trips.
