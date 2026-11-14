@@ -176,11 +176,19 @@ def ensure_claimed_demo_workspace(db, workspace_id: str) -> tuple[dict, bool]:
     current = db.execute(
         "SELECT expires_at FROM workspaces WHERE id=? AND kind='demo'", (workspace_id,),
     ).fetchone()
-    if current and current['expires_at'] and current['expires_at'] < now.isoformat():
-        purge_expired_demos(db)
+    # Reuse this browser's deterministic sample workspace even after expiry.
+    # Renew it in place instead of invoking the global expiry sweep on the
+    # request path; that sweep performs unbounded remote database operations.
     row, existed = sample_claim.ensure_workspace(
         db, workspace_id, now.isoformat(), (now + trial_ttl()).isoformat(),
     )
+    expires_at = (now + trial_ttl()).isoformat()
+    if row and row.get('expires_at') and row['expires_at'] < now.isoformat():
+        db.execute(
+            "UPDATE workspaces SET expires_at=? WHERE id=? AND kind='demo'",
+            (expires_at, workspace_id),
+        )
+        row = {'id': row['id'], 'expires_at': expires_at}
     return {'id': row['id'], 'expires_at': row['expires_at']}, existed
 
 
