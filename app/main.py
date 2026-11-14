@@ -1,9 +1,11 @@
 import json
+import logging
 import hashlib
 import os
 import sqlite3
+import time
 import uuid
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, nullcontext
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Literal
@@ -21,7 +23,8 @@ from app.ai import (
     extract_business_event, generate_operational_brief, is_configured, public_ai_brief_entry,
 )
 from app.intake import IntakeRejection, accept_confirmation, model_catalogue, prepare_intake
-from app import anchors, auth_near, finance, onboarding, safety, tenancy
+from app import anchors, auth_near, finance, onboarding, safety, sample_claim, tenancy
+from app.migrations import add_column_if_missing
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv('OUTCOME_DATA_DIR', ROOT / 'data'))
@@ -160,17 +163,11 @@ def init_db():
             user_id TEXT PRIMARY KEY, status TEXT NOT NULL, step INTEGER NOT NULL,
             updated_at TEXT NOT NULL)''')
         db.execute('CREATE INDEX IF NOT EXISTS idx_request_limits_lookup ON request_limits(bucket, client_ip, created_at)')
-        commitment_columns = {row['name'] for row in db.execute('PRAGMA table_info(commitments)').fetchall()}
-        if 'workspace_id' not in commitment_columns:
-            db.execute('ALTER TABLE commitments ADD COLUMN workspace_id TEXT')
-        if 'commitment_kind' not in commitment_columns:
-            db.execute("ALTER TABLE commitments ADD COLUMN commitment_kind TEXT NOT NULL DEFAULT 'general'")
+        add_column_if_missing(db, 'commitments', 'workspace_id', 'TEXT')
+        add_column_if_missing(db, 'commitments', 'commitment_kind', "TEXT NOT NULL DEFAULT 'general'")
         db.execute('CREATE INDEX IF NOT EXISTS idx_commitments_workspace ON commitments(workspace_id)')
-        policy_columns = {row['name'] for row in db.execute('PRAGMA table_info(payment_policies)').fetchall()}
-        if 'require_verified_evidence' not in policy_columns:
-            db.execute('ALTER TABLE payment_policies ADD COLUMN require_verified_evidence INTEGER NOT NULL DEFAULT 1')
-        if 'allow_partial_payments' not in policy_columns:
-            db.execute('ALTER TABLE payment_policies ADD COLUMN allow_partial_payments INTEGER NOT NULL DEFAULT 0')
+        add_column_if_missing(db, 'payment_policies', 'require_verified_evidence', 'INTEGER NOT NULL DEFAULT 1')
+        add_column_if_missing(db, 'payment_policies', 'allow_partial_payments', 'INTEGER NOT NULL DEFAULT 0')
 
 
 @asynccontextmanager
@@ -200,7 +197,15 @@ async def guard_public_requests(request: Request, call_next):
         with connect() as db:
             if writing:
                 safety.enforce_write_limits(db, request)
-            scope = tenancy.resolve(db, request)
+            try:
+                scope = tenancy.resolve(db, request)
+            except HTTPException as exc:
+                # Opening a sample must work even when the browser still sends a
+                # stale workspace scope; the endpoint ignores scope and uses the cookie.
+                if request.url.path == '/api/demo/trials' and exc.status_code in (401, 404, 410):
+                    scope = {'workspace_id': None, 'user': None, 'kind': 'global'}
+                else:
+                    raise
         if writing and safety.blocks_shared_write(scope, request.url.path):
             return JSONResponse(
                 status_code=409,
@@ -1307,7 +1312,16 @@ def populate_synthetic_demo(db=None):
         },
     )
     workspace_id = tenancy.current_workspace_id()
-    for sample in samples:
+    # In a claimed sample workspace, row ids are derived from the workspace and the row's
+    # role, and every insert ignores a conflict. Two simultaneous populations of that
+    # workspace therefore write the same rows once, instead of duplicating the sample.
+    # Every other workspace keeps random ids exactly as before.
+    claimed = sample_claim.is_claimed(workspace_id)
+
+    def rid(label: str) -> str:
+        return sample_claim.record_id(workspace_id, label) if claimed else str(uuid.uuid4())
+
+    for index, sample in enumerate(samples):
         payload = CommitmentCreate(
             supplier='Acme Supplies', description=sample['description'],
             quantity=sample['quantity'], unit='cartons', amount=sample['amount'],
@@ -1315,13 +1329,13 @@ def populate_synthetic_demo(db=None):
             payment_condition='Pay after verified full delivery',
             commitment_kind='supplier_delivery',
         )
-        cid = str(uuid.uuid4())
+        cid = rid(f'{index}:commitment')
         now = utc_now()
         terms = payload.model_dump()
         terms['currency'] = payload.currency.upper()
         terms['due_date'] = datetime.fromisoformat(payload.due_date).date().isoformat()
         db.execute(
-            '''INSERT INTO commitments
+            '''INSERT OR IGNORE INTO commitments
                (id, supplier, description, quantity, unit, amount, currency, due_date,
                 payment_condition, created_at, workspace_id, commitment_kind)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
@@ -1330,26 +1344,26 @@ def populate_synthetic_demo(db=None):
              now, workspace_id, payload.commitment_kind),
         )
         db.execute(
-            '''INSERT INTO commitment_versions
+            '''INSERT OR IGNORE INTO commitment_versions
                (id, commitment_id, version, terms_json, reason, created_at)
                VALUES (?, ?, 1, ?, ?, ?)''',
-            (str(uuid.uuid4()), cid, json.dumps(terms, sort_keys=True), 'Original agreement', now),
+            (rid(f'{index}:version'), cid, json.dumps(terms, sort_keys=True), 'Original agreement', now),
         )
         evidence = []
         for kind, value, note in (
             ('quantity_received', sample['received'], 'Synthetic demo receiving record; not a real supplier document.'),
             ('invoice_amount', sample['invoice'], 'Synthetic demo invoice record; not a real supplier document.'),
         ):
-            evidence_id = str(uuid.uuid4())
+            evidence_id = rid(f'{index}:evidence:{kind}')
             db.execute(
-                'INSERT INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?)',
+                'INSERT OR IGNORE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?)',
                 (evidence_id, cid, kind, value, note, 'demo_fixture', now),
             )
             db.execute(
-                '''INSERT INTO evidence_reviews
+                '''INSERT OR IGNORE INTO evidence_reviews
                    (id, evidence_id, status, reviewer, note, created_at)
                    VALUES (?, ?, ?, ?, ?, ?)''',
-                (str(uuid.uuid4()), evidence_id, 'VERIFIED', 'DEMO_FIXTURE',
+                (rid(f'{index}:review:{kind}'), evidence_id, 'VERIFIED', 'DEMO_FIXTURE',
                  'Synthetic fixture pre-reviewed for demonstration only.', now),
             )
             evidence.append({
@@ -1364,10 +1378,10 @@ def populate_synthetic_demo(db=None):
         }
         assessment = assess_commitment(commitment, evidence)
         db.execute(
-            '''INSERT INTO assessment_history
+            '''INSERT OR IGNORE INTO assessment_history
                (id, commitment_id, status, assessment_json, created_at)
                VALUES (?, ?, ?, ?, ?)''',
-            (str(uuid.uuid4()), cid, assessment['status'], json.dumps(assessment, sort_keys=True), now),
+            (rid(f'{index}:assessment'), cid, assessment['status'], json.dumps(assessment, sort_keys=True), now),
         )
         if not sample['policy']:
             continue
@@ -1380,7 +1394,7 @@ def populate_synthetic_demo(db=None):
             'updated_at': now, 'configured': True,
         }
         db.execute(
-            '''INSERT INTO payment_policies
+            '''INSERT OR IGNORE INTO payment_policies
                (commitment_id, enabled, max_amount, allowed_destination,
                 require_full_delivery, require_invoice_match, require_verified_evidence,
                 allow_partial_payments, updated_at)
@@ -1388,21 +1402,21 @@ def populate_synthetic_demo(db=None):
             (cid, sample['amount'], destination, now),
         )
         db.execute(
-            'INSERT INTO payment_policy_history (id, commitment_id, policy_json, created_at) VALUES (?, ?, ?, ?)',
-            (str(uuid.uuid4()), cid, json.dumps(policy, sort_keys=True), now),
+            'INSERT OR IGNORE INTO payment_policy_history (id, commitment_id, policy_json, created_at) VALUES (?, ?, ?, ?)',
+            (rid(f'{index}:policy-history'), cid, json.dumps(policy, sort_keys=True), now),
         )
         proposal = evaluate_payment_proposal(
             commitment, evidence, policy, sample['amount'], 'USD', destination,
         )
         db.execute(
-            'INSERT INTO payment_proposals (id, commitment_id, status, proposal_json, created_at) VALUES (?, ?, ?, ?, ?)',
-            (str(uuid.uuid4()), cid, proposal['status'], json.dumps(proposal, sort_keys=True), now),
+            'INSERT OR IGNORE INTO payment_proposals (id, commitment_id, status, proposal_json, created_at) VALUES (?, ?, ?, ?, ?)',
+            (rid(f'{index}:proposal'), cid, proposal['status'], json.dumps(proposal, sort_keys=True), now),
         )
         db.execute(
-            '''INSERT INTO commitment_actions
+            '''INSERT OR IGNORE INTO commitment_actions
                (id, commitment_id, action_type, description, created_at)
                VALUES (?, ?, ?, ?, ?)''',
-            (str(uuid.uuid4()), cid, 'RECONCILE_DELIVERY',
+            (rid(f'{index}:action'), cid, 'RECONCILE_DELIVERY',
              'Ask the supplier to deliver the missing 8 cartons or issue a credit note.', now),
         )
     records = records_for_current_workspace(db)
@@ -1426,41 +1440,82 @@ def _set_cookie(response, request: Request, name: str, value: str, max_age: int)
     )
 
 
-@app.post('/api/demo/trials', status_code=201)
-def create_demo_trial(request: Request, response: Response):
-    expires_at = None
-    with connect() as db:
-        tenancy.purge_expired_demos(db)
-        cookie = request.cookies.get(tenancy.DEMO_COOKIE, '')
-        existing = db.execute(
-            "SELECT id, expires_at FROM workspaces WHERE id=? AND kind='demo'",
-            (cookie,),
-        ).fetchone() if cookie else None
-        if existing and existing['expires_at'] >= utc_now():
-            workspace_id = existing['id']
-            expires_at = existing['expires_at']
-            created = False
-        else:
-            created_row = tenancy.create_demo_workspace(db)
-            workspace_id = created_row['id']
-            expires_at = created_row['expires_at']
-            created = True
-        token = tenancy.use_workspace(workspace_id)
-        try:
-            if created:
+def _demo_trial_body(db, request: Request) -> tuple[dict, str, str, bool]:
+    """Resume the caller's live demo workspace, or create and populate a new one.
+
+    Identity comes only from the demo cookie the browser already holds. A resumed
+    workspace that has lost its records (an interrupted earlier seed) is
+    repopulated instead of being handed back empty.
+
+    A first visit has no cookie yet, so simultaneous requests from one browser carry
+    the same sample claim. They are routed to one workspace and one set of records
+    (see app/sample_claim.py); without a claim the original behaviour is unchanged.
+    """
+    cookie = request.cookies.get(tenancy.DEMO_COOKIE, '')
+    existing = db.execute(
+        "SELECT id, expires_at FROM workspaces WHERE id=? AND kind='demo'",
+        (cookie,),
+    ).fetchone() if cookie else None
+    live = bool(existing and existing['expires_at'] and existing['expires_at'] >= utc_now())
+    claim = sample_claim.valid_claim(request.headers.get(sample_claim.CLAIM_HEADER))
+    claimed = False
+    if live:
+        workspace_id, expires_at, created = existing['id'], existing['expires_at'], False
+    elif claim:
+        claimed = True
+        row, existed = tenancy.ensure_claimed_demo_workspace(db, sample_claim.workspace_id_for(claim))
+        workspace_id, expires_at, created = row['id'], row['expires_at'], not existed
+    else:
+        created_row = tenancy.create_demo_workspace(db, purge=False)
+        workspace_id, expires_at, created = created_row['id'], created_row['expires_at'], True
+    token = tenancy.use_workspace(workspace_id)
+    try:
+        # A claimed workspace may be populated by a request that is still running, so it is
+        # always read first; the lock keeps same-process requests from doing the work twice,
+        # and the idempotent inserts make a cross-process overlap harmless.
+        guard = sample_claim.lock_for(workspace_id) if claimed else nullcontext()
+        with guard:
+            records = [] if (created and not claimed) else records_for_current_workspace(db)
+            if not records:
                 body = populate_synthetic_demo(db)
+                if not created:
+                    body['status'] = 'repopulated'
             else:
-                records = records_for_current_workspace(db)
                 body = {
                     'status': 'resumed', 'synthetic_data': True,
                     'commitments': records,
                     'patterns': patterns_for_records(records),
                 }
-        finally:
-            tenancy.reset_workspace(token)
+    finally:
+        tenancy.reset_workspace(token)
+    return body, workspace_id, expires_at, created
+
+
+@app.post('/api/demo/trials', status_code=201)
+def create_demo_trial(request: Request, response: Response):
+    started = time.perf_counter()
+    try:
+        with connect() as db:
+            tenancy.purge_expired_demos(db)
+            purged = time.perf_counter()
+            body, workspace_id, expires_at, created = _demo_trial_body(db, request)
+            built = time.perf_counter()
+    except HTTPException:
+        raise
+    except Exception:
+        # No cookie, token or request body is logged: only the failure and its trace.
+        logging.getLogger('outcome.demo').exception('Demo trial could not be prepared')
+        raise HTTPException(503, 'The sample could not be prepared. Try again.')
     _set_cookie(response, request, tenancy.DEMO_COOKIE, workspace_id, int(tenancy.trial_ttl().total_seconds()))
     body['workspace'] = 'demo'
     body['expires_at'] = expires_at
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['Server-Timing'] = 'purge;dur=%d, build;dur=%d, total;dur=%d' % (
+        (purged - started) * 1000, (built - purged) * 1000, (time.perf_counter() - started) * 1000,
+    )
+    logging.getLogger('outcome.demo').info(
+        'demo trial %s in %dms', 'created' if created else body['status'], (time.perf_counter() - started) * 1000,
+    )
     return body
 
 

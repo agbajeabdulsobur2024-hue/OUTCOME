@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
 
+from app import sample_claim
 from app.auth_near import read_session_token
 from app.onboarding import read_progress
 
@@ -151,8 +152,9 @@ def session_view(db, request: Request) -> dict:
     }
 
 
-def create_demo_workspace(db) -> dict:
-    purge_expired_demos(db)
+def create_demo_workspace(db, purge: bool = True) -> dict:
+    if purge:
+        purge_expired_demos(db)
     now = datetime.now(timezone.utc)
     expires = now + trial_ttl()
     workspace_id = str(uuid.uuid4())
@@ -162,6 +164,24 @@ def create_demo_workspace(db) -> dict:
         (workspace_id, now.isoformat(), expires.isoformat()),
     )
     return {'id': workspace_id, 'expires_at': expires.isoformat()}
+
+
+def ensure_claimed_demo_workspace(db, workspace_id: str) -> tuple[dict, bool]:
+    """The sample workspace for one browser's claim; one row however many requests race.
+
+    Returns (row, existed_before). An expired sample under the same claim is purged first
+    so the browser receives a fresh one rather than a stale one.
+    """
+    now = datetime.now(timezone.utc)
+    current = db.execute(
+        "SELECT expires_at FROM workspaces WHERE id=? AND kind='demo'", (workspace_id,),
+    ).fetchone()
+    if current and current['expires_at'] and current['expires_at'] < now.isoformat():
+        purge_expired_demos(db)
+    row, existed = sample_claim.ensure_workspace(
+        db, workspace_id, now.isoformat(), (now + trial_ttl()).isoformat(),
+    )
+    return {'id': row['id'], 'expires_at': row['expires_at']}, existed
 
 
 def create_personal_workspace(db, user: dict) -> dict:

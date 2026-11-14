@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
 
+from app import sample_claim
+
 
 def client_ip(request: Request) -> str:
     if os.getenv('VERCEL') == '1':
@@ -35,6 +37,23 @@ def buckets_for(path: str) -> list[tuple[str, int]]:
     return found
 
 
+def _resumes_live_demo(db, request: Request, now: datetime) -> bool:
+    if request.url.path != '/api/demo/trials':
+        return False
+    cookie = request.cookies.get('outcome_demo', '')
+    if not cookie:
+        # No cookie yet, but a claim whose sample already exists is a resume too:
+        # a second tab or a retry must not spend allowance on something already made.
+        claim = sample_claim.valid_claim(request.headers.get(sample_claim.CLAIM_HEADER))
+        cookie = sample_claim.workspace_id_for(claim) if claim else ''
+    if not cookie:
+        return False
+    row = db.execute(
+        "SELECT expires_at FROM workspaces WHERE id=? AND kind='demo'", (cookie,),
+    ).fetchone()
+    return bool(row and row['expires_at'] and row['expires_at'] >= now.isoformat())
+
+
 def enforce_write_limits(db, request: Request) -> None:
     ip = client_ip(request)
     now = datetime.now(timezone.utc)
@@ -42,6 +61,10 @@ def enforce_write_limits(db, request: Request) -> None:
     cleanup = (now - timedelta(days=1)).isoformat()
     db.execute('DELETE FROM request_limits WHERE created_at < ?', (cleanup,))
     for bucket, limit in buckets_for(request.url.path):
+        if bucket == 'demo' and _resumes_live_demo(db, request, now):
+            # Reopening a sample the browser already holds creates nothing, so a
+            # refresh or a second tap must not spend a shared network's allowance.
+            continue
         recent = db.execute(
             'SELECT COUNT(*) FROM request_limits WHERE client_ip=? AND bucket=? AND created_at>=?',
             (ip, bucket, cutoff),
