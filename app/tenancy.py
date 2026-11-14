@@ -183,7 +183,7 @@ def ensure_claimed_demo_workspace(db, workspace_id: str) -> tuple[dict, bool]:
         db, workspace_id, now.isoformat(), (now + trial_ttl()).isoformat(),
     )
     expires_at = (now + trial_ttl()).isoformat()
-    if row and row.get('expires_at') and row['expires_at'] < now.isoformat():
+    if row and row['expires_at'] and row['expires_at'] < now.isoformat():
         db.execute(
             "UPDATE workspaces SET expires_at=? WHERE id=? AND kind='demo'",
             (expires_at, workspace_id),
