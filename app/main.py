@@ -1546,13 +1546,18 @@ def populate_synthetic_demo(db=None):
              'Ask the supplier to deliver the missing 8 cartons or issue a credit note.', now),
         ))
     if pending_writes:
+        stage = time.perf_counter()
+        logging.getLogger('outcome.demo').info('sample fixture prepared: %d writes', len(pending_writes))
         if callable(getattr(db, 'batch', None)):
             # One atomic HTTP batch instead of many serial Turso round-trips.
             db.batch(pending_writes, mode='immediate')
         else:
             for sql, parameters in pending_writes:
                 db.execute(sql, parameters)
+        logging.getLogger('outcome.demo').info('sample fixture writes completed in %dms', (time.perf_counter() - stage) * 1000)
+    stage = time.perf_counter()
     records = records_for_current_workspace(db)
+    logging.getLogger('outcome.demo').info('sample fixture readback completed: %d records in %dms', len(records), (time.perf_counter() - stage) * 1000)
     return {
         'status': 'seeded', 'synthetic_data': True, 'commitments': records,
         'patterns': patterns_for_records(records),
@@ -1610,6 +1615,7 @@ def _demo_trial_body(db, request: Request) -> tuple[dict, str, str, bool]:
         with guard:
             records = [] if (created and not claimed) else records_for_current_workspace(db)
             if not records:
+                logging.getLogger('outcome.demo').info('demo fixture population starting')
                 body = populate_synthetic_demo(db)
                 if not created:
                     body['status'] = 'repopulated'
@@ -1629,10 +1635,14 @@ def create_demo_trial(request: Request, response: Response):
     started = time.perf_counter()
     try:
         with connect() as db:
+            logging.getLogger('outcome.demo').info('demo request: database connected in %dms', (time.perf_counter() - started) * 1000)
+            stage = time.perf_counter()
             tenancy.purge_expired_demos(db)
             purged = time.perf_counter()
+            logging.getLogger('outcome.demo').info('demo expiry cleanup completed in %dms', (purged - stage) * 1000)
             body, workspace_id, expires_at, created = _demo_trial_body(db, request)
             built = time.perf_counter()
+            logging.getLogger('outcome.demo').info('demo workspace prepared in %dms', (built - purged) * 1000)
     except HTTPException:
         raise
     except Exception:
