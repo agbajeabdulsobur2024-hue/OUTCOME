@@ -86,7 +86,11 @@ def connect():
 
 
 def init_db():
+    logger = logging.getLogger('outcome.startup')
+    started = time.perf_counter()
+    logger.info('database initialization started')
     with connect() as db:
+        logger.info('database connection opened in %dms', (time.perf_counter() - started) * 1000)
         # Turso is an HTTP database. Keep schema creation to one ordered batch
         # instead of issuing a remote request for every CREATE TABLE.
         schema = [
@@ -167,7 +171,10 @@ def init_db():
                 updated_at TEXT NOT NULL)''',
         ]
         if callable(getattr(db, 'batch', None)):
+            stage = time.perf_counter()
             db.batch(schema, mode='immediate')
+            logger.info('database schema batch completed in %dms', (time.perf_counter() - stage) * 1000)
+            stage = time.perf_counter()
             pragma_sql = [
                 'PRAGMA table_info("commitments")',
                 'PRAGMA table_info("payment_policies")',
@@ -183,6 +190,8 @@ def init_db():
                     ])
                 return output
             commitment_columns, policy_columns = read_schema()
+            logger.info('database schema inspection completed in %dms', (time.perf_counter() - stage) * 1000)
+            stage = time.perf_counter()
             migrations = []
             if 'workspace_id' not in commitment_columns:
                 migrations.append('ALTER TABLE commitments ADD COLUMN workspace_id TEXT')
@@ -203,10 +212,13 @@ def init_db():
                     required_policy = {'require_verified_evidence', 'allow_partial_payments'}
                     if not required_commitment.issubset(set(commitment_columns)) or not required_policy.issubset(set(policy_columns)):
                         raise
+            logger.info('database column migrations completed in %dms', (time.perf_counter() - stage) * 1000)
+            stage = time.perf_counter()
             db.batch([
                 'CREATE INDEX IF NOT EXISTS idx_request_limits_lookup ON request_limits(bucket, client_ip, created_at)',
                 'CREATE INDEX IF NOT EXISTS idx_commitments_workspace ON commitments(workspace_id)',
             ], mode='immediate')
+            logger.info('database index batch completed in %dms', (time.perf_counter() - stage) * 1000)
         else:
             for statement in schema:
                 db.execute(statement)
@@ -216,6 +228,7 @@ def init_db():
             add_column_if_missing(db, 'payment_policies', 'allow_partial_payments', 'INTEGER NOT NULL DEFAULT 0')
             db.execute('CREATE INDEX IF NOT EXISTS idx_request_limits_lookup ON request_limits(bucket, client_ip, created_at)')
             db.execute('CREATE INDEX IF NOT EXISTS idx_commitments_workspace ON commitments(workspace_id)')
+        logger.info('database initialization completed in %dms', (time.perf_counter() - started) * 1000)
 
 
 @asynccontextmanager
