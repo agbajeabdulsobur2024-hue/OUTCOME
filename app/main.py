@@ -1385,6 +1385,7 @@ def populate_synthetic_demo(db=None):
     def rid(label: str) -> str:
         return sample_claim.record_id(workspace_id, label) if claimed else str(uuid.uuid4())
 
+    pending_writes = []
     for index, sample in enumerate(samples):
         payload = CommitmentCreate(
             supplier='Acme Supplies', description=sample['description'],
@@ -1398,7 +1399,7 @@ def populate_synthetic_demo(db=None):
         terms = payload.model_dump()
         terms['currency'] = payload.currency.upper()
         terms['due_date'] = datetime.fromisoformat(payload.due_date).date().isoformat()
-        db.execute(
+        pending_writes.append((
             '''INSERT OR IGNORE INTO commitments
                (id, supplier, description, quantity, unit, amount, currency, due_date,
                 payment_condition, created_at, workspace_id, commitment_kind)
@@ -1407,7 +1408,7 @@ def populate_synthetic_demo(db=None):
              payload.amount, terms['currency'], terms['due_date'], payload.payment_condition,
              now, workspace_id, payload.commitment_kind),
         )
-        db.execute(
+        pending_writes.append((
             '''INSERT OR IGNORE INTO commitment_versions
                (id, commitment_id, version, terms_json, reason, created_at)
                VALUES (?, ?, 1, ?, ?, ?)''',
@@ -1419,11 +1420,11 @@ def populate_synthetic_demo(db=None):
             ('invoice_amount', sample['invoice'], 'Synthetic demo invoice record; not a real supplier document.'),
         ):
             evidence_id = rid(f'{index}:evidence:{kind}')
-            db.execute(
+            pending_writes.append((
                 'INSERT OR IGNORE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?)',
                 (evidence_id, cid, kind, value, note, 'demo_fixture', now),
             )
-            db.execute(
+            pending_writes.append((
                 '''INSERT OR IGNORE INTO evidence_reviews
                    (id, evidence_id, status, reviewer, note, created_at)
                    VALUES (?, ?, ?, ?, ?, ?)''',
@@ -1441,7 +1442,7 @@ def populate_synthetic_demo(db=None):
             'payment_condition': payload.payment_condition,
         }
         assessment = assess_commitment(commitment, evidence)
-        db.execute(
+        pending_writes.append((
             '''INSERT OR IGNORE INTO assessment_history
                (id, commitment_id, status, assessment_json, created_at)
                VALUES (?, ?, ?, ?, ?)''',
@@ -1457,7 +1458,7 @@ def populate_synthetic_demo(db=None):
             'require_verified_evidence': True, 'allow_partial_payments': False,
             'updated_at': now, 'configured': True,
         }
-        db.execute(
+        pending_writes.append((
             '''INSERT OR IGNORE INTO payment_policies
                (commitment_id, enabled, max_amount, allowed_destination,
                 require_full_delivery, require_invoice_match, require_verified_evidence,
@@ -1465,24 +1466,31 @@ def populate_synthetic_demo(db=None):
                VALUES (?, 1, ?, ?, 1, 1, 1, 0, ?)''',
             (cid, sample['amount'], destination, now),
         )
-        db.execute(
+        pending_writes.append((
             'INSERT OR IGNORE INTO payment_policy_history (id, commitment_id, policy_json, created_at) VALUES (?, ?, ?, ?)',
             (rid(f'{index}:policy-history'), cid, json.dumps(policy, sort_keys=True), now),
         )
         proposal = evaluate_payment_proposal(
             commitment, evidence, policy, sample['amount'], 'USD', destination,
         )
-        db.execute(
+        pending_writes.append((
             'INSERT OR IGNORE INTO payment_proposals (id, commitment_id, status, proposal_json, created_at) VALUES (?, ?, ?, ?, ?)',
             (rid(f'{index}:proposal'), cid, proposal['status'], json.dumps(proposal, sort_keys=True), now),
         )
-        db.execute(
+        pending_writes.append((
             '''INSERT OR IGNORE INTO commitment_actions
                (id, commitment_id, action_type, description, created_at)
                VALUES (?, ?, ?, ?, ?)''',
             (rid(f'{index}:action'), cid, 'RECONCILE_DELIVERY',
              'Ask the supplier to deliver the missing 8 cartons or issue a credit note.', now),
         )
+    if pending_writes:
+        if callable(getattr(db, 'batch', None)):
+            # One atomic HTTP batch instead of many serial Turso round-trips.
+            db.batch(pending_writes, mode='immediate')
+        else:
+            for sql, parameters in pending_writes:
+                db.execute(sql, parameters)
     records = records_for_current_workspace(db)
     return {
         'status': 'seeded', 'synthetic_data': True, 'commitments': records,
