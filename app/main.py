@@ -87,87 +87,135 @@ def connect():
 
 def init_db():
     with connect() as db:
-        db.execute('''CREATE TABLE IF NOT EXISTS commitments (
-            id TEXT PRIMARY KEY, supplier TEXT NOT NULL, description TEXT NOT NULL,
-            quantity REAL NOT NULL, unit TEXT NOT NULL, amount REAL NOT NULL,
-            currency TEXT NOT NULL, due_date TEXT NOT NULL, payment_condition TEXT NOT NULL,
-            created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS evidence (
-            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
-            kind TEXT NOT NULL, value REAL, note TEXT NOT NULL, source TEXT NOT NULL,
-            created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS commitment_versions (
-            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
-            version INTEGER NOT NULL, terms_json TEXT NOT NULL, reason TEXT NOT NULL,
-            created_at TEXT NOT NULL, UNIQUE(commitment_id, version))''')
-        db.execute('''CREATE TABLE IF NOT EXISTS assessment_history (
-            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
-            status TEXT NOT NULL, assessment_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS payment_policies (
-            commitment_id TEXT PRIMARY KEY REFERENCES commitments(id),
-            enabled INTEGER NOT NULL DEFAULT 0, max_amount REAL NOT NULL,
-            allowed_destination TEXT NOT NULL DEFAULT '',
-            require_full_delivery INTEGER NOT NULL DEFAULT 1,
-            require_invoice_match INTEGER NOT NULL DEFAULT 1,
-            require_verified_evidence INTEGER NOT NULL DEFAULT 1,
-            allow_partial_payments INTEGER NOT NULL DEFAULT 0,
-            updated_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS evidence_reviews (
-            id TEXT PRIMARY KEY, evidence_id TEXT NOT NULL REFERENCES evidence(id),
-            status TEXT NOT NULL, reviewer TEXT NOT NULL, note TEXT NOT NULL,
-            created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS payment_proposals (
-            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
-            status TEXT NOT NULL, proposal_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS payment_policy_history (
-            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
-            policy_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS commitment_actions (
-            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
-            action_type TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS action_events (
-            id TEXT PRIMARY KEY, action_id TEXT NOT NULL REFERENCES commitment_actions(id),
-            event_type TEXT NOT NULL, actor TEXT NOT NULL, note TEXT NOT NULL,
-            evidence_id TEXT REFERENCES evidence(id), created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS ai_briefs (
-            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
-            provider TEXT NOT NULL, model TEXT NOT NULL, brief_json TEXT NOT NULL,
-            created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS ai_request_limits (
-            id TEXT PRIMARY KEY, client_ip TEXT NOT NULL, created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS workspaces (
-            id TEXT PRIMARY KEY, kind TEXT NOT NULL, owner_user_id TEXT,
-            created_at TEXT NOT NULL, expires_at TEXT, synthetic INTEGER NOT NULL DEFAULT 0)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY, account_id TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS auth_challenges (
-            id TEXT PRIMARY KEY, account_id TEXT NOT NULL, nonce_hex TEXT NOT NULL,
-            message TEXT NOT NULL, recipient TEXT NOT NULL, created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL, used INTEGER NOT NULL DEFAULT 0)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS sessions (
-            token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, account_id TEXT NOT NULL,
-            created_at TEXT NOT NULL, expires_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS payment_decisions (
-            id TEXT PRIMARY KEY, proposal_id TEXT NOT NULL, commitment_id TEXT NOT NULL REFERENCES commitments(id),
-            decision TEXT NOT NULL, actor TEXT NOT NULL, outcome_json TEXT NOT NULL, created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS audit_receipts (
-            id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
-            transaction_hash TEXT NOT NULL UNIQUE, signer_account_id TEXT NOT NULL,
-            payload_hash TEXT NOT NULL, execution_status TEXT NOT NULL,
-            explorer_url TEXT NOT NULL, created_at TEXT NOT NULL,
-            UNIQUE(commitment_id, payload_hash))''')
-        db.execute('''CREATE TABLE IF NOT EXISTS request_limits (
-            id TEXT PRIMARY KEY, client_ip TEXT NOT NULL, bucket TEXT NOT NULL,
-            created_at TEXT NOT NULL)''')
-        db.execute('''CREATE TABLE IF NOT EXISTS account_onboarding (
-            user_id TEXT PRIMARY KEY, status TEXT NOT NULL, step INTEGER NOT NULL,
-            updated_at TEXT NOT NULL)''')
-        db.execute('CREATE INDEX IF NOT EXISTS idx_request_limits_lookup ON request_limits(bucket, client_ip, created_at)')
-        add_column_if_missing(db, 'commitments', 'workspace_id', 'TEXT')
-        add_column_if_missing(db, 'commitments', 'commitment_kind', "TEXT NOT NULL DEFAULT 'general'")
-        db.execute('CREATE INDEX IF NOT EXISTS idx_commitments_workspace ON commitments(workspace_id)')
-        add_column_if_missing(db, 'payment_policies', 'require_verified_evidence', 'INTEGER NOT NULL DEFAULT 1')
-        add_column_if_missing(db, 'payment_policies', 'allow_partial_payments', 'INTEGER NOT NULL DEFAULT 0')
+        # Turso is an HTTP database. Keep schema creation to one ordered batch
+        # instead of issuing a remote request for every CREATE TABLE.
+        schema = [
+            '''CREATE TABLE IF NOT EXISTS commitments (
+                id TEXT PRIMARY KEY, supplier TEXT NOT NULL, description TEXT NOT NULL,
+                quantity REAL NOT NULL, unit TEXT NOT NULL, amount REAL NOT NULL,
+                currency TEXT NOT NULL, due_date TEXT NOT NULL, payment_condition TEXT NOT NULL,
+                created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS evidence (
+                id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+                kind TEXT NOT NULL, value REAL, note TEXT NOT NULL, source TEXT NOT NULL,
+                created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS commitment_versions (
+                id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+                version INTEGER NOT NULL, terms_json TEXT NOT NULL, reason TEXT NOT NULL,
+                created_at TEXT NOT NULL, UNIQUE(commitment_id, version))''',
+            '''CREATE TABLE IF NOT EXISTS assessment_history (
+                id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+                status TEXT NOT NULL, assessment_json TEXT NOT NULL, created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS payment_policies (
+                commitment_id TEXT PRIMARY KEY REFERENCES commitments(id),
+                enabled INTEGER NOT NULL DEFAULT 0, max_amount REAL NOT NULL,
+                allowed_destination TEXT NOT NULL DEFAULT '',
+                require_full_delivery INTEGER NOT NULL DEFAULT 1,
+                require_invoice_match INTEGER NOT NULL DEFAULT 1,
+                require_verified_evidence INTEGER NOT NULL DEFAULT 1,
+                allow_partial_payments INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS evidence_reviews (
+                id TEXT PRIMARY KEY, evidence_id TEXT NOT NULL REFERENCES evidence(id),
+                status TEXT NOT NULL, reviewer TEXT NOT NULL, note TEXT NOT NULL,
+                created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS payment_proposals (
+                id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+                status TEXT NOT NULL, proposal_json TEXT NOT NULL, created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS payment_policy_history (
+                id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+                policy_json TEXT NOT NULL, created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS commitment_actions (
+                id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+                action_type TEXT NOT NULL, description TEXT NOT NULL, created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS action_events (
+                id TEXT PRIMARY KEY, action_id TEXT NOT NULL REFERENCES commitment_actions(id),
+                event_type TEXT NOT NULL, actor TEXT NOT NULL, note TEXT NOT NULL,
+                evidence_id TEXT REFERENCES evidence(id), created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS ai_briefs (
+                id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+                provider TEXT NOT NULL, model TEXT NOT NULL, brief_json TEXT NOT NULL,
+                created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS ai_request_limits (
+                id TEXT PRIMARY KEY, client_ip TEXT NOT NULL, created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS workspaces (
+                id TEXT PRIMARY KEY, kind TEXT NOT NULL, owner_user_id TEXT,
+                created_at TEXT NOT NULL, expires_at TEXT, synthetic INTEGER NOT NULL DEFAULT 0)''',
+            '''CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY, account_id TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS auth_challenges (
+                id TEXT PRIMARY KEY, account_id TEXT NOT NULL, nonce_hex TEXT NOT NULL,
+                message TEXT NOT NULL, recipient TEXT NOT NULL, created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL, used INTEGER NOT NULL DEFAULT 0)''',
+            '''CREATE TABLE IF NOT EXISTS sessions (
+                token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, account_id TEXT NOT NULL,
+                created_at TEXT NOT NULL, expires_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS payment_decisions (
+                id TEXT PRIMARY KEY, proposal_id TEXT NOT NULL, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+                decision TEXT NOT NULL, actor TEXT NOT NULL, outcome_json TEXT NOT NULL, created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS audit_receipts (
+                id TEXT PRIMARY KEY, commitment_id TEXT NOT NULL REFERENCES commitments(id),
+                transaction_hash TEXT NOT NULL UNIQUE, signer_account_id TEXT NOT NULL,
+                payload_hash TEXT NOT NULL, execution_status TEXT NOT NULL,
+                explorer_url TEXT NOT NULL, created_at TEXT NOT NULL,
+                UNIQUE(commitment_id, payload_hash))''',
+            '''CREATE TABLE IF NOT EXISTS request_limits (
+                id TEXT PRIMARY KEY, client_ip TEXT NOT NULL, bucket TEXT NOT NULL,
+                created_at TEXT NOT NULL)''',
+            '''CREATE TABLE IF NOT EXISTS account_onboarding (
+                user_id TEXT PRIMARY KEY, status TEXT NOT NULL, step INTEGER NOT NULL,
+                updated_at TEXT NOT NULL)''',
+        ]
+        if callable(getattr(db, 'batch', None)):
+            db.batch(schema, mode='immediate')
+            pragma_sql = [
+                'PRAGMA table_info("commitments")',
+                'PRAGMA table_info("payment_policies")',
+            ]
+            def read_schema():
+                results = db.batch(pragma_sql)
+                output = []
+                for result in results:
+                    columns = [item[0] for item in (result.description or ())]
+                    output.append([
+                        dict(zip(columns, row))['name'].casefold()
+                        for row in result.rows
+                    ])
+                return output
+            commitment_columns, policy_columns = read_schema()
+            migrations = []
+            if 'workspace_id' not in commitment_columns:
+                migrations.append('ALTER TABLE commitments ADD COLUMN workspace_id TEXT')
+            if 'commitment_kind' not in commitment_columns:
+                migrations.append("ALTER TABLE commitments ADD COLUMN commitment_kind TEXT NOT NULL DEFAULT 'general'")
+            if 'require_verified_evidence' not in policy_columns:
+                migrations.append('ALTER TABLE payment_policies ADD COLUMN require_verified_evidence INTEGER NOT NULL DEFAULT 1')
+            if 'allow_partial_payments' not in policy_columns:
+                migrations.append('ALTER TABLE payment_policies ADD COLUMN allow_partial_payments INTEGER NOT NULL DEFAULT 0')
+            if migrations:
+                try:
+                    db.batch(migrations, mode='immediate')
+                except Exception:
+                    # A concurrent cold start may have applied the same schema
+                    # migration. Suppress only if every intended column now exists.
+                    commitment_columns, policy_columns = read_schema()
+                    required_commitment = {'workspace_id', 'commitment_kind'}
+                    required_policy = {'require_verified_evidence', 'allow_partial_payments'}
+                    if not required_commitment.issubset(set(commitment_columns)) or not required_policy.issubset(set(policy_columns)):
+                        raise
+            db.batch([
+                'CREATE INDEX IF NOT EXISTS idx_request_limits_lookup ON request_limits(bucket, client_ip, created_at)',
+                'CREATE INDEX IF NOT EXISTS idx_commitments_workspace ON commitments(workspace_id)',
+            ], mode='immediate')
+        else:
+            for statement in schema:
+                db.execute(statement)
+            add_column_if_missing(db, 'commitments', 'workspace_id', 'TEXT')
+            add_column_if_missing(db, 'commitments', 'commitment_kind', "TEXT NOT NULL DEFAULT 'general'")
+            add_column_if_missing(db, 'payment_policies', 'require_verified_evidence', 'INTEGER NOT NULL DEFAULT 1')
+            add_column_if_missing(db, 'payment_policies', 'allow_partial_payments', 'INTEGER NOT NULL DEFAULT 0')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_request_limits_lookup ON request_limits(bucket, client_ip, created_at)')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_commitments_workspace ON commitments(workspace_id)')
 
 
 @asynccontextmanager
