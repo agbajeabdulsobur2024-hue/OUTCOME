@@ -20,6 +20,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/design.css">
 <link rel="stylesheet" href="/static/premium.css">
+<link rel="stylesheet" href="/static/start-flow.css">
 
 </head>
 <body>
@@ -65,6 +66,15 @@
           <button id="exploreDemo" class="text-btn" type="button">Revisit the sample</button>
         </div>
         <p class="landing-status" id="landingStatus" role="status"></p>
+        <div class="intent-notice" id="intentNotice" hidden>
+          <p id="intentNoticeText" role="status"></p>
+          <button id="intentSignIn" class="btn btn-sm" type="button">Sign in</button>
+          <button id="intentDismiss" class="btn btn-ghost btn-sm" type="button">Not now</button>
+        </div>
+        <div class="entry-error" id="entryError" role="alert" hidden>
+          <p id="entryErrorText"></p>
+          <button id="entryRetry" class="btn btn-sm" type="button">Try again</button>
+        </div>
       </div>
       <aside class="product-preview" aria-label="Illustrative example of an OUTCOME record">
         <div class="preview-top">
@@ -169,7 +179,7 @@
     <section class="closing" id="start">
       <div>
         <h2>Know what was agreed. Then decide what happens next.</h2>
-        <p>Start with the labelled sample, or sign in when you are ready to keep your own records. Nothing on this page moves money.</p>
+        <p>Get started to sign in and open your own workspace, or look around the labelled sample first. Nothing on this page moves money.</p>
       </div>
       <button class="btn btn-lg" type="button" data-get-started>Get started</button>
     </section>
@@ -178,7 +188,7 @@
       <nav aria-label="Footer">
         <button class="text-btn" type="button" data-scroll="how">How it works</button>
         <button class="text-btn" type="button" data-open-trust>Security and trust</button>
-        <button class="text-btn" type="button" data-get-started>Explore the sample</button>
+        <button class="text-btn" type="button" data-demo-seed>Explore the sample</button>
       </nav>
       <p class="landing-disclaimer">Decision support only. OUTCOME does not custody funds or move money. Consequential actions remain subject to human approval.</p>
     </footer>
@@ -203,7 +213,7 @@
 </aside>
 <div class="main">
   <header class="topbar">
-    <div class="crumb">Workspace <span aria-hidden="true">/</span> <b id="crumb-current">Overview</b></div>
+    <div class="crumb"><span id="crumb-scope">Workspace</span> <span aria-hidden="true">/</span> <b id="crumb-current">Overview</b><span id="crumb-record" hidden> <span aria-hidden="true">/</span> <b></b></span></div>
     <div class="top-right">
       <span class="account-chip" id="scopePill">Workspace</span>
       <button id="topConnect" class="btn btn-ghost btn-sm" type="button">Sign in</button>
@@ -216,6 +226,7 @@
     <div class="sample-banner" id="sampleBanner" hidden>
       <p id="sampleBannerText"><strong>Sample scenario.</strong> These records are synthetic.</p>
       <button id="revisitGuide" class="btn btn-ghost btn-sm" type="button">Revisit the guide</button>
+      <button id="leaveSample" class="btn btn-ghost btn-sm" type="button">Leave the sample</button>
     </div>
     <section id="overview" data-view="overview">
       <section class="hero is-welcome" id="hero">
@@ -416,6 +427,24 @@
     </div>
   </div>
 </div>
+<div id="startFlow" class="start-flow" hidden role="dialog" aria-modal="true" aria-labelledby="startTitle" aria-describedby="startLead">
+  <div class="start-card" id="startCard">
+    <div class="start-top">
+      <ol class="start-steps" id="startSteps" aria-label="Setup progress"></ol>
+      <button id="startClose" class="text-btn" type="button">Close</button>
+    </div>
+    <p class="eyebrow" id="startKicker"></p>
+    <h2 id="startTitle" tabindex="-1"></h2>
+    <p id="startLead" class="start-lead"></p>
+    <p class="start-state" id="startState" role="status" aria-live="polite"></p>
+    <div class="start-error" id="startError" role="alert" hidden><p id="startErrorText"></p></div>
+    <div class="start-actions">
+      <button id="startPrimary" class="btn btn-lg" type="button"></button>
+      <button id="startSample" class="btn btn-ghost btn-lg" type="button">Revisit the sample instead</button>
+    </div>
+    <p class="start-note" id="startNote"></p>
+  </div>
+</div>
 <section class="security" id="security" hidden>
   <header class="security-bar">
     <div class="brand"><span class="brand-mark">O</span> OUTCOME</div>
@@ -457,6 +486,8 @@
 <script src="/static/anchor-copy.js"></script>
 <script src="/static/onboarding.js"></script>
 <script src="/static/welcome.js"></script>
+<script src="/static/route-intent.js"></script>
+<script src="/static/start-flow.js"></script>
 <script>
 const $ = selector => document.querySelector(selector);
 const state = { commitments: [], patterns: [], record: null, ai: { configured: false }, scope: null, session: null, anchorStatus: '', anchorPolicy: 'pending', anchorChecked: false };
@@ -550,15 +581,34 @@ function errorMessage(data){
   return 'Request failed';
 }
 async function api(path, options={}){
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-  if (state.scope) headers['X-Outcome-Scope'] = state.scope;
-  let response;
-  try { response = await fetch(path, { ...options, headers }); }
-  catch { throw Error('The workspace could not be reached.'); }
-  let data = null;
-  try { data = await response.json(); } catch { data = null; }
-  if (!response.ok) throw Error(errorMessage(data));
-  return data;
+  // `scope` overrides the current workspace for one call (null sends no scope);
+  // `timeout` aborts a request that never answers instead of waiting forever.
+  const { timeout, scope: callScope, ...init } = options;
+  const headers = { 'Content-Type': 'application/json', ...(init.headers || {}) };
+  const scope = callScope === undefined ? state.scope : callScope;
+  if (scope) headers['X-Outcome-Scope'] = scope;
+  const controller = timeout ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeout) : null;
+  try {
+    let response;
+    try {
+      response = await fetch(path, { ...init, headers, credentials:'same-origin', ...(controller ? { signal: controller.signal } : {}) });
+    } catch (cause) {
+      const failure = Error(cause && cause.name === 'AbortError' ? 'The workspace took too long to respond.' : 'The workspace could not be reached.');
+      failure.network = true;
+      throw failure;
+    }
+    let data = null;
+    try { data = await response.json(); } catch { data = null; }
+    if (!response.ok){
+      const failure = Error(errorMessage(data));
+      failure.status = response.status;
+      throw failure;
+    }
+    return data;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 function presentToast(message, tone, life, done){
   const region = $('#toasts');
@@ -791,13 +841,45 @@ function renderList(){
     : emptyBlock('box', 'No commitments yet', 'Record an agreement to begin the evidence trail.', '<a class="btn" href="#new-commitment">Record a commitment</a>');
 }
 function renderEmptyDetail(){
-  $('#detail').innerHTML = emptyBlock('list', 'Select a commitment', 'Open a record to review its status, evidence and the next decision.');
-  $('#commit-layout').classList.toggle('has-selection', false);
+  if (detailNotice){
+    const actions = '<button class="btn" type="button" data-detail-dismiss>Back to commitments</button>' + (detailNotice.retry ? `<button class="btn btn-ghost" type="button" data-detail-retry="${esc(detailNotice.id)}">Try again</button>` : '') + (detailNotice.signIn ? '<button class="btn btn-ghost" type="button" data-detail-signin>Sign in</button>' : '') + (detailNotice.sample ? '<button class="btn btn-ghost" type="button" data-demo-seed>Open the sample again</button>' : '');
+    $('#detail').innerHTML = `<div role="alert">${emptyBlock('alert', detailNotice.title, detailNotice.message, actions)}</div>`;
+    $('#commit-layout').classList.toggle('has-selection', true);
+  } else {
+    $('#detail').innerHTML = emptyBlock('list', 'Select a commitment', 'Open a record to review its status, evidence and the next decision.');
+    $('#commit-layout').classList.toggle('has-selection', false);
+  }
+  syncTitle();
 }
 const HASH_FOR = { overview:'overview', commitments:'commitments', signals:'patterns-section', new:'new-commitment' };
 const scrollMemory = {};
+/* The URL is the source of truth for navigation: #commitments/<id>/<tab>.
+   Session storage may help the Security page return, but never decides where
+   the user is. A record link is only ever followed after the server confirms it. */
+function parseRoute(hash = location.hash){
+  const parts = String(hash || '').replace(/^#/, '').split('/');
+  const decode = value => { try { return decodeURIComponent(value || ''); } catch (error) { return ''; } };
+  const route = viewFromHash(hash);
+  const id = route === 'commitments' ? decode(parts[1]) : '';
+  const tab = decode(parts[2]);
+  return { view: route, id: id || null, tab: TABS.includes(tab) ? tab : 'decision' };
+}
+function currentHash(){
+  let hash = '#' + HASH_FOR[view];
+  if (view === 'commitments' && selected){
+    hash += '/' + encodeURIComponent(selected);
+    if (detailTab !== 'decision') hash += '/' + detailTab;
+  }
+  return hash;
+}
+function syncUrl(mode = 'push'){
+  const hash = currentHash();
+  if (location.hash === hash) return;
+  history[mode === 'replace' ? 'replaceState' : 'pushState']({ view, id: selected }, '', hash);
+}
+let detailNotice = null;
 function viewFromHash(hash = location.hash){
-  const raw = String(hash || '#overview').replace(/^#/, '');
+  const raw = String(hash || '#overview').replace(/^#/, '').split('/')[0];
   if (raw === 'patterns-section' || raw === 'signals') return 'signals';
   if (raw === 'new-commitment' || raw === 'new') return 'new';
   if (raw === 'commitments') return 'commitments';
@@ -812,7 +894,23 @@ function syncChrome(){
 function scrollPage(top){
   window.scrollTo({ top: Math.max(0, top || 0), left: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
+const VIEW_TITLES = { overview:'Overview', commitments:'Commitments', signals:'Repeated signals', new:'New commitment' };
+function syncTitle(){
+  const sample = state.scope === 'demo';
+  const record = view === 'commitments' && selected && state.record && state.record.commitment.id === selected ? state.record.commitment : null;
+  const name = record ? (record.counterparty || record.supplier || '') : '';
+  document.title = (VIEW_TITLES[view] || 'Overview') + (name ? ' · ' + name : '') + (sample ? ' (sample)' : '') + ' — OUTCOME';
+  const scope = $('#crumb-scope');
+  if (scope) scope.textContent = sample ? 'Sample workspace' : 'Workspace';
+  const slot = $('#crumb-record');
+  if (slot){
+    slot.hidden = !name;
+    const label = slot.querySelector('b');
+    if (label) label.textContent = name;
+  }
+}
 function paint(options = {}){
+  syncTitle();
   const previous = paint.current;
   const changing = previous && previous !== view;
   if (changing) scrollMemory[previous] = window.scrollY;
@@ -844,18 +942,22 @@ function goTo(next, scroll = 'restore'){
     return;
   }
   view = next;
-  const hash = '#' + HASH_FOR[next];
-  if (location.hash !== hash) history.pushState({ view: next }, '', hash);
+  syncUrl('push');
   paint({ scroll });
 }
-function closeDetail(){
-  const id = selected;
+function clearSelection(){
   selected = null;
   sessionStorage.removeItem('outcome-selected-commitment');
   state.record = null;
   detailTab = 'decision';
+  detailNotice = null;
   renderEmptyDetail();
   markActive();
+}
+function closeDetail(){
+  const id = selected;
+  clearSelection();
+  if (view === 'commitments') syncUrl('push');
   requestAnimationFrame(() => {
     const button = id ? document.querySelector('#list [data-open="' + CSS.escape(id) + '"]') : null;
     if (button){
@@ -1027,6 +1129,7 @@ function renderDetail(){
   syncEvidenceValue();
   $('#commit-layout')?.classList.toggle('has-selection', true);
   paintTrustDetail();
+  syncTitle();
 }
 function syncEvidenceValue(){
   const form = $('#evidenceForm');
@@ -1039,6 +1142,7 @@ function syncEvidenceValue(){
 function activateTab(name, focus){
   if (!TABS.includes(name) || !state.record) return;
   detailTab = name;
+  syncUrl('push');
   renderDetail();
   if (focus !== false) document.querySelector(`[role="tab"][data-tab="${name}"]`)?.focus();
 }
@@ -1136,20 +1240,46 @@ async function showDetail(id, options={}){
     if (options.focus) $('#detail-title')?.focus();
   } catch (error) {
     if (token !== detailToken || selected !== id) return;
-    toast(error.message, 'error');
-    $('#detail').innerHTML = emptyBlock('alert', 'Could not open this commitment', error.message);
+    presentRecordFailure(id, error);
   }
+}
+function presentRecordFailure(id, error){
+  const status = error && error.status;
+  if (status === 404){
+    detailNotice = { id, title: 'This commitment is not available', message: 'It may have been removed, or the link belongs to a different workspace. Nothing was changed.' };
+    selected = null;
+    sessionStorage.removeItem('outcome-selected-commitment');
+    state.record = null;
+    detailTab = 'decision';
+    syncUrl('replace');
+    markActive();
+  } else if (status === 401 || status === 403 || status === 410){
+    const sample = state.scope === 'demo';
+    if (!sample) captureIntent(location.hash.indexOf('#commitments/') === 0 ? location.hash : '#commitments/' + encodeURIComponent(id), true);
+    detailNotice = { id, signIn: !sample, sample, title: 'Your session has ended', message: sample ? 'The sample has ended. Open it again to continue.' : 'Sign in again and this commitment will reopen.' };
+  } else {
+    detailNotice = { id, retry: true, title: 'Could not load this commitment', message: ((error && error.message) || 'The workspace could not be reached.') + ' Your records are unchanged.' };
+  }
+  renderEmptyDetail();
+  toast(detailNotice.title, 'error');
 }
 async function openCommitment(id, options={}){
   if (!id) return;
   const changed = selected !== id || view !== 'commitments';
+  detailNotice = null;
   if (options.tab && TABS.includes(options.tab)) detailTab = options.tab;
   else if (selected !== id) detailTab = 'decision';
   selected = id;
   sessionStorage.setItem('outcome-selected-commitment', id);
   sessionStorage.setItem('outcome-security-commitment', id);
-  if (view !== 'commitments') goTo('commitments', options.scroll || 'top');
-  else $('#commit-layout')?.classList.add('has-selection');
+  if (options.keepView) { /* restoring behind the Security page: leave the view alone */ }
+  else if (view !== 'commitments'){
+    if (options.fromRoute){ view = 'commitments'; paint({ scroll: 'none' }); }
+    else goTo('commitments', options.scroll || 'top');
+  } else {
+    $('#commit-layout')?.classList.add('has-selection');
+    if (!options.fromRoute) syncUrl('push');
+  }
   markActive();
   await showDetail(id, { focus: changed && options.focus !== false, fresh: options.fresh !== false, policy: options.policy === true });
   if (isNarrowDetail() && options.scroll !== 'none') requestAnimationFrame(() => $('#detail')?.scrollIntoView({ block: 'start', behavior: 'instant' in window ? 'instant' : 'auto' }));
@@ -1166,6 +1296,7 @@ async function load(){
       sessionStorage.removeItem('outcome-open');
       showLanding();
       setLandingStatus(error.message);
+      captureIntent(location.hash, true);
       return;
     }
     throw error;
@@ -1185,7 +1316,27 @@ async function load(){
   paint();
 }
 let trustReturn = sessionStorage.getItem('outcome-security-return') || 'landing';
+function leaveSample(){
+  if (state.scope !== 'demo') return;
+  // Leaving only ends this view of the sample. The sample session itself is kept so
+  // "Revisit the sample" reopens the same records instead of making new ones.
+  state.scope = null;
+  state.commitments = [];
+  state.patterns = [];
+  state.record = null;
+  selected = null;
+  detailTab = 'decision';
+  detailNotice = null;
+  ['outcome-open', 'outcome-selected-commitment', 'outcome-security-commitment'].forEach(key => sessionStorage.removeItem(key));
+  view = 'overview';
+  try { updateMetrics([]); renderAttention(); renderPatterns(); renderList(); renderEmptyDetail(); } catch (error) { console.warn(error); }
+  showLanding();
+  history.replaceState({ view }, '', location.pathname + location.search); // the bare landing URL, so a reload does not look like a direct link
+  try { renderGuide(); } catch (error) { console.warn(error); }
+  setLandingStatus('You left the sample. Revisit it any time, or sign in to open a personal workspace.');
+}
 function showLanding(){
+  document.title = 'OUTCOME — Financial Accountability';
   $('#landing').hidden = false;
   $('.app-shell').hidden = true;
   const security = $('#security');
@@ -1197,6 +1348,39 @@ function showApp(){
   const security = $('#security');
   if (security) security.hidden = true;
 }
+let trustOpener = null;
+/* Validation is exposed to assistive technology: each invalid field gets
+   aria-invalid and a visible message linked by aria-describedby; focus moves to the first. */
+document.addEventListener('invalid', event => {
+  const field = event.target;
+  if (!field || !field.form) return;
+  event.preventDefault();
+  const id = 'err-' + (field.form.id || 'form') + '-' + (field.name || field.id || 'field');
+  let note = document.getElementById(id);
+  if (!note){
+    note = document.createElement('p');
+    note.id = id;
+    note.className = 'field-error';
+    note.setAttribute('role', 'alert');
+    (field.closest('label') || field).insertAdjacentElement('afterend', note);
+  }
+  note.textContent = field.validationMessage || 'Check this field.';
+  field.setAttribute('aria-invalid', 'true');
+  const ids = (field.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+  if (!ids.includes(id)) ids.push(id);
+  field.setAttribute('aria-describedby', ids.join(' '));
+  const first = [...field.form.elements].find(el => el.willValidate && !el.validity.valid);
+  if (first === field) field.focus();
+}, true);
+document.addEventListener('input', event => {
+  const field = event.target;
+  if (!field || !field.getAttribute || field.getAttribute('aria-invalid') !== 'true' || !field.validity || !field.validity.valid) return;
+  field.removeAttribute('aria-invalid');
+  const ids = (field.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+  ids.filter(id => id.startsWith('err-')).forEach(id => { const note = document.getElementById(id); if (note) note.remove(); });
+  const rest = ids.filter(id => !id.startsWith('err-'));
+  if (rest.length) field.setAttribute('aria-describedby', rest.join(' ')); else field.removeAttribute('aria-describedby');
+}, true);
 function showTrust(options = {}){
   if (!trustPageOpen){
     trustReturn = $('.app-shell') && !$('.app-shell').hidden ? 'app' : 'landing';
@@ -1212,14 +1396,21 @@ function showTrust(options = {}){
   if (security) security.hidden = false;
   paintTrustDetail();
   window.scrollTo(0, 0);
+  if (!options.fromHistory && document.activeElement && document.activeElement !== document.body) trustOpener = document.activeElement;
+  const heading = security && security.querySelector('h1, h2');
+  if (heading){ heading.setAttribute('tabindex', '-1'); heading.focus({ preventScroll: true }); }
 }
 function hideTrust(options = {}){
   trustPageOpen = false;
   sessionStorage.removeItem('outcome-security-open');
   sessionStorage.removeItem('outcome-security-return');
-  if (!options.fromHistory && location.hash === '#security') history.replaceState({ view }, '', '#' + HASH_FOR[view]);
-  if (trustReturn === 'app') showApp();
+  if (!options.fromHistory && location.hash === '#security') history.replaceState({ view }, '', currentHash());
+  if (trustReturn === 'app') { showApp(); syncTitle(); }
   else showLanding();
+  const back = trustOpener && document.contains(trustOpener) && trustOpener.offsetParent !== null ? trustOpener : null;
+  trustOpener = null;
+  const fallback = back || $('#detail-title') || $('#content') || $('main');
+  if (fallback){ if (!fallback.matches('button, a, input, select, textarea, [tabindex]')) fallback.setAttribute('tabindex', '-1'); fallback.focus({ preventScroll: true }); }
 }
 function setLandingStatus(message){
   const slot = $('#landingStatus');
@@ -1253,7 +1444,7 @@ function syncWorkspaceChrome(){
   const banner = $('#sampleBanner');
   if (banner) banner.hidden = !sample;
   const bannerText = $('#sampleBannerText');
-  if (bannerText) bannerText.textContent = OutcomeOnboarding.bannerFor(state.scope);
+  if (bannerText) bannerText.textContent = sample ? SAMPLE_BANNER : '';
   const eyebrow = $('#heroEyebrow');
   const title = $('#heroTitle');
   const lead = $('#heroLead');
@@ -1276,9 +1467,195 @@ function syncWorkspaceChrome(){
     if (note) note.textContent = 'An approval stays APPROVED — NOT SUBMITTED unless a real transfer exists.';
   }
 }
+/* ---- Sample entry -------------------------------------------------------
+   One canonical path from a landing-page tap to the rendered sample workspace:
+   share the in-flight attempt, resume or create the demo session, validate the
+   response, confirm the browser kept the session cookie, render, and confirm
+   the render. It does not read or write the guided tour's state.            */
+const SAMPLE_BANNER = 'Sample scenario. These records are synthetic. They are not your business, and they stay separate from a personal workspace.';
+const SAMPLE_TIMEOUT_MS = 20000;
 const trialSlot = { current: null };
-function openTrial(){
-  return OutcomeOnboarding.shareInflight(trialSlot, () => api('/api/demo/trials', { method:'POST' }));
+const sampleEntry = { current: null };
+const entryTimings = window.__outcomeEntry = { runs: [] };
+function shareInflight(slot, start){
+  if (slot.current) return slot.current;
+  const tracked = Promise.resolve().then(start).then(
+    value => { if (slot.current === tracked) slot.current = null; return value; },
+    error => { if (slot.current === tracked) slot.current = null; throw error; }
+  );
+  slot.current = tracked;
+  return tracked;
+}
+/* A random per-browser claim lets the server give simultaneous first visits (two tabs, a double
+   tap, a retry after a timeout) one sample instead of one each. It is created under a Web Lock
+   where available so two tabs cannot invent different claims. It names no one and grants nothing. */
+const CLAIM_KEY = 'outcome-sample-claim';
+const CLAIM_SHAPE = /^[A-Za-z0-9_-]{22,64}$/;
+let memoryClaim = '';
+function newClaim(){
+  if (!window.crypto || !crypto.getRandomValues) return '';
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  let text = '';
+  bytes.forEach(byte => { text += String.fromCharCode(byte); });
+  return btoa(text).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function readOrMakeClaim(){
+  let stored = '';
+  try { stored = localStorage.getItem(CLAIM_KEY) || ''; } catch (error) { stored = ''; }
+  if (CLAIM_SHAPE.test(stored)) return stored;
+  const made = memoryClaim && CLAIM_SHAPE.test(memoryClaim) ? memoryClaim : newClaim();
+  if (!made) return '';
+  try { localStorage.setItem(CLAIM_KEY, made); stored = localStorage.getItem(CLAIM_KEY) || ''; } catch (error) { stored = ''; }
+  memoryClaim = CLAIM_SHAPE.test(stored) ? stored : made;
+  return memoryClaim;
+}
+async function sampleClaim(){
+  try {
+    if (navigator.locks && navigator.locks.request) return await navigator.locks.request(CLAIM_KEY, readOrMakeClaim);
+  } catch (error) { /* fall through to the unlocked path */ }
+  return readOrMakeClaim();
+}
+async function openTrial(){
+  // Sent without a workspace scope so a stale scope can never block creating or resuming a sample.
+  const claim = await sampleClaim();
+  return api('/api/demo/trials', { method:'POST', scope:null, timeout:SAMPLE_TIMEOUT_MS, headers: claim ? { 'X-Outcome-Sample-Claim': claim } : {} });
+}
+function sampleFailure(error){
+  if (error && error.sample) return error;
+  const status = error && error.status;
+  let message = 'The sample could not be opened. Nothing of yours was changed. Try again.';
+  if (status === 429) message = 'Many people are opening the sample right now. Wait a moment, then try again.';
+  else if (status >= 500) message = 'The sample could not be prepared. Nothing of yours was changed. Try again.';
+  else if (error && error.network) message = 'The sample could not be reached. Check your connection, then try again.';
+  const failure = Error(message);
+  failure.sample = true;
+  failure.cause = error;
+  return failure;
+}
+function validateTrial(trial){
+  const records = trial && trial.commitments;
+  const sound = trial && typeof trial === 'object' && Array.isArray(records) && records.length > 0
+    && records.every(item => item && item.commitment && item.commitment.id && item.assessment);
+  if (!sound){
+    const failure = Error('The sample came back incomplete. Try again.');
+    failure.sample = true;
+    throw failure;
+  }
+  if (!Array.isArray(trial.patterns)) trial.patterns = [];
+}
+async function resumeSample(){
+  try {
+    const [commitments, patterns] = await Promise.all([
+      api('/api/commitments', { scope:'demo', timeout:SAMPLE_TIMEOUT_MS }),
+      api('/api/patterns', { scope:'demo', timeout:SAMPLE_TIMEOUT_MS }),
+    ]);
+    if (!Array.isArray(commitments) || !commitments.length) return null;
+    return { status:'resumed', workspace:'demo', commitments, patterns: Array.isArray(patterns) ? patterns : [] };
+  } catch (error) { return null; }
+}
+function sampleRendered(){
+  const shell = $('.app-shell');
+  return Boolean(shell && !shell.hidden && $('#landing').hidden
+    && document.querySelector('#attention [data-open], #list [data-open]'));
+}
+async function runSampleEntry(){
+  const run = { start: performance.now() };
+  const stamp = name => { run[name] = Math.round(performance.now() - run.start); };
+  entryTimings.runs.push(run);
+  if (entryTimings.runs.length > 10) entryTimings.runs.shift();
+  if (state.scope === 'demo' && state.commitments.length && sampleRendered()){
+    run.outcome = 'reused';
+    return { status:'reused', commitments: state.commitments, patterns: state.patterns };
+  }
+  const previousScope = state.scope;
+  const wasLanding = !$('#landing').hidden;
+  try {
+    let trial = null;
+    if (state.session && state.session.demo && state.session.demo.active) trial = await resumeSample();
+    stamp('resumeChecked');
+    if (!trial){
+      stamp('requestStart');
+      trial = await openTrial();
+      stamp('response');
+    }
+    validateTrial(trial);
+    const session = await api('/api/session', { scope:null, timeout:SAMPLE_TIMEOUT_MS });
+    stamp('session');
+    if (!session || !session.demo || !session.demo.active){
+      const failure = Error('Your browser did not keep the sample session. Allow cookies for this site, then try again.');
+      failure.sample = true;
+      throw failure;
+    }
+    state.session = session;
+    state.ai = Object.assign({ configured: false }, session.ai || {});
+    await enterWorkspace('demo', trial);
+    stamp('rendered');
+    if (!sampleRendered()){
+      const failure = Error('The sample opened but did not display. Try again.');
+      failure.sample = true;
+      throw failure;
+    }
+    window.scrollTo(0, 0);
+    run.outcome = trial.status || 'opened';
+    return trial;
+  } catch (error) {
+    run.outcome = 'failed';
+    state.scope = previousScope === 'personal' ? 'personal' : null;
+    if (state.scope) sessionStorage.setItem('outcome-open', state.scope);
+    else sessionStorage.removeItem('outcome-open');
+    if (wasLanding) showLanding();
+    throw sampleFailure(error);
+  }
+}
+function enterSample(){
+  return shareInflight(sampleEntry, runSampleEntry);
+}
+function clearEntryError(){
+  const box = $('#entryError');
+  if (box) box.hidden = true;
+}
+function showEntryError(error){
+  const message = (error && error.message) || 'The sample could not be opened. Try again.';
+  const box = $('#entryError');
+  if (box && !$('#landing').hidden){
+    $('#entryErrorText').textContent = message;
+    box.hidden = false;
+    setLandingStatus('');
+  } else toast(message, 'error');
+}
+let lastEntrySource = 'get-started';
+async function openSample(source){
+  lastEntrySource = source;
+  clearEntryError();
+  if (!$('#landing').hidden) setLandingStatus('Opening the sample. No account or wallet needed. These records are synthetic.');
+  try {
+    await enterSample();
+    setLandingStatus('');
+    closeStart(false);
+    // The sample is a different place from any pending link: forget the link and repair the URL.
+    clearIntent();
+    const stale = parseRoute();
+    if (stale.id && selected !== stale.id){ view = 'overview'; paint({ scroll: 'none' }); }
+    syncUrl('replace');
+    return true;
+  } catch (error) {
+    showEntryError(error);
+    return false;
+  }
+}
+/* The tour is optional and sits on top of an open workspace. Nothing in it can
+   keep a visitor out, and a failure here never closes the sample. */
+async function startTourAfterEntry(){
+  try {
+    if (!window.OutcomeOnboarding) return;
+    let stored = OutcomeOnboarding.read(localStorage);
+    if (stored.status !== 'in_progress' || stored.step <= 0) stored = OutcomeOnboarding.move(localStorage, 1);
+    await showStep(stored.step);
+  } catch (error) {
+    console.warn('The sample guide could not open.', error);
+    try { document.body.classList.remove('is-guided'); const panel = $('#guide'); if (panel) panel.hidden = true; } catch (ignored) {}
+    toast('The sample is open. The guide could not start, so explore on your own.', 'warn');
+  }
 }
 function clearGuideFocus(){
   document.querySelectorAll('.guide-focus').forEach(node => node.classList.remove('guide-focus'));
@@ -1350,13 +1727,6 @@ function renderGuide(){
   }
   syncStageSpace();
 }
-async function enterSample(){
-  if (state.scope === 'demo' && state.commitments.length) {
-    return { commitments: state.commitments, patterns: state.patterns, status: 'cached' };
-  }
-  state.scope = null;
-  return openTrial();
-}
 function sampleOrder(){
   return (state.commitments || []).find(record => String(record.commitment.description || '').includes('PO-104'));
 }
@@ -1398,8 +1768,7 @@ async function placeGuide(stepIndex){
   clearGuideFocus();
   if (!step || step.place === 'landing'){ showLanding(); return; }
   if (state.scope !== 'demo' || !state.commitments.length){
-    const trial = await enterSample();
-    await enterWorkspace('demo', trial);
+    await enterSample();
   } else if ($('.app-shell').hidden){
     showApp();
     paintAccount();
@@ -1430,20 +1799,10 @@ async function guidePrimary(button){
   try {
   const stored = OutcomeOnboarding.read(localStorage);
   const step = OutcomeOnboarding.STEPS[stored.step];
-  if (!step) return;
+  if (!step){ OutcomeOnboarding.begin(localStorage); await openSample('guide'); return; }
   if (step.action === 'enter-sample'){
     await withBusy(button, async () => {
-      try {
-        setLandingStatus('Opening the sample…');
-        const trial = await enterSample();
-        await enterWorkspace('demo', trial);
-        setLandingStatus('');
-        const next = OutcomeOnboarding.move(localStorage, 1);
-        await showStep(next.step);
-      } catch (error) {
-        setLandingStatus(error.message);
-        toast(error.message, 'error');
-      }
+      if (await openSample('guide')) await startTourAfterEntry();
     });
     return;
   }
@@ -1477,26 +1836,199 @@ function guideDismiss(){
   renderGuide();
 }
 async function revisitGuide(button){
-  OutcomeOnboarding.revisit(localStorage);
+  try {
+    if (!window.OutcomeOnboarding) throw Error('guide unavailable');
+    OutcomeOnboarding.revisit(localStorage);
+  } catch (error) {
+    toast('The guide is unavailable here. The sample is still open.', 'warn');
+    return;
+  }
   await guidePrimary(button || $('#guidePrimary'));
 }
-async function getStarted(button){
-  setLandingStatus('Opening the sample…');
-  let stored = OutcomeOnboarding.read(localStorage);
-  if (stored.status === 'new' || stored.status === 'completed' || stored.status === 'dismissed') stored = OutcomeOnboarding.begin(localStorage);
-  if (stored.step <= 0){ await guidePrimary(button); return; }
-  await withBusy(button, async () => {
-    try {
-      setLandingStatus('Opening the sample…');
-      const trial = await enterSample();
-      await enterWorkspace('demo', trial);
-      setLandingStatus('');
-      await showStep(stored.step);
-    } catch (error) {
-      setLandingStatus(error.message);
-      toast(error.message, 'error');
-    }
+/* ---- Intended route: survive sign-in -------------------------------------
+   A link to a record is remembered (as a validated in-app hash only) when the
+   visitor must sign in first, and reopened afterwards if the account can reach it. */
+const Intent = window.OutcomeRouteIntent || null;
+function readIntent(){ try { return Intent ? Intent.read(sessionStorage, Date.now(), TABS) : null; } catch (error) { return null; } }
+function clearIntent(){ try { if (Intent) Intent.clear(sessionStorage); } catch (error) { /* nothing stored */ } hideIntentNotice(); }
+function hideIntentNotice(){ const box = $('#intentNotice'); if (box) box.hidden = true; }
+function showIntentNotice(route, ended){
+  const box = $('#intentNotice');
+  if (!box || !route) return;
+  const text = route.id
+    ? (ended ? 'Your session ended. Sign in to return to this commitment.' : 'Sign in to open this commitment. You will return to it right after.')
+    : 'Sign in to continue to ' + Intent.describe(route) + '.';
+  $('#intentNoticeText').textContent = text;
+  box.hidden = false;
+}
+function captureIntent(hash, ended){
+  if (!Intent) return null;
+  const route = Intent.parse(hash, TABS);
+  if (!route || route.view === 'overview') return null;
+  try { Intent.save(sessionStorage, route.hash, Date.now(), TABS); } catch (error) { return null; }
+  showIntentNotice(route, ended);
+  return route;
+}
+async function restoreIntent(route){
+  clearIntent();
+  try { await enterWorkspace('personal'); }
+  catch (error) { showLanding(); setLandingStatus('Your workspace could not be opened. ' + (error.message || '') ); return false; }
+  view = route.view;
+  if (location.hash !== route.hash) history.replaceState({ view, id: route.id }, '', route.hash);
+  paint({ scroll: 'none' });
+  if (route.id) await openCommitment(route.id, { fromRoute: true, focus: true, scroll: 'none', tab: route.tab });
+  else syncUrl('replace');
+  return true;
+}
+/* After the server confirms a sign-in: reopen the intended place, else continue onboarding. */
+async function afterSignIn(options = {}){
+  const intent = readIntent();
+  const hasPersonal = Boolean(state.session && state.session.personal && state.session.personal.active);
+  if (intent && hasPersonal){ closeStart(false); await restoreIntent(intent); return 'restored'; }
+  if (intent){
+    clearIntent();
+    const note = 'You are signed in, but this link points to a record this account does not have. Your own workspace is next.';
+    setLandingStatus(note); toast(note, 'warn');
+  }
+  const progress = welcomeState();
+  if (progress && OutcomeWelcome.shouldAutoPresent(progress)){
+    await maybePresentWelcome();
+    closeStart(false);
+    return 'welcome';
+  }
+  if (options.source === 'get-started'){ await openPersonalWorkspace(); return 'workspace'; }
+  closeStart(false);
+  return 'signed-in';
+}
+
+/* ---- Get started: sign in, open your own workspace, record a first commitment ---- */
+const startUi = { open: false, stage: 'signin', phase: 'idle', failure: null, opener: null, run: 0 };
+const START_COPY = {
+  signin: {
+    step: 0, kicker: 'Step 1 of 3', title: 'Sign in to open your own workspace',
+    lead: 'OUTCOME uses a NEAR testnet wallet to name your workspace. You will be asked to sign a short message that proves the account is yours. It is not a transaction. It moves no money and authorises no payment.',
+    primary: 'Sign in with your wallet', note: 'Your workspace is separate from the sample. Nothing is saved until you submit a commitment.',
+  },
+  workspace: {
+    step: 1, kicker: 'Step 2 of 3', title: 'Open your personal workspace',
+    lead: 'Create a private workspace for your own commitments. It stays separate from the sample.',
+    primary: 'Create my workspace', note: 'Creating a workspace records no commitment and authorises no payment.',
+  },
+};
+const startPhaseText = phase => Object.assign({}, SIGNIN_TEXT, { creating: 'Creating your workspace…', opening: 'Opening your workspace…' })[phase] || '';
+function renderStart(){
+  const copy = START_COPY[startUi.stage] || START_COPY.signin;
+  const busy = ['connecting', 'challenge', 'signing', 'verifying', 'creating', 'opening'].includes(startUi.phase);
+  const failed = startUi.phase === 'error' && startUi.failure;
+  const steps = $('#startSteps');
+  steps.replaceChildren();
+  (window.OutcomeStart ? OutcomeStart.STEPS : [{ label: 'Sign in' }, { label: 'Open your workspace' }, { label: 'Record your first commitment' }]).forEach((step, index) => {
+    const item = document.createElement('li');
+    item.textContent = step.label;
+    if (index < copy.step) item.className = 'is-done';
+    if (index === copy.step){ item.className = 'is-now'; item.setAttribute('aria-current', 'step'); }
+    steps.appendChild(item);
   });
+  $('#startKicker').textContent = copy.kicker;
+  $('#startTitle').textContent = copy.title;
+  const account = state.session && state.session.account_id;
+  $('#startLead').textContent = startUi.stage === 'workspace' && account ? 'Signed in as ' + account + '. ' + copy.lead : copy.lead;
+  $('#startNote').textContent = copy.note;
+  $('#startState').textContent = busy ? startPhaseText(startUi.phase) : '';
+  const error = $('#startError');
+  error.hidden = !failed;
+  $('#startErrorText').textContent = failed ? startUi.failure.message : '';
+  const primary = $('#startPrimary');
+  primary.textContent = failed ? (startUi.failure.signInAgain ? 'Sign in again' : 'Try again') : copy.primary;
+  primary.disabled = busy;
+  if (busy) primary.setAttribute('aria-busy', 'true'); else primary.removeAttribute('aria-busy');
+  $('#startSample').disabled = busy;
+}
+function setStart(patch){ Object.assign(startUi, patch); if (startUi.open) renderStart(); }
+function openStart(opener){
+  startUi.opener = opener || document.activeElement;
+  startUi.open = true;
+  startUi.run += 1;
+  startUi.failure = null;
+  startUi.phase = 'idle';
+  startUi.stage = Start.stageFor ? Start.stageFor(state.session) : 'signin';
+  if (startUi.stage === 'record') startUi.stage = 'workspace';
+  renderStart();
+  $('#startFlow').hidden = false;
+  document.body.classList.add('start-open');
+  [$('#landing'), $('.app-shell')].forEach(node => { if (node) node.inert = true; });
+  $('#startTitle').focus();
+}
+function closeStart(restoreFocus = true){
+  startUi.run += 1; // a flow still in progress no longer drives the page
+  if (!startUi.open) return;
+  startUi.open = false;
+  $('#startFlow').hidden = true;
+  document.body.classList.remove('start-open');
+  [$('#landing'), $('.app-shell')].forEach(node => { if (node) node.inert = false; });
+  const back = startUi.opener;
+  startUi.opener = null;
+  if (restoreFocus && back && back.isConnected && typeof back.focus === 'function') back.focus();
+}
+function startFailed(error, phase){
+  const failure = Start.describeFailure(error, phase);
+  if (failure.signInAgain) startUi.stage = 'signin';
+  setStart({ phase: 'error', failure });
+  return failure;
+}
+async function startSignIn(){
+  const run = startUi.run;
+  setStart({ stage: 'signin', phase: 'connecting', failure: null });
+  try {
+    await runSignIn(phase => { if (run === startUi.run) setStart({ phase }); });
+  } catch (error) {
+    if (run === startUi.run) startFailed(error, 'signin');
+    return;
+  }
+  if (run !== startUi.run){ setLandingStatus('Signed in. Nothing was paid.'); return; } // the visitor closed the dialog meanwhile
+  setStart({ stage: 'workspace', phase: 'opening', failure: null });
+  try { await afterSignIn({ source: 'get-started' }); }
+  catch (error) { if (run === startUi.run) startFailed(error, 'workspace'); else toast(Start.describeFailure(error, 'workspace').message, 'error'); }
+}
+async function openPersonalWorkspace(){
+  const run = startUi.run;
+  const had = Boolean(state.session && state.session.personal && state.session.personal.active);
+  setStart({ stage: 'workspace', phase: had ? 'opening' : 'creating', failure: null });
+  try {
+    if (!had){
+      const made = await api('/api/workspaces', { method: 'POST', timeout: 20000 });
+      if (!made || made.kind !== 'personal' || made.synthetic !== false) throw Object.assign(Error('The workspace was not confirmed.'), { status: 502 });
+      await refreshSession();
+      if (!(state.session.personal && state.session.personal.active)) throw Object.assign(Error('The workspace was not confirmed.'), { status: 502 });
+    }
+    await enterWorkspace('personal');
+  } catch (error) {
+    if (run === startUi.run) startFailed(error, 'workspace'); else toast(Start.describeFailure(error, 'workspace').message, 'error');
+    return false;
+  }
+  try { OutcomeOnboarding.complete(localStorage); } catch (ignored) { /* the sample guide is optional */ }
+  closeStart(false);
+  if (!had || !state.commitments.length) goTo('new', 'top'); else goTo('overview', 'top');
+  toast(had ? 'Your workspace is open. Nothing was paid.' : 'Your workspace is ready. Nothing is saved until you submit the form. Nothing was paid.', 'ok');
+  return true;
+}
+async function startPrimary(){
+  if (startUi.phase === 'error' && startUi.failure && !startUi.failure.signInAgain && startUi.stage === 'workspace'){ await openPersonalWorkspace(); return; }
+  const signedIn = Boolean(state.session && state.session.authenticated);
+  if (startUi.stage === 'workspace' && signedIn){ await openPersonalWorkspace(); return; }
+  await startSignIn();
+}
+async function getStarted(button){
+  clearEntryError();
+  setLandingStatus('');
+  // A tap before the first session check finishes must not treat a signed-in visitor as signed out.
+  if (!state.session){ try { await refreshSession(); } catch (error) { /* the dialog then starts at sign-in */ } }
+  openStart(button);
+  if (state.session && state.session.authenticated){
+    const run = startUi.run;
+    try { await afterSignIn({ source: 'get-started' }); }
+    catch (error) { if (run === startUi.run) startFailed(error, 'workspace'); }
+  }
 }
 async function continueToRealCommitment(button){
   try {
@@ -1540,6 +2072,7 @@ function showWorkspaceSkeleton(){
 async function enterWorkspace(scope, seeded){
   state.scope = scope;
   sessionStorage.setItem('outcome-open', scope);
+  try { localStorage.setItem('outcome-last-scope', scope); } catch (error) { /* storage unavailable: only a hint */ }
   selected = null;
   state.record = null;
   if (seeded && Array.isArray(seeded.commitments)){
@@ -1555,23 +2088,11 @@ async function enterWorkspace(scope, seeded){
   await load();
 }
 async function seedDemo(button){
-  setLandingStatus('Opening the sample…');
   await withBusy(button, async () => {
-    try {
-      // Reuse the loaded sample when returning to it; do not issue another
-      // trial-creation request for data already held in this page session.
-      const trial = state.scope === 'demo' && state.commitments.length
-        ? { commitments: state.commitments, patterns: state.patterns, status: 'cached' }
-        : await openTrial();
-      await enterWorkspace('demo', trial);
-      if (view !== 'overview') goTo('overview', 'top');
-      toast('Sample ready. These records are synthetic.', 'ok');
-      setLandingStatus('');
-      renderGuide();
-    } catch (error) {
-      setLandingStatus(error.message);
-      toast(error.message, 'error');
-    }
+    if (!(await openSample('revisit'))) return;
+    try { if (view !== 'overview') goTo('overview', 'top'); } catch (error) { console.warn(error); }
+    toast('Sample ready. These records are synthetic.', 'ok');
+    try { renderGuide(); } catch (error) { console.warn(error); }
   });
 }
 let intakeDraft = null;
@@ -1655,6 +2176,7 @@ async function confirmIntake(button){
       selected = saved.commitment_id;
       await load();
       if (view !== 'commitments') goTo('commitments', 'top');
+      else syncUrl('push');
       const note = saved.insights_withheld_reason
         ? 'Recorded. ' + saved.insights_withheld_reason
         : 'Recorded. The assessment has run. No payment was submitted.';
@@ -1676,6 +2198,7 @@ async function createCommitment(form){
       selected = created.commitment.id;
       await load();
       if (view !== 'commitments') goTo('commitments', 'top');
+      else syncUrl('push');
       toast('Commitment recorded.', 'ok');
       $('#detail-title')?.focus();
     } catch (error) { toast(error.message, 'error'); }
@@ -1844,28 +2367,59 @@ async function refreshSession(){
   syncIntake();
   paintAccount();
 }
+const Start = window.OutcomeStart || {
+  validateAccount: () => ({ ok: true }), validateChallenge: () => ({ ok: true }), validateSigned: () => ({ ok: true }),
+  validateSession: session => ({ ok: Boolean(session && session.authenticated), message: 'Sign-in was not confirmed by the server. You are not signed in.' }),
+  describeFailure: error => ({ code: 'other', message: (error && error.message) || 'Something went wrong. Try again.', retryable: true }),
+};
+const SIGNIN_TEXT = {
+  connecting: 'Opening your wallet…',
+  challenge: 'Requesting a sign-in message…',
+  signing: 'Approve the message in your wallet. It is a signature, not a transaction.',
+  verifying: 'Confirming your signature…',
+};
+const signInSlot = { current: null };
+function ensure(result){
+  if (result && result.ok) return;
+  const failure = Error((result && result.message) || 'Check the details and try again.');
+  failure.code = 'validation';
+  throw failure;
+}
+/* One sign-in at a time, however it was started. Success is only what the server confirms. */
+function runSignIn(onPhase){
+  return shareInflight(signInSlot, async () => {
+    const note = phase => { try { if (onPhase) onPhase(phase); } catch (ignored) {} };
+    note('connecting');
+    const wallet = await whenWallet(item => item);
+    const accountId = await wallet.connect();
+    ensure(Start.validateAccount(accountId));
+    note('challenge');
+    const challenge = await api('/api/auth/challenge', { method:'POST', body: JSON.stringify({ account_id: accountId }), timeout: 20000 });
+    ensure(Start.validateChallenge(challenge));
+    const nonce = Uint8Array.from(atob(challenge.nonce), char => char.charCodeAt(0));
+    note('signing');
+    const signed = await wallet.signMessage({ message: challenge.message, recipient: challenge.recipient, nonce });
+    ensure(Start.validateSigned(signed, accountId));
+    note('verifying');
+    await api('/api/auth/session', { method:'POST', timeout: 20000, body: JSON.stringify({
+      challenge_id: challenge.challenge_id, account_id: accountId, public_key: signed.publicKey, signature: signed.signature,
+    }) });
+    await refreshSession();
+    ensure(Start.validateSession(state.session, accountId));
+    return accountId;
+  });
+}
 async function connectWallet(button){
   await withBusy(button, async () => {
     try {
-      const wallet = await whenWallet(item => item);
-      const accountId = await wallet.connect();
-      const challenge = await api('/api/auth/challenge', { method:'POST', body: JSON.stringify({ account_id: accountId }) });
-      const nonce = Uint8Array.from(atob(challenge.nonce), char => char.charCodeAt(0));
-      const signed = await wallet.signMessage({ message: challenge.message, recipient: challenge.recipient, nonce });
-      if (signed.accountId && signed.accountId !== accountId) throw Error('The wallet signed in with a different account. Connect again.');
-      await api('/api/auth/session', { method:'POST', body: JSON.stringify({
-        challenge_id: challenge.challenge_id,
-        account_id: accountId,
-        public_key: signed.publicKey,
-        signature: signed.signature,
-      }) });
-      await refreshSession();
+      await runSignIn(phase => setLandingStatus(SIGNIN_TEXT[phase] || ''));
       setLandingStatus('Signed in. Nothing was paid.');
       toast('Signed in. Nothing was paid.', 'ok');
-      await maybePresentWelcome();
+      await afterSignIn({ source: 'sign-in' });
     } catch (error) {
-      setLandingStatus(error.message);
-      toast(error.message, 'error');
+      const failure = Start.describeFailure(error, 'signin');
+      setLandingStatus(failure.message);
+      toast(failure.message, 'error');
     }
   });
 }
@@ -2028,8 +2582,30 @@ document.addEventListener('click', event => {
   }
   const opener = hit(event, '[data-open]');
   if (opener){ openCommitment(opener.dataset.open); return; }
+  if (hit(event, 'a.skip')){
+    // The skip link must not become a route: move focus to the content and leave the URL alone.
+    event.preventDefault();
+    const content = $('#content');
+    if (content){ content.setAttribute('tabindex', '-1'); content.focus(); }
+    return;
+  }
+  if (hit(event, '#entryRetry')){
+    const source = lastEntrySource;
+    const retry = $('#entryRetry');
+    withBusy(retry, async () => {
+      if (await openSample(source) && source !== 'revisit') await startTourAfterEntry();
+    });
+    return;
+  }
   const started = hit(event, '#getStarted, [data-get-started]');
   if (started){ getStarted(started); return; }
+  if (hit(event, '#startPrimary')){ startPrimary(); return; }
+  if (hit(event, '#startClose')){ closeStart(); return; }
+  if (hit(event, '#startSample')){ closeStart(false); seedDemo($('#exploreDemo')); return; }
+  if (hit(event, '#intentSignIn')){ connectWallet($('#intentSignIn')); return; }
+  if (hit(event, '#intentDismiss')){ clearIntent(); history.replaceState({ view }, '', location.pathname + location.search); return; }
+  const detailSignIn = hit(event, '[data-detail-signin]');
+  if (detailSignIn){ connectWallet(detailSignIn); return; }
   const guideButton = hit(event, '#guidePrimary');
   if (guideButton){ guidePrimary(guideButton); return; }
   if (hit(event, '#guideBack')){ guideBack(); return; }
@@ -2051,8 +2627,11 @@ document.addEventListener('click', event => {
   if (intakeConfirm){ confirmIntake(intakeConfirm); return; }
   const disconnect = hit(event, '#disconnectWallet, #topDisconnect');
   if (disconnect){ disconnectWallet(disconnect); return; }
+  if (hit(event, '#leaveSample')){ leaveSample(); return; }
   if (!hit(event, '#detail')) return;
-  if (hit(event, '#backToList')){ closeDetail(); return; }
+  if (hit(event, '#backToList') || hit(event, '[data-detail-dismiss]')){ closeDetail(); return; }
+  const retryRecord = hit(event, '[data-detail-retry]');
+  if (retryRecord){ openCommitment(retryRecord.dataset.detailRetry, { focus:true, scroll:'none' }); return; }
   const tab = hit(event, '[role="tab"]');
   if (tab){ activateTab(tab.dataset.tab); return; }
   const jump = hit(event, '[data-goto-tab]');
@@ -2090,6 +2669,7 @@ document.addEventListener('submit', event => {
   else saveAction(form);
 });
 document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && startUi.open){ event.preventDefault(); closeStart(); return; }
   if (event.key === 'Escape' && !$('#welcome')?.hidden){ event.preventDefault(); return; }
   if (event.key === 'Escape' && !$('#guide')?.hidden && !event.target.matches?.('input, textarea, select')){
     event.preventDefault();
@@ -2126,10 +2706,19 @@ $('#detail').addEventListener('toggle', event => {
 function syncFromHistory(){
   if (location.hash === '#security') { showTrust({ fromHistory: true }); return; }
   if (trustPageOpen) hideTrust({ fromHistory: true });
-  const next = viewFromHash();
-  if (next === view) return;
-  view = next;
-  paint({ scroll: 'restore' });
+  const route = parseRoute();
+  const viewChanged = route.view !== view;
+  view = route.view;
+  if (viewChanged) paint({ scroll: 'restore' });
+  if (!state.scope || $('.app-shell').hidden) return;
+  if (view === 'commitments' && route.id){
+    const idChanged = selected !== route.id;
+    if (idChanged || detailTab !== route.tab || !state.record){
+      openCommitment(route.id, { fromRoute: true, focus: false, scroll: 'none', tab: route.tab, fresh: idChanged });
+    }
+  } else if (view === 'commitments' && selected){
+    clearSelection();
+  }
 }
 window.addEventListener('popstate', syncFromHistory);
 window.addEventListener('hashchange', syncFromHistory);
@@ -2139,8 +2728,9 @@ window.matchMedia('(max-width: 759px)').addEventListener('change', event => {
   if (event.matches && selected && view === 'commitments') $('#detail')?.scrollIntoView({ block: 'start', behavior: 'auto' });
 });
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+const arrivalHash = location.hash; // what the visitor actually opened, before any normalising
 view = viewFromHash();
-if (location.hash !== '#security' && location.hash !== '#' + HASH_FOR[view]) history.replaceState({ view }, '', '#' + HASH_FOR[view]);
+if (!/^#(overview|commitments|patterns-section|new-commitment|security)(\/|$)/.test(location.hash)) history.replaceState({ view }, '', '#' + HASH_FOR[view]);
 paint();
 let welcomeReturnFocus = null;
 function welcomeState(){
@@ -2255,9 +2845,7 @@ async function finishWelcome(choice, button){
     await saveWelcome('completed', OutcomeWelcome.CARDS.length - 1);
     closeWelcomeLayer();
     if (choice === 'sample'){
-      state.scope = null;
-      const trial = await openTrial();
-      await enterWorkspace('demo', trial);
+      if (!(await openSample('welcome'))) return;
       if (view !== 'overview') goTo('overview', 'top');
       toast('Sample ready. These records are synthetic and stay separate from yours.', 'ok');
       return;
@@ -2280,6 +2868,20 @@ async function replayWelcome(button){
     state.session.onboarding = saved;
   });
 }
+async function enterFromExistingSession(){
+  const personal = Boolean(state.session && state.session.personal && state.session.personal.active);
+  const demo = Boolean(state.session && state.session.demo && state.session.demo.active);
+  let last = null;
+  try { last = localStorage.getItem('outcome-last-scope'); } catch (error) { last = null; }
+  const order = [last, 'personal', 'demo'].filter((scope, index, all) => scope && all.indexOf(scope) === index);
+  for (const scope of order){
+    try {
+      if (scope === 'personal' && personal){ await enterWorkspace('personal'); return true; }
+      if (scope === 'demo' && demo){ await enterSample(); return true; }
+    } catch (error) { console.warn('Could not reopen the ' + scope + ' workspace from its session.', error); }
+  }
+  return false;
+}
 async function boot(){
   try { await refreshSession(); }
   catch (error) { setLandingStatus(error.message); }
@@ -2296,6 +2898,8 @@ async function boot(){
   })).catch(() => {});
   const open = sessionStorage.getItem('outcome-open');
   const explicitRoute = location.hash === '#security' || Boolean(location.hash && location.hash !== '#');
+  // '#overview' is what startup writes onto the landing page, so it never counts as a direct link.
+  const openedWithRoute = /^#(commitments|patterns-section|new-commitment)(\/|$)/.test(arrivalHash);
   const hasWorkspaceIntent = Boolean(open && (open === 'demo' || open === 'personal'));
   const shouldRestoreWorkspace = explicitRoute || hasWorkspaceIntent;
 
@@ -2303,12 +2907,10 @@ async function boot(){
   // A reload must not turn a workspace URL into the public landing page.
   if (shouldRestoreWorkspace) {
     if (open === 'demo') {
-      try {
-        const trial = await enterSample();
-        await enterWorkspace('demo', trial);
-      } catch (error) {
+      try { await enterSample(); }
+      catch (error) {
         showLanding();
-        setLandingStatus(error.message);
+        showEntryError(error);
       }
     } else if (open === 'personal' && state.session && state.session.personal && state.session.personal.active) {
       try { await enterWorkspace('personal'); }
@@ -2316,9 +2918,12 @@ async function boot(){
     } else if (explicitRoute && location.hash === '#security' && state.session && state.session.personal && state.session.personal.active) {
       try { await enterWorkspace('personal'); }
       catch (error) { showLanding(); setLandingStatus(error.message); }
+    } else if (openedWithRoute && !open && location.hash !== '#security' && await enterFromExistingSession()) {
+      // A direct link opened in a new tab: the browser still holds a valid session.
     } else {
       showLanding();
-      if (open) setLandingStatus('Your previous workspace is no longer available. Sign in again to continue.');
+      const kept = captureIntent(arrivalHash, Boolean(open));
+      if (!kept && open) setLandingStatus('Your previous workspace is no longer available. Sign in again to continue.');
     }
     renderGuide();
     const targetView = viewFromHash();
@@ -2326,10 +2931,13 @@ async function boot(){
       view = targetView;
       paint();
     }
-    const commitmentId = sessionStorage.getItem('outcome-selected-commitment') || sessionStorage.getItem('outcome-security-commitment');
+    const route = parseRoute();
+    const behindSecurity = location.hash === '#security';
+    const commitmentId = route.id || (behindSecurity ? sessionStorage.getItem('outcome-security-commitment') : null);
     if (commitmentId && state.scope) {
-      try { await openCommitment(commitmentId, { focus:false, scroll:'none' }); }
-      catch (error) { sessionStorage.removeItem('outcome-selected-commitment'); }
+      try { await openCommitment(commitmentId, { focus:false, scroll:'none', fromRoute:true, tab: route.id ? route.tab : undefined, keepView: behindSecurity }); }
+      catch (error) { presentRecordFailure(commitmentId, error); }
+      if (!behindSecurity && location.hash !== '#security') syncUrl('replace'); // an unknown tab or a removed record leaves a clean URL
     }
     const restoreSecurity = sessionStorage.getItem('outcome-security-open') === '1' || location.hash === '#security';
     if (restoreSecurity) showTrust({ fromRestore:true });
@@ -2347,20 +2955,12 @@ async function boot(){
     catch (error) { setLandingStatus(error.message); }
     return;
   }
-  const guideState = OutcomeOnboarding.read(localStorage);
-  const mode = OutcomeOnboarding.presentation(guideState);
+  let mode = 'arrive';
+  try { if (window.OutcomeOnboarding) mode = OutcomeOnboarding.presentation(OutcomeOnboarding.read(localStorage)); }
+  catch (error) { mode = 'arrive'; }
   if (mode === 'resume'){
-    setLandingStatus('Opening the labelled sample.');
-    try {
-      const trial = await enterSample();
-      await enterWorkspace('demo', trial);
-      setLandingStatus('');
-      await showStep(guideState.step);
-    } catch (error) {
-      showLanding();
-      setLandingStatus(error.message);
-      renderGuide();
-    }
+    if (await openSample('resume')) await startTourAfterEntry();
+    else { showLanding(); renderGuide(); }
     return;
   }
   showLanding();
