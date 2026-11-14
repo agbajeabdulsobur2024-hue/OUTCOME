@@ -256,10 +256,14 @@ async def guard_public_requests(request: Request, call_next):
         if writing:
             safety.reject_upload(request)
         with connect() as db:
+            guard_started = time.perf_counter()
+            logging.getLogger('outcome.request').info('%s %s: guard database connected in %dms', request.method, request.url.path, (time.perf_counter() - guard_started) * 1000)
             if writing:
                 safety.enforce_write_limits(db, request)
+                logging.getLogger('outcome.request').info('%s %s: write limits checked in %dms', request.method, request.url.path, (time.perf_counter() - guard_started) * 1000)
             try:
                 scope = tenancy.resolve(db, request)
+                logging.getLogger('outcome.request').info('%s %s: tenant resolved in %dms', request.method, request.url.path, (time.perf_counter() - guard_started) * 1000)
             except HTTPException as exc:
                 # Opening a sample must work even when the browser still sends a
                 # stale workspace scope; the endpoint ignores scope and uses the cookie.
